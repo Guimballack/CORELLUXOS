@@ -96,8 +96,11 @@ export default function SettingsHub() {
         loadData();
     }, []);
 
-    // Helper: Check if logged in user is admin
-    const isAdminUser = globalState.currentUser && globalState.currentUser.accessLevel === 'Administrador';
+    // Helper: Check if logged in user is admin or has config permission
+    const isAdminUser = globalState.currentUser && (
+        globalState.currentUser.accessLevel === 'Administrador' || 
+        globalState.currentUser.permissions?.config === true
+    );
 
     // =============================================
     // CRUD 1: COLABORADORES (USERS)
