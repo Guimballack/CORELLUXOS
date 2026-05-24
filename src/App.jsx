@@ -11,6 +11,7 @@ import UserSelect from './pages/UserSelect';
 import Dashboard from './pages/Dashboard';
 import LogisticsHub from './pages/LogisticsHub';
 import SettingsHub from './pages/SettingsHub';
+import CentralHub from './pages/CentralHub';
 import { ArrowLeft } from 'lucide-react';
 
 // Componente Placeholder para módulos em desenvolvimento
@@ -79,7 +80,7 @@ export default function App() {
             case 'logistics-hub':
                 return <LogisticsHub />;
             case 'central-hub':
-                return <PlaceholderModule name="GESTÃO OPERACIONAL" description="Central operacional de comunicação, avisos e checklists em migração para React." />;
+                return <CentralHub />;
             case 'financeiro-hub':
                 return <PlaceholderModule name="FINANCEIRO" description="Controle de fluxo de caixa, contas, faturamento e DRE em migração para React." />;
             case 'ged-hub':

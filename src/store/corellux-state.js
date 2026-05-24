@@ -27,6 +27,7 @@ const DEFAULTS = {
     pendingAttachment: null,
     solicitacaoCart: [],
     currentSkuForNumpad: null,
+    notifications: [],
     estoqueViewSortField: 'name',
     estoqueViewSortOrder: 'asc',
 

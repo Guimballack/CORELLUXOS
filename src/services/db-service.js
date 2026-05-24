@@ -403,6 +403,140 @@ export const DbService = {
             console.error(`[DbService] Erro ao deletar fornecedor ${id}:`, e.message || e);
             return { success: false, error: e };
         }
+    },
+
+    // =============================================
+    // SISTEMA DE NOTIFICAÇÕES (AVISOS)
+    // =============================================
+    async getNotifications() {
+        try {
+            const { data, error } = await supabase
+                .from('notifications')
+                .select('*')
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            return toCamelCase(data);
+        } catch (e) {
+            console.warn('[DbService] Erro ao buscar notificações no Supabase. Usando localStorage:', e.message || e);
+            const local = localStorage.getItem('corellux_notifications');
+            if (local) {
+                try {
+                    return JSON.parse(local);
+                } catch (err) {
+                    console.error('[DbService] Erro ao analisar notificações locais:', err);
+                }
+            }
+            // Retorna dados padrão mockados
+            const defaultNotifications = [
+                {
+                    id: 1,
+                    type: 'sistema',
+                    title: 'BEM-VINDO AO NOVO CORELLUX OS',
+                    message: 'A migração para React + Vite e a integração com Supabase foram concluídas com sucesso. Explore o novo design e funcionalidades!',
+                    priority: 'normal',
+                    sender: 'Sistema',
+                    senderRole: 'Núcleo',
+                    targetSector: 'Todos',
+                    targetUsers: null,
+                    readBy: {},
+                    timestamp: new Date(Date.now() - 3600000 * 2).toISOString(), // 2 horas atrás
+                    read: false
+                },
+                {
+                    id: 2,
+                    type: 'sistema',
+                    title: 'ATUALIZAÇÃO DE BANCO DE DADOS',
+                    message: 'O backup completo do sistema foi finalizado e os logs de auditoria foram sincronizados.',
+                    priority: 'normal',
+                    sender: 'Sistema',
+                    senderRole: 'Serviço',
+                    targetSector: 'Todos',
+                    targetUsers: null,
+                    readBy: {},
+                    timestamp: new Date(Date.now() - 3600000 * 5).toISOString(), // 5 horas atrás
+                    read: false
+                }
+            ];
+            localStorage.setItem('corellux_notifications', JSON.stringify(defaultNotifications));
+            return defaultNotifications;
+        }
+    },
+
+    async saveNotification(notification) {
+        try {
+            const snakeNotif = toSnakeCase(notification);
+            if (snakeNotif.id && typeof snakeNotif.id === 'number' && snakeNotif.id > 1000000) {
+                delete snakeNotif.id;
+            }
+            const { data, error } = await supabase
+                .from('notifications')
+                .insert([snakeNotif])
+                .select();
+            if (error) throw error;
+            return { success: true, data: toCamelCase(data[0]) };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar notificação no Supabase. Gravando localmente:', e.message || e);
+            const local = localStorage.getItem('corellux_notifications');
+            let notifs = [];
+            if (local) {
+                try {
+                    notifs = JSON.parse(local);
+                } catch (err) {
+                    console.error('[DbService] Erro ao carregar locais:', err);
+                }
+            }
+            const newNotif = {
+                ...notification,
+                id: notification.id || Date.now() + Math.floor(Math.random() * 1000),
+                timestamp: notification.timestamp || new Date().toISOString(),
+                readBy: notification.readBy || {}
+            };
+            notifs.unshift(newNotif);
+            localStorage.setItem('corellux_notifications', JSON.stringify(notifs));
+            return { success: true, data: newNotif };
+        }
+    },
+
+    async markNotificationRead(id, userId) {
+        try {
+            const { data: fetchNotif, error: fetchErr } = await supabase
+                .from('notifications')
+                .select('read_by')
+                .eq('id', id)
+                .single();
+            if (fetchErr) throw fetchErr;
+
+            const readBy = fetchNotif.read_by || {};
+            readBy[userId] = new Date().toISOString();
+
+            const { data, error } = await supabase
+                .from('notifications')
+                .update({ read_by: readBy, read: true })
+                .eq('id', id)
+                .select();
+            if (error) throw error;
+            return { success: true, data: toCamelCase(data[0]) };
+        } catch (e) {
+            console.warn(`[DbService] Erro ao marcar como lida no Supabase (ID: ${id}). Gravando localmente:`, e.message || e);
+            const local = localStorage.getItem('corellux_notifications');
+            if (local) {
+                try {
+                    const notifs = JSON.parse(local);
+                    const idx = notifs.findIndex(n => n.id === id);
+                    if (idx !== -1) {
+                        const notif = notifs[idx];
+                        if (!notif.readBy) notif.readBy = {};
+                        notif.readBy[userId] = new Date().toISOString();
+                        notif.read = true;
+                        localStorage.setItem('corellux_notifications', JSON.stringify(notifs));
+                        return { success: true, data: notif };
+                    }
+                } catch (err) {
+                    console.error('[DbService] Erro ao atualizar local:', err);
+                }
+            }
+            return { success: false, error: e };
+        }
     }
 };
 
