@@ -10,6 +10,7 @@ import Login from './pages/Login';
 import UserSelect from './pages/UserSelect';
 import Dashboard from './pages/Dashboard';
 import LogisticsHub from './pages/LogisticsHub';
+import SettingsHub from './pages/SettingsHub';
 import { ArrowLeft } from 'lucide-react';
 
 // Componente Placeholder para módulos em desenvolvimento
@@ -88,7 +89,7 @@ export default function App() {
             case 'juridico-hub':
                 return <PlaceholderModule name="JURÍDICO" description="Controle de contratos, processos e IA jurídica em migração para React." />;
             case 'settings':
-                return <PlaceholderModule name="CADASTROS" description="Área de configurações e cadastros de funcionários, fornecedores e produtos em migração." />;
+                return <SettingsHub />;
             
             default:
                 return <Dashboard />;

@@ -240,6 +240,169 @@ export const DbService = {
             console.error(`[DbService] Erro ao remover lote ${id}:`, e.message || e);
             return { success: false, error: e };
         }
+    },
+
+    // =============================================
+    // OPERAÇÕES DE ESCRITA COMPLETA (CRUD)
+    // =============================================
+
+    // USER CRUD
+    async saveUser(user) {
+        try {
+            const snakeUser = toSnakeCase(user);
+            let result;
+            if (user.id) {
+                result = await supabase
+                    .from('app_users')
+                    .update(snakeUser)
+                    .eq('id', user.id)
+                    .select();
+            } else {
+                delete snakeUser.id; // Let database auto-increment
+                result = await supabase
+                    .from('app_users')
+                    .insert([snakeUser])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            return { success: true, data: toCamelCase(result.data[0]) };
+        } catch (e) {
+            console.error('[DbService] Erro ao salvar usuário:', e.message || e);
+            return { success: false, error: e };
+        }
+    },
+
+    async deleteUser(id) {
+        try {
+            const { error } = await supabase
+                .from('app_users')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
+            return { success: true };
+        } catch (e) {
+            console.error(`[DbService] Erro ao deletar usuário ${id}:`, e.message || e);
+            return { success: false, error: e };
+        }
+    },
+
+    // PRODUCT CRUD
+    async saveProduct(product, oldSku = null) {
+        try {
+            const snakeProduct = toSnakeCase(product);
+            let result;
+            if (oldSku) {
+                result = await supabase
+                    .from('products')
+                    .update(snakeProduct)
+                    .eq('sku', oldSku)
+                    .select();
+            } else {
+                result = await supabase
+                    .from('products')
+                    .insert([snakeProduct])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            return { success: true, data: toCamelCase(result.data[0]) };
+        } catch (e) {
+            console.error('[DbService] Erro ao salvar produto:', e.message || e);
+            return { success: false, error: e };
+        }
+    },
+
+    async deleteProduct(sku) {
+        try {
+            const { error } = await supabase
+                .from('products')
+                .delete()
+                .eq('sku', sku);
+            if (error) throw error;
+            return { success: true };
+        } catch (e) {
+            console.error(`[DbService] Erro ao deletar produto ${sku}:`, e.message || e);
+            return { success: false, error: e };
+        }
+    },
+
+    // CATEGORY CRUD
+    async saveCategory(category) {
+        try {
+            const snakeCategory = toSnakeCase(category);
+            let result;
+            if (category.id) {
+                result = await supabase
+                    .from('categories')
+                    .update(snakeCategory)
+                    .eq('id', category.id)
+                    .select();
+            } else {
+                delete snakeCategory.id;
+                result = await supabase
+                    .from('categories')
+                    .insert([snakeCategory])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            return { success: true, data: toCamelCase(result.data[0]) };
+        } catch (e) {
+            console.error('[DbService] Erro ao salvar categoria:', e.message || e);
+            return { success: false, error: e };
+        }
+    },
+
+    async deleteCategory(id) {
+        try {
+            const { error } = await supabase
+                .from('categories')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
+            return { success: true };
+        } catch (e) {
+            console.error(`[DbService] Erro ao deletar categoria ${id}:`, e.message || e);
+            return { success: false, error: e };
+        }
+    },
+
+    // SUPPLIER CRUD
+    async saveSupplier(supplier) {
+        try {
+            const snakeSupplier = toSnakeCase(supplier);
+            let result;
+            if (supplier.id) {
+                result = await supabase
+                    .from('suppliers')
+                    .update(snakeSupplier)
+                    .eq('id', supplier.id)
+                    .select();
+            } else {
+                delete snakeSupplier.id;
+                result = await supabase
+                    .from('suppliers')
+                    .insert([snakeSupplier])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            return { success: true, data: toCamelCase(result.data[0]) };
+        } catch (e) {
+            console.error('[DbService] Erro ao salvar fornecedor:', e.message || e);
+            return { success: false, error: e };
+        }
+    },
+
+    async deleteSupplier(id) {
+        try {
+            const { error } = await supabase
+                .from('suppliers')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
+            return { success: true };
+        } catch (e) {
+            console.error(`[DbService] Erro ao deletar fornecedor ${id}:`, e.message || e);
+            return { success: false, error: e };
+        }
     }
 };
 
