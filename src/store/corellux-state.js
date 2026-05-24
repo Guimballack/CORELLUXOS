@@ -40,7 +40,10 @@ const DEFAULTS = {
     checklistLocation: null,
 
     // Sectors and Areas
-    currentSectorId: null
+    currentSectorId: null,
+
+    // WMS Batches
+    stockBatches: []
 };
 
 // Instância única do estado na memória
@@ -82,6 +85,9 @@ const validate = (key, value) => {
             return Array.isArray(value);
 
         case 'solicitacaoCart':
+            return Array.isArray(value);
+
+        case 'stockBatches':
             return Array.isArray(value);
 
         case 'estoqueViewSortField':

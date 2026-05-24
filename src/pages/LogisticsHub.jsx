@@ -17,6 +17,8 @@ import {
     Check, 
     X, 
     ChevronRight, 
+    ChevronDown,
+    Clock,
     AlertTriangle, 
     CheckCircle2, 
     ArrowLeft, 
@@ -38,6 +40,35 @@ export default function LogisticsHub() {
     const [categories, setCategories] = useState([]);
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // WMS/FEFO States
+    const [stockBatches, setStockBatches] = useState([]);
+    const [expandedItems, setExpandedItems] = useState(new Set());
+    const [showBatchModal, setShowBatchModal] = useState(false);
+    const [batchModalMode, setBatchModalMode] = useState('add'); // 'add', 'edit'
+    const [editingBatch, setEditingBatch] = useState(null);
+    const [batchProduct, setBatchProduct] = useState(null);
+    
+    // Form fields for Batch Modal
+    const [batchLot, setBatchLot] = useState('');
+    const [batchQty, setBatchQty] = useState('');
+    const [batchAddress, setBatchAddress] = useState('');
+    const [batchBrand, setBatchBrand] = useState('');
+    const [batchSupplier, setBatchSupplier] = useState('');
+    const [batchMfgDate, setBatchMfgDate] = useState('');
+    const [batchExpDate, setBatchExpDate] = useState('');
+
+    const toggleExpandItem = (sku) => {
+        setExpandedItems(prev => {
+            const next = new Set(prev);
+            if (next.has(sku)) {
+                next.delete(sku);
+            } else {
+                next.add(sku);
+            }
+            return next;
+        });
+    };
 
     // Tab Navigation
     const [activeTab, setActiveTab] = useState('estoque'); // 'estoque', 'movimentar', 'solicitacao', 'aprovacoes'
@@ -75,12 +106,14 @@ export default function LogisticsHub() {
         const loadAllData = async () => {
             setLoading(true);
             try {
-                const [prodsData, catsData] = await Promise.all([
+                const [prodsData, catsData, batchesData] = await Promise.all([
                     DbService.getProducts(),
-                    DbService.getCategories()
+                    DbService.getCategories(),
+                    DbService.getStockBatches()
                 ]);
                 setProducts(prodsData);
                 setCategories(catsData.filter(c => c.status === 'Ativo'));
+                setStockBatches(batchesData);
                 
                 // Load requests from LocalStorage
                 const savedRequests = localStorage.getItem('corellux_item_requests');
@@ -102,6 +135,345 @@ export default function LogisticsHub() {
     const saveRequests = (newRequests) => {
         setRequests(newRequests);
         localStorage.setItem('corellux_item_requests', JSON.stringify(newRequests));
+    };
+
+    // =============================================
+    // WMS & FEFO METHODS
+    // =============================================
+
+    const getBatchExpiryStatus = (expDateStr) => {
+        if (!expDateStr) return { label: 'Sem Validade', className: 'stock-ok', days: 999 };
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const expDate = new Date(expDateStr);
+        expDate.setHours(0, 0, 0, 0);
+        
+        const diffTime = expDate.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays < 0) {
+            return { label: 'VENCIDO', className: 'stock-out', days: diffDays };
+        } else if (diffDays <= 30) {
+            return { label: `Vence em ${diffDays}d`, className: 'stock-low', days: diffDays };
+        } else if (diffDays <= 60) {
+            return { label: `Atenção (${diffDays}d)`, className: 'stock-low', days: diffDays }; // Usar cores existentes
+        } else {
+            return { label: 'OK', className: 'stock-ok', days: diffDays };
+        }
+    };
+
+    const calculateFefoPlan = (sku, qty) => {
+        const productBatches = stockBatches
+            .filter(b => b.itemSku === sku && b.quantity > 0)
+            .sort((a, b) => {
+                if (!a.expirationDate) return 1;
+                if (!b.expirationDate) return -1;
+                return new Date(a.expirationDate) - new Date(b.expirationDate);
+            });
+
+        let remainingQty = qty;
+        const plan = [];
+        
+        for (const b of productBatches) {
+            if (remainingQty <= 0) break;
+            const take = Math.min(b.quantity, remainingQty);
+            plan.push({
+                batch: b,
+                quantityToTake: take
+            });
+            remainingQty -= take;
+        }
+
+        return {
+            plan,
+            remainingUnallocated: remainingQty
+        };
+    };
+
+    const deductStockFromBatchesFefo = async (sku, qty) => {
+        const result = calculateFefoPlan(sku, qty);
+        for (const item of result.plan) {
+            const batch = item.batch;
+            const newQty = batch.quantity - item.quantityToTake;
+            if (newQty <= 0) {
+                await DbService.deleteStockBatch(batch.id);
+            } else {
+                await DbService.updateStockBatch(batch.id, {
+                    quantity: newQty,
+                    updatedAt: new Date().toISOString()
+                });
+            }
+        }
+        await recalculateProductStockFromBatches();
+    };
+
+    const recalculateProductStockFromBatches = async () => {
+        const latestBatches = await DbService.getStockBatches();
+        setStockBatches(latestBatches);
+
+        const stockBySku = {};
+        latestBatches.forEach(b => {
+            if (!stockBySku[b.itemSku]) {
+                stockBySku[b.itemSku] = 0;
+            }
+            stockBySku[b.itemSku] += parseFloat(b.quantity || 0);
+        });
+
+        const latestProducts = await DbService.getProducts();
+        for (const p of latestProducts) {
+            const hasBatches = latestBatches.some(b => b.itemSku === p.sku);
+            if (hasBatches) {
+                const newStock = stockBySku[p.sku] || 0;
+                if (p.stock !== newStock) {
+                    await DbService.updateProductStock(p.sku, newStock);
+                }
+            }
+        }
+
+        const refreshedProducts = await DbService.getProducts();
+        setProducts(refreshedProducts);
+    };
+
+    const handleOpenAddBatch = (product) => {
+        setBatchProduct(product);
+        setBatchModalMode('add');
+        setEditingBatch(null);
+        
+        setBatchLot('');
+        setBatchQty('');
+        setBatchAddress('');
+        setBatchBrand(product.brand || '');
+        setBatchSupplier('');
+        setBatchMfgDate('');
+        setBatchExpDate('');
+        
+        setShowBatchModal(true);
+    };
+
+    const handleOpenEditBatch = (product, batch) => {
+        setBatchProduct(product);
+        setBatchModalMode('edit');
+        setEditingBatch(batch);
+        
+        setBatchLot(batch.lot);
+        setBatchQty(batch.quantity);
+        setBatchAddress(batch.address || '');
+        setBatchBrand(batch.brand || '');
+        setBatchSupplier(batch.supplier || '');
+        setBatchMfgDate(batch.manufacturingDate ? batch.manufacturingDate.substring(0, 10) : '');
+        setBatchExpDate(batch.expirationDate ? batch.expirationDate.substring(0, 10) : '');
+        
+        setShowBatchModal(true);
+    };
+
+    const handleDeleteBatch = async (batchId) => {
+        if (window.confirm('Tem certeza que deseja remover este lote permanentemente?')) {
+            const result = await DbService.deleteStockBatch(batchId);
+            if (result.success) {
+                setStockBatches(prev => prev.filter(b => b.id !== batchId));
+                await recalculateProductStockFromBatches();
+                alert('Lote removido com sucesso!');
+            } else {
+                alert('Falha ao remover o lote.');
+            }
+        }
+    };
+
+    const handleSaveBatch = async (e) => {
+        e.preventDefault();
+        
+        if (!batchLot || !batchQty) {
+            alert('Por favor, preencha o código do lote e a quantidade.');
+            return;
+        }
+
+        const qtyNum = parseFloat(batchQty);
+        if (isNaN(qtyNum) || qtyNum <= 0) {
+            alert('A quantidade deve ser um número maior que zero.');
+            return;
+        }
+
+        const batchData = {
+            itemSku: batchProduct.sku,
+            lot: batchLot,
+            quantity: qtyNum,
+            unit: batchProduct.unit,
+            address: batchAddress,
+            brand: batchBrand,
+            supplier: batchSupplier,
+            manufacturingDate: batchMfgDate ? batchMfgDate : null,
+            expirationDate: batchExpDate ? batchExpDate : null,
+            updatedAt: new Date().toISOString()
+        };
+
+        if (batchModalMode === 'add') {
+            batchData.createdAt = new Date().toISOString();
+            const result = await DbService.addStockBatch(batchData);
+            if (result.success) {
+                alert('Lote cadastrado com sucesso!');
+            } else {
+                alert('Erro ao cadastrar lote.');
+            }
+        } else {
+            const result = await DbService.updateStockBatch(editingBatch.id, batchData);
+            if (result.success) {
+                alert('Lote atualizado com sucesso!');
+            } else {
+                alert('Erro ao atualizar lote.');
+            }
+        }
+
+        setShowBatchModal(false);
+        await recalculateProductStockFromBatches();
+    };
+
+    const renderLotesSection = (product) => {
+        const itemBatches = stockBatches.filter(b => b.itemSku === product.sku);
+
+        if (itemBatches.length === 0) {
+            return (
+                <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '2.5rem 1rem',
+                    background: 'rgba(0, 0, 0, 0.12)',
+                    borderRadius: '8px',
+                    border: '1px dashed var(--border-color)',
+                    textAlign: 'center',
+                    gap: '1rem',
+                    marginTop: '0.5rem',
+                    width: '100%'
+                }}>
+                    <Boxes size={36} style={{ color: 'var(--text-secondary)', opacity: 0.5 }} />
+                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>
+                        Nenhum lote cadastrado para este item.
+                    </span>
+                    <button
+                        type="button"
+                        onClick={() => handleOpenAddBatch(product)}
+                        style={{
+                            background: 'rgba(168, 85, 247, 0.15)',
+                            border: '1px solid var(--accent-purple)',
+                            color: 'var(--accent-purple)',
+                            padding: '0.5rem 1.5rem',
+                            borderRadius: '8px',
+                            fontWeight: '600',
+                            fontSize: '0.85rem',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.4rem',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        + Cadastrar Primeiro Lote
+                    </button>
+                </div>
+            );
+        }
+
+        return (
+            <div style={{
+                background: 'rgba(0, 0, 0, 0.15)',
+                borderRadius: '8px',
+                border: '1px solid var(--border-color)',
+                padding: '0.5rem',
+                marginTop: '0.5rem',
+                overflowX: 'auto',
+                width: '100%'
+            }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                    <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
+                            <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Lote</th>
+                            <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold', textAlign: 'center' }}>Quantidade</th>
+                            <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold', textAlign: 'center' }}>Validade</th>
+                            <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold', textAlign: 'center' }}>Endereço</th>
+                            <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Marca / Fornecedor</th>
+                            <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold', textAlign: 'center' }}>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {itemBatches.map(b => {
+                            const expiry = getBatchExpiryStatus(b.expirationDate);
+                            return (
+                                <tr key={b.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                    <td style={{ padding: '0.6rem 1rem' }}>
+                                        <strong style={{
+                                            fontFamily: 'monospace',
+                                            background: 'rgba(255, 255, 255, 0.05)',
+                                            padding: '0.2rem 0.5rem',
+                                            borderRadius: '4px',
+                                            border: '1px solid rgba(255, 255, 255, 0.08)'
+                                        }}>
+                                            {b.lot}
+                                        </strong>
+                                    </td>
+                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'center', fontWeight: '700' }}>
+                                        {b.quantity} {b.unit || product.unit}
+                                    </td>
+                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'center' }}>
+                                        <span className={`stock-badge ${expiry.className}`} style={{ minWidth: '90px', padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}>
+                                            {expiry.label}
+                                        </span>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.15rem' }}>
+                                            {b.expirationDate ? new Date(b.expirationDate).toLocaleDateString('pt-BR') : 'Sem Data'}
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'center', fontFamily: 'monospace', fontWeight: 'bold', color: 'var(--accent-teal)' }}>
+                                        {b.address || 'N/A'}
+                                    </td>
+                                    <td style={{ padding: '0.6rem 1rem' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <span style={{ fontWeight: '500' }}>{b.brand || product.brand || 'Sem Marca'}</span>
+                                            <small style={{ color: 'var(--text-secondary)' }}>{b.supplier || 'N/A'}</small>
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'center' }}>
+                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleOpenEditBatch(product, b)}
+                                                style={{
+                                                    background: 'rgba(59, 130, 246, 0.15)',
+                                                    border: '1px solid rgba(59, 130, 246, 0.3)',
+                                                    color: '#60a5fa',
+                                                    padding: '0.25rem 0.6rem',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.75rem',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                Editar
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteBatch(b.id)}
+                                                style={{
+                                                    background: 'rgba(239, 68, 68, 0.15)',
+                                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                                    color: '#f87171',
+                                                    padding: '0.25rem 0.6rem',
+                                                    borderRadius: '4px',
+                                                    fontSize: '0.75rem',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                Excluir
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        );
     };
 
     // =============================================
@@ -271,17 +643,24 @@ export default function LogisticsHub() {
             if (newStock < 0) newStock = 0;
         }
 
-        // 1. Update on Supabase
-        const result = await DbService.updateProductStock(sku, newStock);
+        const productBatches = stockBatches.filter(b => b.itemSku === sku);
 
-        // 2. Update local state copy
-        if (result.success) {
-            setProducts(prev => prev.map(p => p.sku === sku ? { ...p, stock: newStock } : p));
-            alert(`Estoque atualizado com sucesso para o item: ${pendingProduct.name}. Novo estoque: ${newStock} ${pendingProduct.unit}`);
+        if (productBatches.length > 0 && (flowType === 'saida' || flowType === 'perdas')) {
+            await deductStockFromBatchesFefo(sku, pendingQty);
+            alert(`Estoque atualizado com sucesso via FEFO para o item: ${pendingProduct.name}.`);
         } else {
-            // Even if Supabase fails (e.g. anon key blocked), we update local memory to let the user play with the app.
-            setProducts(prev => prev.map(p => p.sku === sku ? { ...p, stock: newStock } : p));
-            alert(`[Aviso] Salvo localmente (offline): estoque de ${pendingProduct.name} alterado para ${newStock}.`);
+            // 1. Update on Supabase
+            const result = await DbService.updateProductStock(sku, newStock);
+
+            // 2. Update local state copy
+            if (result.success) {
+                setProducts(prev => prev.map(p => p.sku === sku ? { ...p, stock: newStock } : p));
+                alert(`Estoque atualizado com sucesso para o item: ${pendingProduct.name}. Novo estoque: ${newStock} ${pendingProduct.unit}`);
+            } else {
+                // Even if Supabase fails (e.g. anon key blocked), we update local memory to let the user play with the app.
+                setProducts(prev => prev.map(p => p.sku === sku ? { ...p, stock: newStock } : p));
+                alert(`[Aviso] Salvo localmente (offline): estoque de ${pendingProduct.name} alterado para ${newStock}.`);
+            }
         }
 
         // Log transaction locally (mock log)
@@ -363,12 +742,26 @@ export default function LogisticsHub() {
             return;
         }
 
-        if (window.confirm(`Aprovar entrega de ${req.quantity} ${product.unit} de "${req.itemName}"?`)) {
-            const newStock = product.stock - req.quantity;
-            
-            // Update db
-            await DbService.updateProductStock(req.itemSku, newStock);
-            setProducts(prev => prev.map(p => p.sku === req.itemSku ? { ...p, stock: newStock } : p));
+        const productBatches = stockBatches.filter(b => b.itemSku === req.itemSku);
+        let confirmMsg = `Aprovar entrega de ${req.quantity} ${product.unit} de "${req.itemName}"?`;
+        
+        if (productBatches.length > 0) {
+            const fefo = calculateFefoPlan(req.itemSku, req.quantity);
+            const planDetails = fefo.plan.map(item => `  - Lote: ${item.batch.lot} (Val: ${item.batch.expirationDate ? new Date(item.batch.expirationDate).toLocaleDateString('pt-BR') : 'Sem Data'}) -> Qtd: -${item.quantityToTake}`).join('\n');
+            confirmMsg += `\n\nResumo de Dedução FEFO:\n${planDetails}`;
+            if (fefo.remainingUnallocated > 0) {
+                confirmMsg += `\n\nAVISO: ${fefo.remainingUnallocated} ${product.unit} sem lote específico correspondente (será deduzido do saldo global).`;
+            }
+        }
+
+        if (window.confirm(confirmMsg)) {
+            if (productBatches.length > 0) {
+                await deductStockFromBatchesFefo(req.itemSku, req.quantity);
+            } else {
+                const newStock = product.stock - req.quantity;
+                await DbService.updateProductStock(req.itemSku, newStock);
+                setProducts(prev => prev.map(p => p.sku === req.itemSku ? { ...p, stock: newStock } : p));
+            }
 
             // Update request status
             const updatedRequests = requests.map(r => r.id === reqId ? {
@@ -594,6 +987,7 @@ export default function LogisticsHub() {
                                     <table className="products-table">
                                         <thead>
                                             <tr>
+                                                <th style={{ width: '50px' }}></th>
                                                 <th onClick={() => handleSort('sku')} style={{ cursor: 'pointer' }} className={sortField === 'sku' ? 'active-sort' : ''}>
                                                     SKU {sortField === 'sku' && (sortOrder === 'asc' ? '▲' : '▼')}
                                                 </th>
@@ -618,7 +1012,7 @@ export default function LogisticsHub() {
                                         <tbody>
                                             {filteredInventory.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan="9" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                                    <td colSpan="10" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                                                         Nenhum produto correspondente aos filtros foi localizado.
                                                     </td>
                                                 </tr>
@@ -627,41 +1021,154 @@ export default function LogisticsHub() {
                                                     const minVal = p.minStock || 0;
                                                     const isLow = p.stock <= minVal;
                                                     const isOut = p.stock <= 0;
+                                                    const isExpanded = expandedItems.has(p.sku);
+                                                    
+                                                    // Expiration checks for FEFO warning tags
+                                                    const productBatches = stockBatches.filter(b => b.itemSku === p.sku);
+                                                    const hasExpired = productBatches.some(b => getBatchExpiryStatus(b.expirationDate).label === 'VENCIDO');
+                                                    const hasExpiringSoon = productBatches.some(b => {
+                                                        const status = getBatchExpiryStatus(b.expirationDate);
+                                                        return status.label !== 'VENCIDO' && status.label.startsWith('Vence em');
+                                                    });
 
                                                     return (
-                                                        <tr key={p.sku}>
-                                                            <td><strong>{p.sku}</strong></td>
-                                                            <td>
-                                                                <div className="product-desc">
-                                                                    <span style={{ fontWeight: '700' }}>{p.name}</span>
-                                                                    <span>{p.desc || 'Nenhuma descrição fornecida.'}</span>
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <span style={{ 
-                                                                    color: 'var(--accent-orange)', 
-                                                                    fontWeight: '600', 
-                                                                    fontSize: '0.75rem',
-                                                                    textTransform: 'uppercase'
-                                                                }}>
-                                                                    {p.brand || 'Sem Marca'}
-                                                                </span>
-                                                            </td>
-                                                            <td style={{ color: 'var(--text-secondary)' }}>{p.unit}</td>
-                                                            <td><span className="category-tag">{p.category}</span></td>
-                                                            <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{minVal}</td>
-                                                            <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{p.avgStock || 0}</td>
-                                                            <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{p.maxStock || 0}</td>
-                                                            <td style={{ textAlign: 'center' }}>
-                                                                {isOut ? (
-                                                                    <span className="stock-badge stock-out"><X size={12} /> ZERADO</span>
-                                                                ) : isLow ? (
-                                                                    <span className="stock-badge stock-low"><AlertTriangle size={12} /> {p.stock} {p.unit}</span>
-                                                                ) : (
-                                                                    <span className="stock-badge stock-ok"><Check size={12} /> {p.stock} {p.unit}</span>
-                                                                )}
-                                                            </td>
-                                                        </tr>
+                                                        <React.Fragment key={p.sku}>
+                                                            <tr style={{ borderBottom: isExpanded ? 'none' : '1px solid var(--border-color)' }}>
+                                                                <td style={{ textAlign: 'center', paddingLeft: '1rem', paddingRight: '0.5rem' }}>
+                                                                    <button 
+                                                                        type="button"
+                                                                        onClick={() => toggleExpandItem(p.sku)}
+                                                                        style={{
+                                                                            background: isExpanded ? 'var(--accent-orange)' : 'rgba(168, 85, 247, 0.12)',
+                                                                            border: isExpanded ? '1px solid var(--accent-orange)' : '1px solid rgba(168, 85, 247, 0.3)',
+                                                                            color: isExpanded ? '#fff' : '#c084fc',
+                                                                            padding: '0.35rem',
+                                                                            borderRadius: '6px',
+                                                                            cursor: 'pointer',
+                                                                            display: 'inline-flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            transition: 'all 0.2s',
+                                                                            width: '28px',
+                                                                            height: '28px'
+                                                                        }}
+                                                                    >
+                                                                        {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                                                                    </button>
+                                                                </td>
+                                                                <td><strong>{p.sku}</strong></td>
+                                                                <td>
+                                                                    <div className="product-desc" style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                                            <span style={{ fontWeight: '700' }}>{p.name}</span>
+                                                                            <span style={{ 
+                                                                                background: 'rgba(168, 85, 247, 0.15)', 
+                                                                                color: '#c084fc', 
+                                                                                border: '1px solid rgba(168, 85, 247, 0.3)', 
+                                                                                fontSize: '0.65rem', 
+                                                                                fontWeight: '700', 
+                                                                                padding: '0.1rem 0.35rem', 
+                                                                                borderRadius: '4px',
+                                                                                display: 'inline-flex',
+                                                                                alignItems: 'center',
+                                                                                gap: '0.2rem',
+                                                                                textTransform: 'uppercase',
+                                                                                letterSpacing: '0.5px'
+                                                                            }}>
+                                                                                <Boxes size={10} /> WMS
+                                                                            </span>
+                                                                        </div>
+                                                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{p.desc || 'Nenhuma descrição fornecida.'}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <span style={{ 
+                                                                        color: 'var(--accent-orange)', 
+                                                                        fontWeight: '600', 
+                                                                        fontSize: '0.75rem',
+                                                                        textTransform: 'uppercase'
+                                                                    }}>
+                                                                        {p.brand || 'Sem Marca'}
+                                                                    </span>
+                                                                </td>
+                                                                <td style={{ color: 'var(--text-secondary)' }}>{p.unit}</td>
+                                                                <td><span className="category-tag">{p.category}</span></td>
+                                                                <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{minVal}</td>
+                                                                <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{p.avgStock || 0}</td>
+                                                                <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{p.maxStock || 0}</td>
+                                                                <td style={{ textAlign: 'center' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                                                                        {isOut ? (
+                                                                            <span className="stock-badge stock-out"><X size={12} /> ZERADO</span>
+                                                                        ) : isLow ? (
+                                                                            <span className="stock-badge stock-low"><AlertTriangle size={12} /> {p.stock} {p.unit}</span>
+                                                                        ) : (
+                                                                            <span className="stock-badge stock-ok"><Check size={12} /> {p.stock} {p.unit}</span>
+                                                                        )}
+                                                                        {hasExpired && (
+                                                                            <span className="stock-badge stock-out" style={{ minWidth: 'auto', padding: '0.3rem 0.6rem', fontSize: '0.7rem' }} title="Lote Vencido!">
+                                                                                <AlertTriangle size={11} /> LOTE VENCIDO
+                                                                            </span>
+                                                                        )}
+                                                                        {hasExpiringSoon && !hasExpired && (
+                                                                            <span className="stock-badge stock-low" style={{ minWidth: 'auto', padding: '0.3rem 0.6rem', fontSize: '0.7rem' }} title="Lote próximo do vencimento">
+                                                                                <Clock size={11} /> VENC. PRÓXIMO
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                            {isExpanded && (
+                                                                <tr style={{ background: 'rgba(0, 0, 0, 0.15)' }}>
+                                                                    <td></td>
+                                                                    <td colSpan="9" style={{ padding: '1rem 1.5rem', borderLeft: '4px solid var(--accent-orange)' }}>
+                                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                                                <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                                                    <Boxes size={14} style={{ color: 'var(--accent-orange)' }} /> LOTES — {p.name.toUpperCase()}
+                                                                                </span>
+                                                                                <span style={{
+                                                                                    background: 'rgba(243, 107, 29, 0.15)',
+                                                                                    color: 'var(--accent-orange)',
+                                                                                    border: '1px solid rgba(243, 107, 29, 0.3)',
+                                                                                    padding: '0.15rem 0.4rem',
+                                                                                    borderRadius: '6px',
+                                                                                    fontSize: '0.7rem',
+                                                                                    fontWeight: '700',
+                                                                                    display: 'inline-flex',
+                                                                                    alignItems: 'center',
+                                                                                    gap: '0.3rem'
+                                                                                }}>
+                                                                                    <Clock size={10} /> FEFO
+                                                                                </span>
+                                                                            </div>
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleOpenAddBatch(p)}
+                                                                                style={{
+                                                                                    padding: '0.4rem 1rem',
+                                                                                    fontSize: '0.75rem',
+                                                                                    background: 'rgba(168, 85, 247, 0.15)',
+                                                                                    border: '1px solid rgba(168, 85, 247, 0.4)',
+                                                                                    color: '#c084fc',
+                                                                                    borderRadius: '6px',
+                                                                                    cursor: 'pointer',
+                                                                                    fontWeight: 'bold',
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    gap: '0.3rem',
+                                                                                    transition: 'all 0.2s'
+                                                                                }}
+                                                                            >
+                                                                                + Adicionar Lote
+                                                                            </button>
+                                                                        </div>
+                                                                        
+                                                                        {renderLotesSection(p)}
+                                                                    </td>
+                                                                </tr>
+                                                            )}
+                                                        </React.Fragment>
                                                     );
                                                 })
                                             )}
@@ -1119,6 +1626,44 @@ export default function LogisticsHub() {
                                 <strong style={{ color: 'var(--text-primary)' }}>{pendingProduct.name}</strong>?
                             </p>
 
+                            {/* FEFO Allocation Preview */}
+                            {(flowType === 'saida' || flowType === 'perdas') && (() => {
+                                const productBatches = stockBatches.filter(b => b.itemSku === pendingProduct.sku);
+                                if (productBatches.length > 0) {
+                                    const fefo = calculateFefoPlan(pendingProduct.sku, pendingQty);
+                                    return (
+                                        <div style={{ 
+                                            width: '100%', 
+                                            background: 'rgba(0, 0, 0, 0.25)', 
+                                            borderRadius: '8px', 
+                                            padding: '0.75rem', 
+                                            border: '1px solid var(--border-color)', 
+                                            textAlign: 'left',
+                                            marginTop: '0.5rem',
+                                            marginBottom: '0.5rem'
+                                        }}>
+                                            <div style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--accent-orange)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                <Clock size={12} /> PROPOSTA DE SAÍDA FEFO (VENCIMENTO MAIS PRÓXIMO):
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                {fefo.plan.map((item, idx) => (
+                                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-primary)' }}>
+                                                        <span>Lote <strong>{item.batch.lot}</strong> (Val. {item.batch.expirationDate ? new Date(item.batch.expirationDate).toLocaleDateString('pt-BR') : 'Sem Data'}):</span>
+                                                        <span><strong>-{item.quantityToTake} {pendingProduct.unit}</strong></span>
+                                                    </div>
+                                                ))}
+                                                {fefo.remainingUnallocated > 0 && (
+                                                    <div style={{ color: 'var(--accent-red)', fontWeight: 'bold', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+                                                        Atenção: {fefo.remainingUnallocated} {pendingProduct.unit} não puderam ser alocados em lotes! (Será deduzido do saldo global)
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
+
                             <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '1.5rem' }}>
                                 <button className="btn-clear-modal" style={{ flex: 1 }} onClick={() => { setShowConfirm(false); setPendingProduct(null); }}>
                                     CANCELAR
@@ -1199,6 +1744,179 @@ export default function LogisticsHub() {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* =============================================
+                MODAL 4: BATCH REGISTRATION/EDIT
+            ============================================= */}
+            {showBatchModal && batchProduct && (
+                <div className="pin-modal-overlay active" style={{ zIndex: 1001 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '500px', width: '90%', padding: '2rem' }}>
+                        <button className="btn-close-modal" onClick={() => setShowBatchModal(false)} title="Fechar">
+                            <X size={18} />
+                        </button>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1.2rem' }}>
+                            <Boxes size={22} style={{ color: 'var(--accent-orange)' }} />
+                            <h3 style={{ margin: 0, fontSize: '1.2rem', color: 'var(--text-primary)' }}>
+                                {batchModalMode === 'add' ? 'Cadastrar Novo Lote' : 'Editar Lote'}
+                            </h3>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginBottom: '1.5rem', background: 'rgba(0,0,0,0.15)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-secondary)' }}>PRODUTO</span>
+                            <span style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)' }}>{batchProduct.name}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>SKU: {batchProduct.sku}</span>
+                        </div>
+
+                        <form onSubmit={handleSaveBatch} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>CÓDIGO DO LOTE *</label>
+                                    <input 
+                                        type="text"
+                                        placeholder="Ex: LOT-2026-A"
+                                        value={batchLot}
+                                        onChange={(e) => setBatchLot(e.target.value.toUpperCase())}
+                                        required
+                                        style={{
+                                            padding: '0.6rem',
+                                            borderRadius: '6px',
+                                            border: '1px solid var(--border-color)',
+                                            background: 'var(--bg-input)',
+                                            color: 'var(--text-primary)',
+                                            outline: 'none'
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>QUANTIDADE ({batchProduct.unit}) *</label>
+                                    <input 
+                                        type="number"
+                                        step="any"
+                                        placeholder="Ex: 50"
+                                        value={batchQty}
+                                        onChange={(e) => setBatchQty(e.target.value)}
+                                        required
+                                        style={{
+                                            padding: '0.6rem',
+                                            borderRadius: '6px',
+                                            border: '1px solid var(--border-color)',
+                                            background: 'var(--bg-input)',
+                                            color: 'var(--text-primary)',
+                                            outline: 'none'
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>ENDEREÇO WMS</label>
+                                    <input 
+                                        type="text"
+                                        placeholder="Ex: A-12-3"
+                                        value={batchAddress}
+                                        onChange={(e) => setBatchAddress(e.target.value.toUpperCase())}
+                                        style={{
+                                            padding: '0.6rem',
+                                            borderRadius: '6px',
+                                            border: '1px solid var(--border-color)',
+                                            background: 'var(--bg-input)',
+                                            color: 'var(--text-primary)',
+                                            outline: 'none'
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>MARCA</label>
+                                    <input 
+                                        type="text"
+                                        placeholder="Ex: Nestlé"
+                                        value={batchBrand}
+                                        onChange={(e) => setBatchBrand(e.target.value)}
+                                        style={{
+                                            padding: '0.6rem',
+                                            borderRadius: '6px',
+                                            border: '1px solid var(--border-color)',
+                                            background: 'var(--bg-input)',
+                                            color: 'var(--text-primary)',
+                                            outline: 'none'
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>FORNECEDOR</label>
+                                <input 
+                                    type="text"
+                                    placeholder="Nome do fornecedor ou distribuidora"
+                                    value={batchSupplier}
+                                    onChange={(e) => setBatchSupplier(e.target.value)}
+                                    style={{
+                                        padding: '0.6rem',
+                                        borderRadius: '6px',
+                                        border: '1px solid var(--border-color)',
+                                        background: 'var(--bg-input)',
+                                        color: 'var(--text-primary)',
+                                        outline: 'none',
+                                        width: '100%'
+                                    }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>DATA DE FABRICAÇÃO</label>
+                                    <input 
+                                        type="date"
+                                        value={batchMfgDate}
+                                        onChange={(e) => setBatchMfgDate(e.target.value)}
+                                        style={{
+                                            padding: '0.6rem',
+                                            borderRadius: '6px',
+                                            border: '1px solid var(--border-color)',
+                                            background: 'var(--bg-input)',
+                                            color: 'var(--text-primary)',
+                                            outline: 'none'
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>DATA DE VALIDADE *</label>
+                                    <input 
+                                        type="date"
+                                        value={batchExpDate}
+                                        onChange={(e) => setBatchExpDate(e.target.value)}
+                                        required
+                                        style={{
+                                            padding: '0.6rem',
+                                            borderRadius: '6px',
+                                            border: '1px solid var(--border-color)',
+                                            background: 'var(--bg-input)',
+                                            color: 'var(--text-primary)',
+                                            outline: 'none'
+                                        }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '1.2rem' }}>
+                                <button type="button" className="btn-clear-modal" style={{ flex: 1 }} onClick={() => setShowBatchModal(false)}>
+                                    CANCELAR
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="btn-confirm-modal" 
+                                    style={{ flex: 1, backgroundColor: 'var(--accent-orange)', color: '#fff' }}
+                                >
+                                    {batchModalMode === 'add' ? 'SALVAR LOTE' : 'ATUALIZAR LOTE'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

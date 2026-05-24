@@ -176,11 +176,23 @@ export const DbService = {
                 .order('expiration_date', { ascending: true });
 
             if (error) throw error;
-            if (!data || data.length === 0) return mockData.stockBatches || [];
-            return toCamelCase(data);
+            if (!data || data.length === 0) throw new Error('Sem lotes no Supabase');
+            const camelData = toCamelCase(data);
+            localStorage.setItem('corellux_stock_batches', JSON.stringify(camelData));
+            return camelData;
         } catch (e) {
             console.error('[DbService] Erro ao buscar lotes de estoque. Usando fallback local:', e.message || e);
-            return mockData.stockBatches || [];
+            const local = localStorage.getItem('corellux_stock_batches');
+            if (local) {
+                try {
+                    return JSON.parse(local);
+                } catch (err) {
+                    console.error('[DbService] Erro ao carregar lotes locais:', err);
+                }
+            }
+            const initial = mockData.stockBatches || [];
+            localStorage.setItem('corellux_stock_batches', JSON.stringify(initial));
+            return initial;
         }
     },
 
@@ -209,7 +221,6 @@ export const DbService = {
     async addStockBatch(batch) {
         try {
             const snakeBatch = toSnakeCase(batch);
-            // Remove id se for nulo para auto-incremento
             if (snakeBatch.hasOwnProperty('id') && !snakeBatch.id) {
                 delete snakeBatch.id;
             }
@@ -219,10 +230,26 @@ export const DbService = {
                 .select();
 
             if (error) throw error;
-            return { success: true, data: toCamelCase(data[0]) };
+            const added = toCamelCase(data[0]);
+            
+            // Sync local
+            const local = localStorage.getItem('corellux_stock_batches');
+            let list = local ? JSON.parse(local) : [];
+            list.push(added);
+            localStorage.setItem('corellux_stock_batches', JSON.stringify(list));
+            
+            return { success: true, data: added };
         } catch (e) {
-            console.error('[DbService] Erro ao adicionar lote de estoque:', e.message || e);
-            return { success: false, error: e };
+            console.warn('[DbService] Erro ao adicionar lote no Supabase. Gravando localmente:', e.message || e);
+            const local = localStorage.getItem('corellux_stock_batches');
+            let list = local ? JSON.parse(local) : [];
+            const newBatch = {
+                ...batch,
+                id: batch.id || 'lot_' + Date.now()
+            };
+            list.push(newBatch);
+            localStorage.setItem('corellux_stock_batches', JSON.stringify(list));
+            return { success: true, data: newBatch };
         }
     },
 
@@ -235,9 +262,72 @@ export const DbService = {
                 .eq('id', id);
 
             if (error) throw error;
+            
+            // Sync local
+            const local = localStorage.getItem('corellux_stock_batches');
+            if (local) {
+                const list = JSON.parse(local);
+                const updated = list.filter(b => b.id !== id);
+                localStorage.setItem('corellux_stock_batches', JSON.stringify(updated));
+            }
             return { success: true };
         } catch (e) {
-            console.error(`[DbService] Erro ao remover lote ${id}:`, e.message || e);
+            console.warn(`[DbService] Erro ao remover lote ${id} no Supabase. Atualizando localmente:`, e.message || e);
+            const local = localStorage.getItem('corellux_stock_batches');
+            if (local) {
+                try {
+                    const list = JSON.parse(local);
+                    const updated = list.filter(b => b.id !== id);
+                    localStorage.setItem('corellux_stock_batches', JSON.stringify(updated));
+                    return { success: true };
+                } catch (err) {
+                    console.error('[DbService] Erro ao atualizar locais:', err);
+                }
+            }
+            return { success: false, error: e };
+        }
+    },
+
+    // Atualizar lote
+    async updateStockBatch(id, updates) {
+        try {
+            const snakeUpdates = toSnakeCase(updates);
+            const { data, error } = await supabase
+                .from('stock_batches')
+                .update(snakeUpdates)
+                .eq('id', id)
+                .select();
+
+            if (error) throw error;
+            const updated = toCamelCase(data[0]);
+            
+            // Sync local
+            const local = localStorage.getItem('corellux_stock_batches');
+            if (local) {
+                const list = JSON.parse(local);
+                const idx = list.findIndex(b => b.id === id);
+                if (idx !== -1) {
+                    list[idx] = { ...list[idx], ...updated };
+                    localStorage.setItem('corellux_stock_batches', JSON.stringify(list));
+                }
+            }
+            return { success: true, data: updated };
+        } catch (e) {
+            console.warn(`[DbService] Erro ao atualizar lote ${id} no Supabase. Gravando localmente:`, e.message || e);
+            const local = localStorage.getItem('corellux_stock_batches');
+            if (local) {
+                try {
+                    const list = JSON.parse(local);
+                    const idx = list.findIndex(b => b.id === id);
+                    if (idx !== -1) {
+                        list[idx] = { ...list[idx], ...updates };
+                        localStorage.setItem('corellux_stock_batches', JSON.stringify(list));
+                        return { success: true, data: list[idx] };
+                    }
+                } catch (err) {
+                    console.error('[DbService] Erro ao atualizar localmente:', err);
+                }
+            }
             return { success: false, error: e };
         }
     },
@@ -536,6 +626,193 @@ export const DbService = {
                 }
             }
             return { success: false, error: e };
+        }
+    },
+
+    // =============================================
+    // SISTEMA DE CHECKLISTS OPERACIONAIS
+    // =============================================
+    async getChecklistModels() {
+        try {
+            const { data, error } = await supabase
+                .from('checklist_models')
+                .select('*')
+                .order('name', { ascending: true });
+            if (error) throw error;
+            return toCamelCase(data);
+        } catch (e) {
+            console.warn('[DbService] Erro ao buscar modelos de checklist no Supabase. Usando localStorage:', e.message || e);
+            const local = localStorage.getItem('corellux_checklist_models');
+            if (local) {
+                try {
+                    return JSON.parse(local);
+                } catch (err) {
+                    console.error('[DbService] Erro ao analisar modelos locais:', err);
+                }
+            }
+            // Modelos padrão mockados para início
+            const defaultModels = [
+                {
+                    id: 'mod_1',
+                    name: 'VISTORIA DIÁRIA DA COZINHA',
+                    sector: 'COZINHA',
+                    frequency: 'Diário',
+                    status: 'Ativo',
+                    items: [
+                        { id: 'item_1', type: 'sim_nao', label: 'Todos os fogões estão desligados e limpos?', required: true, conditionalPhoto: true, conditionalObs: true },
+                        { id: 'item_2', type: 'sim_nao', label: 'Temperatura da câmara de congelados está abaixo de -18°C?', required: true, conditionalPhoto: false, conditionalObs: true },
+                        { id: 'item_3', type: 'checkbox', label: 'Retirada e descarte de lixo orgânico realizado.', required: true },
+                        { id: 'item_4', type: 'observacao', label: 'Observações gerais do turno da cozinha.', required: false }
+                    ],
+                    lastModified: new Date().toLocaleString('pt-BR')
+                },
+                {
+                    id: 'mod_2',
+                    name: 'FECHAMENTO DO SALÃO',
+                    sector: 'SALÃO',
+                    frequency: 'Diário',
+                    status: 'Ativo',
+                    items: [
+                        { id: 'item_5', type: 'sim_nao', label: 'Ar condicionado e luzes desligadas?', required: true, conditionalPhoto: false, conditionalObs: false },
+                        { id: 'item_6', type: 'sim_nao', label: 'Maquininhas de cartão limpas e na base de carregamento?', required: true, conditionalPhoto: false, conditionalObs: true },
+                        { id: 'item_7', type: 'checkbox', label: 'Mesas higienizadas e cadeiras organizadas.', required: true }
+                    ],
+                    lastModified: new Date().toLocaleString('pt-BR')
+                }
+            ];
+            localStorage.setItem('corellux_checklist_models', JSON.stringify(defaultModels));
+            return defaultModels;
+        }
+    },
+
+    async saveChecklistModel(model) {
+        try {
+            const snakeModel = toSnakeCase(model);
+            let result;
+            if (model.id && typeof model.id === 'string' && !model.id.startsWith('mod_')) {
+                result = await supabase
+                    .from('checklist_models')
+                    .update(snakeModel)
+                    .eq('id', model.id)
+                    .select();
+            } else {
+                if (typeof model.id === 'string' && model.id.startsWith('mod_')) {
+                    delete snakeModel.id;
+                }
+                result = await supabase
+                    .from('checklist_models')
+                    .insert([snakeModel])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            return { success: true, data: toCamelCase(result.data[0]) };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar modelo de checklist no Supabase. Gravando localmente:', e.message || e);
+            const local = localStorage.getItem('corellux_checklist_models');
+            let models = [];
+            if (local) {
+                try {
+                    models = JSON.parse(local);
+                } catch (err) {
+                    console.error('[DbService] Erro ao carregar modelos:', err);
+                }
+            }
+            
+            const newModel = {
+                ...model,
+                id: model.id || 'mod_' + Date.now(),
+                lastModified: new Date().toLocaleString('pt-BR')
+            };
+
+            const idx = models.findIndex(m => m.id === newModel.id);
+            if (idx !== -1) {
+                models[idx] = newModel;
+            } else {
+                models.push(newModel);
+            }
+
+            localStorage.setItem('corellux_checklist_models', JSON.stringify(models));
+            return { success: true, data: newModel };
+        }
+    },
+
+    async deleteChecklistModel(id) {
+        try {
+            const { error } = await supabase
+                .from('checklist_models')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
+            return { success: true };
+        } catch (e) {
+            console.warn(`[DbService] Erro ao deletar modelo de checklist ${id} no Supabase. Atualizando localmente:`, e.message || e);
+            const local = localStorage.getItem('corellux_checklist_models');
+            if (local) {
+                try {
+                    const models = JSON.parse(local);
+                    const updated = models.filter(m => m.id !== id);
+                    localStorage.setItem('corellux_checklist_models', JSON.stringify(updated));
+                    return { success: true };
+                } catch (err) {
+                    console.error('[DbService] Erro ao atualizar locais:', err);
+                }
+            }
+            return { success: false, error: e };
+        }
+    },
+
+    async getChecklistExecutions() {
+        try {
+            const { data, error } = await supabase
+                .from('checklist_executions')
+                .select('*')
+                .order('end_time', { ascending: false });
+            if (error) throw error;
+            return toCamelCase(data);
+        } catch (e) {
+            console.warn('[DbService] Erro ao buscar execuções de checklist no Supabase. Usando localStorage:', e.message || e);
+            const local = localStorage.getItem('corellux_checklist_executions');
+            if (local) {
+                try {
+                    return JSON.parse(local);
+                } catch (err) {
+                    console.error('[DbService] Erro ao analisar execuções locais:', err);
+                }
+            }
+            return [];
+        }
+    },
+
+    async saveChecklistExecution(execution) {
+        try {
+            const snakeExec = toSnakeCase(execution);
+            if (snakeExec.id && typeof snakeExec.id === 'string' && snakeExec.id.startsWith('exec_')) {
+                delete snakeExec.id;
+            }
+            const { data, error } = await supabase
+                .from('checklist_executions')
+                .insert([snakeExec])
+                .select();
+            if (error) throw error;
+            return { success: true, data: toCamelCase(data[0]) };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar execução de checklist no Supabase. Gravando localmente:', e.message || e);
+            const local = localStorage.getItem('corellux_checklist_executions');
+            let execs = [];
+            if (local) {
+                try {
+                    execs = JSON.parse(local);
+                } catch (err) {
+                    console.error('[DbService] Erro ao carregar execuções:', err);
+                }
+            }
+            const newExec = {
+                ...execution,
+                id: execution.id || 'exec_' + Date.now()
+            };
+            execs.unshift(newExec);
+            localStorage.setItem('corellux_checklist_executions', JSON.stringify(execs));
+            return { success: true, data: newExec };
         }
     }
 };
