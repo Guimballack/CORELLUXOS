@@ -9,6 +9,13 @@ import { createPortal } from 'react-dom';
 import { useCorelluxState, loadUsers, get, set } from '../store/corellux-state';
 import DbService from '../services/db-service';
 import { getUserAvatar } from '../utils/initial-data';
+import {
+    PrimaryButton,
+    SecondaryButton,
+    DangerButton,
+    SuccessButton,
+    IconButton
+} from '../components/ui/buttons';
 import { 
     Users, 
     Boxes, 
@@ -986,9 +993,13 @@ export default function SettingsHub() {
                                             />
                                         </div>
                                         {isAdminUser && (
-                                            <button className="btn-primary" onClick={openColabModalForCreate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                <PlusCircle size={16} /> NOVO COLABORADOR
-                                            </button>
+                                            <PrimaryButton 
+                                                onClick={openColabModalForCreate} 
+                                                icon={<PlusCircle size={16} />}
+                                                style={{ width: 'auto', marginTop: 0 }}
+                                            >
+                                                NOVO COLABORADOR
+                                            </PrimaryButton>
                                         )}
                                     </div>
                                 </div>
@@ -1087,9 +1098,13 @@ export default function SettingsHub() {
                                             />
                                         </div>
                                         {isAdminUser && (
-                                            <button className="btn-primary" onClick={openProdModalForCreate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                <PlusCircle size={16} /> NOVO PRODUTO
-                                            </button>
+                                            <PrimaryButton 
+                                                onClick={openProdModalForCreate} 
+                                                icon={<PlusCircle size={16} />}
+                                                style={{ width: 'auto', marginTop: 0 }}
+                                            >
+                                                NOVO PRODUTO
+                                            </PrimaryButton>
                                         )}
                                     </div>
                                 </div>
@@ -1181,9 +1196,13 @@ export default function SettingsHub() {
                                             />
                                         </div>
                                         {isAdminUser && (
-                                            <button className="btn-primary" onClick={openCatModalForCreate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                <PlusCircle size={16} /> NOVA CATEGORIA
-                                            </button>
+                                            <PrimaryButton 
+                                                onClick={openCatModalForCreate} 
+                                                icon={<PlusCircle size={16} />}
+                                                style={{ width: 'auto', marginTop: 0 }}
+                                            >
+                                                NOVA CATEGORIA
+                                            </PrimaryButton>
                                         )}
                                     </div>
                                 </div>
@@ -1269,9 +1288,13 @@ export default function SettingsHub() {
                                             />
                                         </div>
                                         {isAdminUser && (
-                                            <button className="btn-primary" onClick={openFornModalForCreate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                <PlusCircle size={16} /> NOVO FORNECEDOR
-                                            </button>
+                                            <PrimaryButton 
+                                                onClick={openFornModalForCreate} 
+                                                icon={<PlusCircle size={16} />}
+                                                style={{ width: 'auto', marginTop: 0 }}
+                                            >
+                                                NOVO FORNECEDOR
+                                            </PrimaryButton>
                                         )}
                                     </div>
                                 </div>
@@ -1814,8 +1837,8 @@ export default function SettingsHub() {
 
                             {/* Actions */}
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                                <button type="button" className="btn-clear-modal" onClick={() => setShowColabModal(false)}>CANCELAR</button>
-                                <button type="submit" className="btn-confirm-modal">SALVAR CADASTRO</button>
+                                <DangerButton onClick={() => setShowColabModal(false)} style={{ width: 'auto', marginTop: 0 }}>CANCELAR</DangerButton>
+                                <SuccessButton type="submit" style={{ width: 'auto', marginTop: 0 }}>SALVAR CADASTRO</SuccessButton>
                             </div>
                         </form>
                     </div>
@@ -1978,8 +2001,8 @@ export default function SettingsHub() {
 
                             {/* Actions */}
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                                <button type="button" className="btn-clear-modal" onClick={() => setShowProdModal(false)}>CANCELAR</button>
-                                <button type="submit" className="btn-confirm-modal">SALVAR PRODUTO</button>
+                                <DangerButton onClick={() => setShowProdModal(false)} style={{ width: 'auto', marginTop: 0 }}>CANCELAR</DangerButton>
+                                <SuccessButton type="submit" style={{ width: 'auto', marginTop: 0 }}>SALVAR PRODUTO</SuccessButton>
                             </div>
                         </form>
                     </div>
@@ -2042,8 +2065,8 @@ export default function SettingsHub() {
 
                             {/* Actions */}
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
-                                <button type="button" className="btn-clear-modal" onClick={() => setShowCatModal(false)}>CANCELAR</button>
-                                <button type="submit" className="btn-confirm-modal">SALVAR CATEGORIA</button>
+                                <DangerButton onClick={() => setShowCatModal(false)} style={{ width: 'auto', marginTop: 0 }}>CANCELAR</DangerButton>
+                                <SuccessButton type="submit" style={{ width: 'auto', marginTop: 0 }}>SALVAR CATEGORIA</SuccessButton>
                             </div>
                         </form>
                     </div>
@@ -2425,8 +2448,8 @@ export default function SettingsHub() {
 
                             {/* Actions */}
                             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
-                                <button type="button" className="btn-clear-modal" onClick={() => setShowFornModal(false)}>CANCELAR</button>
-                                <button type="submit" className="btn-confirm-modal">SALVAR FORNECEDOR</button>
+                                <DangerButton onClick={() => setShowFornModal(false)} style={{ width: 'auto', marginTop: 0 }}>CANCELAR</DangerButton>
+                                <SuccessButton type="submit" style={{ width: 'auto', marginTop: 0 }}>SALVAR FORNECEDOR</SuccessButton>
                             </div>
                         </form>
                     </div>
@@ -2476,38 +2499,18 @@ export default function SettingsHub() {
                         </p>
                         
                         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                            <button 
-                                type="button" 
-                                className="btn-confirm-modal" 
+                            <SecondaryButton 
                                 onClick={() => setColabToDelete(null)}
-                                style={{ 
-                                    flex: 1, 
-                                    background: 'rgba(255, 255, 255, 0.05)', 
-                                    border: '1.5px solid var(--border-color)', 
-                                    color: 'var(--text-primary)',
-                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
-                                    height: '42px',
-                                    padding: '0 1rem'
-                                }}
+                                style={{ flex: 1, height: '42px', padding: '0 1rem' }}
                             >
                                 CANCELAR
-                            </button>
-                            <button 
-                                type="button" 
-                                className="btn-clear-modal" 
+                            </SecondaryButton>
+                            <DangerButton 
                                 onClick={confirmDeleteColab}
-                                style={{ 
-                                    flex: 1, 
-                                    background: '#ef4444', 
-                                    border: '1.5px solid #000000', 
-                                    color: '#ffffff',
-                                    boxShadow: '0 4px 0px #000000',
-                                    height: '42px',
-                                    padding: '0 1rem'
-                                }}
+                                style={{ flex: 1, height: '42px', padding: '0 1rem' }}
                             >
                                 SIM, EXCLUIR
-                            </button>
+                            </DangerButton>
                         </div>
                     </div>
                 </div>
@@ -2587,38 +2590,18 @@ export default function SettingsHub() {
                         </p>
                         
                         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                            <button 
-                                type="button" 
-                                className="btn-confirm-modal" 
+                            <SecondaryButton 
                                 onClick={() => setProdToDelete(null)}
-                                style={{ 
-                                    flex: 1, 
-                                    background: 'rgba(255, 255, 255, 0.05)', 
-                                    border: '1.5px solid var(--border-color)', 
-                                    color: 'var(--text-primary)',
-                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
-                                    height: '42px',
-                                    padding: '0 1rem'
-                                }}
+                                style={{ flex: 1, height: '42px', padding: '0 1rem' }}
                             >
                                 CANCELAR
-                            </button>
-                            <button 
-                                type="button" 
-                                className="btn-clear-modal" 
+                            </SecondaryButton>
+                            <DangerButton 
                                 onClick={confirmDeleteProd}
-                                style={{ 
-                                    flex: 1, 
-                                    background: '#ef4444', 
-                                    border: '1.5px solid #000000', 
-                                    color: '#ffffff',
-                                    boxShadow: '0 4px 0px #000000',
-                                    height: '42px',
-                                    padding: '0 1rem'
-                                }}
+                                style={{ flex: 1, height: '42px', padding: '0 1rem' }}
                             >
                                 SIM, EXCLUIR
-                            </button>
+                            </DangerButton>
                         </div>
                     </div>
                 </div>
@@ -2653,38 +2636,18 @@ export default function SettingsHub() {
                         </p>
                         
                         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                            <button 
-                                type="button" 
-                                className="btn-confirm-modal" 
+                            <SecondaryButton 
                                 onClick={() => setCatToDelete(null)}
-                                style={{ 
-                                    flex: 1, 
-                                    background: 'rgba(255, 255, 255, 0.05)', 
-                                    border: '1.5px solid var(--border-color)', 
-                                    color: 'var(--text-primary)',
-                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
-                                    height: '42px',
-                                    padding: '0 1rem'
-                                }}
+                                style={{ flex: 1, height: '42px', padding: '0 1rem' }}
                             >
                                 CANCELAR
-                            </button>
-                            <button 
-                                type="button" 
-                                className="btn-clear-modal" 
+                            </SecondaryButton>
+                            <DangerButton 
                                 onClick={confirmDeleteCat}
-                                style={{ 
-                                    flex: 1, 
-                                    background: '#ef4444', 
-                                    border: '1.5px solid #000000', 
-                                    color: '#ffffff',
-                                    boxShadow: '0 4px 0px #000000',
-                                    height: '42px',
-                                    padding: '0 1rem'
-                                }}
+                                style={{ flex: 1, height: '42px', padding: '0 1rem' }}
                             >
                                 SIM, EXCLUIR
-                            </button>
+                            </DangerButton>
                         </div>
                     </div>
                 </div>
@@ -2719,38 +2682,18 @@ export default function SettingsHub() {
                         </p>
                         
                         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                            <button 
-                                type="button" 
-                                className="btn-confirm-modal" 
+                            <SecondaryButton 
                                 onClick={() => setFornToDelete(null)}
-                                style={{ 
-                                    flex: 1, 
-                                    background: 'rgba(255, 255, 255, 0.05)', 
-                                    border: '1.5px solid var(--border-color)', 
-                                    color: 'var(--text-primary)',
-                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
-                                    height: '42px',
-                                    padding: '0 1rem'
-                                }}
+                                style={{ flex: 1, height: '42px', padding: '0 1rem' }}
                             >
                                 CANCELAR
-                            </button>
-                            <button 
-                                type="button" 
-                                className="btn-clear-modal" 
+                            </SecondaryButton>
+                            <DangerButton 
                                 onClick={confirmDeleteForn}
-                                style={{ 
-                                    flex: 1, 
-                                    background: '#ef4444', 
-                                    border: '1.5px solid #000000', 
-                                    color: '#ffffff',
-                                    boxShadow: '0 4px 0px #000000',
-                                    height: '42px',
-                                    padding: '0 1rem'
-                                }}
+                                style={{ flex: 1, height: '42px', padding: '0 1rem' }}
                             >
                                 SIM, EXCLUIR
-                            </button>
+                            </DangerButton>
                         </div>
                     </div>
                 </div>

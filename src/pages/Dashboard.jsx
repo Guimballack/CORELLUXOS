@@ -16,7 +16,8 @@ import {
     Gavel, 
     Database,
     ChevronRight,
-    Lock
+    Lock,
+    Palette
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -170,6 +171,19 @@ export default function Dashboard() {
                     <div className="card-content">
                         <h3>CADASTROS</h3>
                         <p>Gerenciar funcionários, categorias, itens e fornecedores do sistema.</p>
+                    </div>
+                    <ChevronRight className="chevron" size={20} />
+                </button>
+
+                <button 
+                    id="btn-nav-design-system" 
+                    className="menu-card purple" 
+                    onClick={() => handleModuleClick('design-system')}
+                >
+                    <div className="card-icon"><Palette size={24} /></div>
+                    <div className="card-content">
+                        <h3>DESIGN SYSTEM</h3>
+                        <p>Documentação visual e catálogo interativo dos componentes 3D do ERP.</p>
                     </div>
                     <ChevronRight className="chevron" size={20} />
                 </button>
