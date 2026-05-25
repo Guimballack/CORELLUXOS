@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useCorelluxState } from '../store/corellux-state';
 import { 
     ArrowLeft, 
     Copy, 
@@ -30,8 +29,7 @@ import { typography } from './typography';
 import { spacing } from './spacing';
 import { shadows } from './shadows';
 
-export default function Showcase() {
-    const [, setKey] = useCorelluxState(['currentScreen']);
+export default function Showcase({ onBack }) {
     const [activeTab, setActiveTab] = useState('buttons'); // buttons, colors, typography, spacing, shadows
     const [copiedText, setCopiedText] = useState(null);
 
@@ -102,13 +100,15 @@ export default function Showcase() {
                 borderBottom: '1px solid var(--border-color)'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                    <button 
-                        className="btn-back" 
-                        onClick={() => setKey('currentScreen', 'dashboard')}
-                        style={{ margin: 0 }}
-                    >
-                        <ArrowLeft size={16} /> VOLTAR
-                    </button>
+                    {onBack && (
+                        <button 
+                            className="btn-back" 
+                            onClick={onBack}
+                            style={{ margin: 0 }}
+                        >
+                            <ArrowLeft size={16} /> VOLTAR
+                        </button>
+                    )}
                     <div>
                         <h1 style={{ margin: 0, fontSize: '1.4rem', color: 'var(--text-primary)', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             CORELLUX <span style={{ color: 'var(--accent-orange)' }}>DESIGN SYSTEM</span>
