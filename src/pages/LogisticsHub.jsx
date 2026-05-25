@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useCorelluxState } from '../store/corellux-state';
 import DbService from '../services/db-service';
 import { getUserAvatar } from '../utils/initial-data';
@@ -1639,8 +1640,8 @@ export default function LogisticsHub() {
             {/* =============================================
                 MODAL 1: NUMPAD DIALOG
             ============================================= */}
-            {showNumpad && numpadProduct && (
-                <div className="pin-modal-overlay active" style={{ zIndex: 1000 }}>
+            {showNumpad && numpadProduct && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
                     <div className="pin-modal-card" style={{ maxWidth: '400px', border: '1px solid var(--accent-orange)' }}>
                         <button className="btn-close-modal" onClick={() => setShowNumpad(false)} title="Fechar">
                             <X size={18} />
@@ -1709,13 +1710,13 @@ export default function LogisticsHub() {
                         </div>
                     </div>
                 </div>
-            )}
+            , document.body)}
 
             {/* =============================================
                 MODAL 2: CONFIRMATION DIALOG
             ============================================= */}
-            {showConfirm && pendingProduct && (
-                <div className="pin-modal-overlay active" style={{ zIndex: 1000 }}>
+            {showConfirm && pendingProduct && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
                     <div className="pin-modal-card" style={{ maxWidth: '450px', padding: '2rem' }}>
                         <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
                             <AlertTriangle size={48} style={{ color: flowType === 'entrada' ? 'var(--accent-green)' : (flowType === 'saida' ? 'var(--accent-red)' : 'var(--accent-yellow)') }} />
@@ -1787,13 +1788,13 @@ export default function LogisticsHub() {
                         </div>
                     </div>
                 </div>
-            )}
+            , document.body)}
 
             {/* =============================================
                 MODAL 3: REASON DIALOG (FOR LOSSES)
             ============================================= */}
-            {showReason && pendingProduct && (
-                <div className="pin-modal-overlay active" style={{ zIndex: 1000 }}>
+            {showReason && pendingProduct && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
                     <div className="pin-modal-card" style={{ maxWidth: '450px', padding: '2rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -1850,13 +1851,13 @@ export default function LogisticsHub() {
                         </div>
                     </div>
                 </div>
-            )}
+            , document.body)}
 
             {/* =============================================
                 MODAL 4: BATCH REGISTRATION/EDIT
             ============================================= */}
-            {showBatchModal && batchProduct && (
-                <div className="pin-modal-overlay active" style={{ zIndex: 1001 }}>
+            {showBatchModal && batchProduct && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
                     <div className="pin-modal-card" style={{ maxWidth: '500px', width: '90%', padding: '2rem' }}>
                         <button className="btn-close-modal" onClick={() => setShowBatchModal(false)} title="Fechar">
                             <X size={18} />
@@ -2023,7 +2024,7 @@ export default function LogisticsHub() {
                         </form>
                     </div>
                 </div>
-            )}
+            , document.body)}
         </div>
     );
 }
