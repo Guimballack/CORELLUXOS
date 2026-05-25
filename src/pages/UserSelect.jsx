@@ -49,14 +49,7 @@ export default function UserSelect() {
 
     return (
         <div id="screen-user-select" className="screen active with-header">
-            <div className="auth-header-container">
-                <h1 className="auth-header-title">
-                    Bem-vindo ao Corellux <span className="brand-orange-text">OS</span>
-                </h1>
-                <p className="auth-header-subtitle">
-                    Selecione seu perfil abaixo para validar suas credenciais de acesso
-                </p>
-            </div>
+
 
             {loading ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '200px', gap: '1rem', color: 'var(--text-secondary)' }}>
