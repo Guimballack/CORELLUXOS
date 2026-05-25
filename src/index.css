@@ -1260,7 +1260,9 @@ main {
     background-color: rgba(0, 0, 0, 0.7);
     display: flex;
     justify-content: center;
-    align-items: center;
+    align-items: flex-start;
+    padding: 3rem 1rem;
+    overflow-y: auto;
     z-index: 1000;
     opacity: 1;
     transition: opacity 0.2s;
@@ -2033,8 +2035,10 @@ main {
     background: rgba(10, 15, 24, 0.75);
     backdrop-filter: blur(8px);
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
+    padding: 3rem 1rem;
+    overflow-y: auto;
     z-index: 1000;
     transition: opacity 0.3s ease, visibility 0.3s ease;
 }
