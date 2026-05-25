@@ -111,10 +111,26 @@ export const DbService = {
                 .order('name', { ascending: true });
 
             if (error) throw error;
-            if (!data || data.length === 0) return mockData.categories;
-            return toCamelCase(data);
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_categories');
+                if (local) return JSON.parse(local);
+                localStorage.setItem('corellux_categories', JSON.stringify(mockData.categories));
+                return mockData.categories;
+            }
+            const camelCats = toCamelCase(data);
+            localStorage.setItem('corellux_categories', JSON.stringify(camelCats));
+            return camelCats;
         } catch (e) {
             console.error('[DbService] Erro ao buscar categorias. Usando fallback local:', e.message || e);
+            const local = localStorage.getItem('corellux_categories');
+            if (local) {
+                try {
+                    return JSON.parse(local);
+                } catch (err) {
+                    console.error('[DbService] Erro ao analisar categorias locais:', err);
+                }
+            }
+            localStorage.setItem('corellux_categories', JSON.stringify(mockData.categories));
             return mockData.categories;
         }
     },
@@ -129,10 +145,26 @@ export const DbService = {
                 .order('name', { ascending: true });
 
             if (error) throw error;
-            if (!data || data.length === 0) return mockData.products;
-            return toCamelCase(data);
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_products');
+                if (local) return JSON.parse(local);
+                localStorage.setItem('corellux_products', JSON.stringify(mockData.products));
+                return mockData.products;
+            }
+            const camelProds = toCamelCase(data);
+            localStorage.setItem('corellux_products', JSON.stringify(camelProds));
+            return camelProds;
         } catch (e) {
             console.error('[DbService] Erro ao buscar produtos. Usando fallback local:', e.message || e);
+            const local = localStorage.getItem('corellux_products');
+            if (local) {
+                try {
+                    return JSON.parse(local);
+                } catch (err) {
+                    console.error('[DbService] Erro ao analisar produtos locais:', err);
+                }
+            }
+            localStorage.setItem('corellux_products', JSON.stringify(mockData.products));
             return mockData.products;
         }
     },
@@ -147,10 +179,26 @@ export const DbService = {
                 .order('razao_social', { ascending: true });
 
             if (error) throw error;
-            if (!data || data.length === 0) return mockData.suppliers;
-            return toCamelCase(data);
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_suppliers');
+                if (local) return JSON.parse(local);
+                localStorage.setItem('corellux_suppliers', JSON.stringify(mockData.suppliers));
+                return mockData.suppliers;
+            }
+            const camelSups = toCamelCase(data);
+            localStorage.setItem('corellux_suppliers', JSON.stringify(camelSups));
+            return camelSups;
         } catch (e) {
             console.error('[DbService] Erro ao buscar fornecedores. Usando fallback local:', e.message || e);
+            const local = localStorage.getItem('corellux_suppliers');
+            if (local) {
+                try {
+                    return JSON.parse(local);
+                } catch (err) {
+                    console.error('[DbService] Erro ao analisar fornecedores locais:', err);
+                }
+            }
+            localStorage.setItem('corellux_suppliers', JSON.stringify(mockData.suppliers));
             return mockData.suppliers;
         }
     },
@@ -511,10 +559,51 @@ export const DbService = {
                     .select();
             }
             if (result.error) throw result.error;
-            return { success: true, data: toCamelCase(result.data[0]) };
+            const saved = toCamelCase(result.data[0]);
+
+            // Sync local on success
+            const local = localStorage.getItem('corellux_products');
+            let list = [];
+            if (local) {
+                try {
+                    list = JSON.parse(local);
+                } catch (err) {
+                    list = [...mockData.products];
+                }
+            } else {
+                list = [...mockData.products];
+            }
+            const idx = list.findIndex(p => p.sku === (oldSku || product.sku));
+            if (idx !== -1) {
+                list[idx] = saved;
+            } else {
+                list.push(saved);
+            }
+            localStorage.setItem('corellux_products', JSON.stringify(list));
+
+            return { success: true, data: saved };
         } catch (e) {
-            console.error('[DbService] Erro ao salvar produto:', e.message || e);
-            return { success: false, error: e };
+            console.warn('[DbService] Erro ao salvar produto no Supabase. Gravando localmente:', e.message || e);
+            // Fallback storage:
+            const local = localStorage.getItem('corellux_products');
+            let list = [];
+            if (local) {
+                try {
+                    list = JSON.parse(local);
+                } catch (err) {
+                    list = [...mockData.products];
+                }
+            } else {
+                list = [...mockData.products];
+            }
+            const idx = list.findIndex(p => p.sku === (oldSku || product.sku));
+            if (idx !== -1) {
+                list[idx] = product;
+            } else {
+                list.push(product);
+            }
+            localStorage.setItem('corellux_products', JSON.stringify(list));
+            return { success: true, data: product };
         }
     },
 
@@ -525,9 +614,28 @@ export const DbService = {
                 .delete()
                 .eq('sku', sku);
             if (error) throw error;
+
+            // Sync local
+            const local = localStorage.getItem('corellux_products');
+            if (local) {
+                const list = JSON.parse(local);
+                const updated = list.filter(p => p.sku !== sku);
+                localStorage.setItem('corellux_products', JSON.stringify(updated));
+            }
             return { success: true };
         } catch (e) {
-            console.error(`[DbService] Erro ao deletar produto ${sku}:`, e.message || e);
+            console.warn(`[DbService] Erro ao deletar produto ${sku} no Supabase. Removendo localmente:`, e.message || e);
+            const local = localStorage.getItem('corellux_products');
+            if (local) {
+                try {
+                    const list = JSON.parse(local);
+                    const updated = list.filter(p => p.sku !== sku);
+                    localStorage.setItem('corellux_products', JSON.stringify(updated));
+                    return { success: true };
+                } catch (err) {
+                    console.error('[DbService] Erro ao atualizar local:', err);
+                }
+            }
             return { success: false, error: e };
         }
     },
@@ -551,10 +659,54 @@ export const DbService = {
                     .select();
             }
             if (result.error) throw result.error;
-            return { success: true, data: toCamelCase(result.data[0]) };
+            const saved = toCamelCase(result.data[0]);
+
+            // Sync local on success
+            const local = localStorage.getItem('corellux_categories');
+            let list = [];
+            if (local) {
+                try {
+                    list = JSON.parse(local);
+                } catch (err) {
+                    list = [...mockData.categories];
+                }
+            } else {
+                list = [...mockData.categories];
+            }
+            const idx = list.findIndex(c => String(c.id) === String(saved.id));
+            if (idx !== -1) {
+                list[idx] = saved;
+            } else {
+                list.push(saved);
+            }
+            localStorage.setItem('corellux_categories', JSON.stringify(list));
+
+            return { success: true, data: saved };
         } catch (e) {
-            console.error('[DbService] Erro ao salvar categoria:', e.message || e);
-            return { success: false, error: e };
+            console.warn('[DbService] Erro ao salvar categoria no Supabase. Gravando localmente:', e.message || e);
+            const local = localStorage.getItem('corellux_categories');
+            let list = [];
+            if (local) {
+                try {
+                    list = JSON.parse(local);
+                } catch (err) {
+                    list = [...mockData.categories];
+                }
+            } else {
+                list = [...mockData.categories];
+            }
+            const newCat = {
+                ...category,
+                id: category.id || Date.now() + Math.floor(Math.random() * 1000)
+            };
+            const idx = list.findIndex(c => String(c.id) === String(newCat.id));
+            if (idx !== -1) {
+                list[idx] = newCat;
+            } else {
+                list.push(newCat);
+            }
+            localStorage.setItem('corellux_categories', JSON.stringify(list));
+            return { success: true, data: newCat };
         }
     },
 
@@ -565,9 +717,28 @@ export const DbService = {
                 .delete()
                 .eq('id', id);
             if (error) throw error;
+
+            // Sync local
+            const local = localStorage.getItem('corellux_categories');
+            if (local) {
+                const list = JSON.parse(local);
+                const updated = list.filter(c => String(c.id) !== String(id));
+                localStorage.setItem('corellux_categories', JSON.stringify(updated));
+            }
             return { success: true };
         } catch (e) {
-            console.error(`[DbService] Erro ao deletar categoria ${id}:`, e.message || e);
+            console.warn(`[DbService] Erro ao deletar categoria ${id} no Supabase. Removendo localmente:`, e.message || e);
+            const local = localStorage.getItem('corellux_categories');
+            if (local) {
+                try {
+                    const list = JSON.parse(local);
+                    const updated = list.filter(c => String(c.id) !== String(id));
+                    localStorage.setItem('corellux_categories', JSON.stringify(updated));
+                    return { success: true };
+                } catch (err) {
+                    console.error('[DbService] Erro ao atualizar local:', err);
+                }
+            }
             return { success: false, error: e };
         }
     },
@@ -591,10 +762,54 @@ export const DbService = {
                     .select();
             }
             if (result.error) throw result.error;
-            return { success: true, data: toCamelCase(result.data[0]) };
+            const saved = toCamelCase(result.data[0]);
+
+            // Sync local on success
+            const local = localStorage.getItem('corellux_suppliers');
+            let list = [];
+            if (local) {
+                try {
+                    list = JSON.parse(local);
+                } catch (err) {
+                    list = [...mockData.suppliers];
+                }
+            } else {
+                list = [...mockData.suppliers];
+            }
+            const idx = list.findIndex(s => String(s.id) === String(saved.id));
+            if (idx !== -1) {
+                list[idx] = saved;
+            } else {
+                list.push(saved);
+            }
+            localStorage.setItem('corellux_suppliers', JSON.stringify(list));
+
+            return { success: true, data: saved };
         } catch (e) {
-            console.error('[DbService] Erro ao salvar fornecedor:', e.message || e);
-            return { success: false, error: e };
+            console.warn('[DbService] Erro ao salvar fornecedor no Supabase. Gravando localmente:', e.message || e);
+            const local = localStorage.getItem('corellux_suppliers');
+            let list = [];
+            if (local) {
+                try {
+                    list = JSON.parse(local);
+                } catch (err) {
+                    list = [...mockData.suppliers];
+                }
+            } else {
+                list = [...mockData.suppliers];
+            }
+            const newSup = {
+                ...supplier,
+                id: supplier.id || Date.now() + Math.floor(Math.random() * 1000)
+            };
+            const idx = list.findIndex(s => String(s.id) === String(newSup.id));
+            if (idx !== -1) {
+                list[idx] = newSup;
+            } else {
+                list.push(newSup);
+            }
+            localStorage.setItem('corellux_suppliers', JSON.stringify(list));
+            return { success: true, data: newSup };
         }
     },
 
@@ -605,9 +820,28 @@ export const DbService = {
                 .delete()
                 .eq('id', id);
             if (error) throw error;
+
+            // Sync local
+            const local = localStorage.getItem('corellux_suppliers');
+            if (local) {
+                const list = JSON.parse(local);
+                const updated = list.filter(s => String(s.id) !== String(id));
+                localStorage.setItem('corellux_suppliers', JSON.stringify(updated));
+            }
             return { success: true };
         } catch (e) {
-            console.error(`[DbService] Erro ao deletar fornecedor ${id}:`, e.message || e);
+            console.warn(`[DbService] Erro ao deletar fornecedor ${id} no Supabase. Removendo localmente:`, e.message || e);
+            const local = localStorage.getItem('corellux_suppliers');
+            if (local) {
+                try {
+                    const list = JSON.parse(local);
+                    const updated = list.filter(s => String(s.id) !== String(id));
+                    localStorage.setItem('corellux_suppliers', JSON.stringify(updated));
+                    return { success: true };
+                } catch (err) {
+                    console.error('[DbService] Erro ao atualizar local:', err);
+                }
+            }
             return { success: false, error: e };
         }
     },

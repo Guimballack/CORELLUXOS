@@ -622,6 +622,10 @@ export default function SettingsHub() {
     const handleToggleProdStatus = async (prod) => {
         const newStatus = prod.status === 'Ativo' ? 'Inativo' : 'Ativo';
         const updated = { ...prod, status: newStatus };
+        
+        // Optimistic local update
+        setProdutos(prev => prev.map(p => p.sku === prod.sku ? updated : p));
+        
         await DbService.saveProduct(updated, prod.sku);
         loadData();
     };
@@ -695,6 +699,10 @@ export default function SettingsHub() {
     const handleToggleCatStatus = async (cat) => {
         const newStatus = cat.status === 'Ativo' ? 'Inativo' : 'Ativo';
         const updated = { ...cat, status: newStatus };
+        
+        // Optimistic local update
+        setCategorias(prev => prev.map(c => String(c.id) === String(cat.id) ? updated : c));
+        
         await DbService.saveCategory(updated);
         loadData();
     };
@@ -801,6 +809,10 @@ export default function SettingsHub() {
     const handleToggleFornStatus = async (sup) => {
         const newStatus = sup.situacao === 'Ativo' ? 'Bloqueado' : 'Ativo';
         const updated = { ...sup, situacao: newStatus, blockInfo: { ...sup.blockInfo, status: newStatus } };
+        
+        // Optimistic local update
+        setFornecedores(prev => prev.map(f => String(f.id) === String(sup.id) ? updated : f));
+        
         await DbService.saveSupplier(updated);
         loadData();
     };
