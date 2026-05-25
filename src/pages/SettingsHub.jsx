@@ -83,6 +83,8 @@ export default function SettingsHub() {
     // Modals control
     const [showColabModal, setShowColabModal] = useState(false);
     const [editingColab, setEditingColab] = useState(null);
+    const [colabToDelete, setColabToDelete] = useState(null);
+    const [toast, setToast] = useState(null);
 
     const [showProdModal, setShowProdModal] = useState(false);
     const [editingProd, setEditingProd] = useState(null);
@@ -147,6 +149,17 @@ export default function SettingsHub() {
     useEffect(() => {
         loadData();
     }, []);
+
+    useEffect(() => {
+        if (toast) {
+            const timer = setTimeout(() => setToast(null), 4000);
+            return () => clearTimeout(timer);
+        }
+    }, [toast]);
+
+    const showToast = (message, type = 'success') => {
+        setToast({ message, type });
+    };
 
     // Helper: Check if logged in user is admin or has config permission
     const isAdminUser = globalState.currentUser && (
@@ -298,7 +311,7 @@ export default function SettingsHub() {
         if (editingColab && editingColab.accessLevel === 'Administrador' && editingColab.status === 'Ativo') {
             const hasOtherAdmins = colaboradores.some(c => c.accessLevel === 'Administrador' && c.status === 'Ativo' && c.id !== editingColab.id);
             if (!hasOtherAdmins && (colabForm.status !== 'Ativo' || colabForm.accessLevel !== 'Administrador')) {
-                alert('Ação bloqueada por segurança: Você não pode inativar ou alterar o nível de acesso do único Administrador ativo no sistema.');
+                showToast('Ação bloqueada por segurança: Você não pode inativar ou alterar o nível de acesso do único Administrador ativo no sistema.', 'error');
                 return;
             }
         }
@@ -311,48 +324,53 @@ export default function SettingsHub() {
 
         const result = await DbService.saveUser(payload);
         if (result.success) {
-            alert('Funcionário gravado com sucesso!');
+            showToast('Funcionário gravado com sucesso!', 'success');
         } else {
-            alert('[Aviso] Gravado em cache local offline.');
+            showToast('[Aviso] Gravado em cache local offline.', 'warning');
         }
 
         setShowColabModal(false);
         loadData();
     };
 
-    const handleDeleteColab = async (user) => {
+    const handleDeleteColab = (user) => {
         if (user.accessLevel === 'Administrador') {
             const adminCount = colaboradores.filter(c => c.accessLevel === 'Administrador').length;
             if (adminCount <= 1) {
-                alert('Ação bloqueada: Não é possível deletar o único Administrador do sistema.');
+                showToast('Ação bloqueada: Não é possível deletar o único Administrador do sistema.', 'error');
                 return;
             }
         }
+        setColabToDelete(user);
+    };
 
-        if (window.confirm(`Tem certeza que deseja excluir o funcionário "${user.displayName || user.name}"?`)) {
-            // Optimistic local update
-            setColaboradores(prev => prev.filter(c => String(c.id) !== String(user.id)));
+    const confirmDeleteColab = async () => {
+        if (!colabToDelete) return;
+        const user = colabToDelete;
+        setColabToDelete(null);
 
-            // Optimistic global update
-            const currentAppUsers = get('appUsers') || [];
-            const updatedAppUsers = currentAppUsers.filter(c => String(c.id) !== String(user.id));
-            set('appUsers', updatedAppUsers);
+        // Optimistic local update
+        setColaboradores(prev => prev.filter(c => String(c.id) !== String(user.id)));
 
-            const result = await DbService.deleteUser(user.id);
-            if (result.success) {
-                alert('Funcionário removido com sucesso.');
-            } else {
-                alert('[Aviso] Excluído no cache local offline.');
-            }
-            loadData();
+        // Optimistic global update
+        const currentAppUsers = get('appUsers') || [];
+        const updatedAppUsers = currentAppUsers.filter(c => String(c.id) !== String(user.id));
+        set('appUsers', updatedAppUsers);
+
+        const result = await DbService.deleteUser(user.id);
+        if (result.success) {
+            showToast('Funcionário removido com sucesso.', 'success');
+        } else {
+            showToast('[Aviso] Excluído no cache local offline.', 'warning');
         }
+        loadData();
     };
 
     const handleToggleColabStatus = async (user) => {
         if (user.accessLevel === 'Administrador' && user.status === 'Ativo') {
             const adminCount = colaboradores.filter(c => c.accessLevel === 'Administrador' && c.status === 'Ativo').length;
             if (adminCount <= 1) {
-                alert('Ação bloqueada: Não é possível desativar o único Administrador ativo.');
+                showToast('Ação bloqueada: Não é possível desativar o único Administrador ativo.', 'error');
                 return;
             }
         }
@@ -2367,6 +2385,131 @@ export default function SettingsHub() {
                             </div>
                         </form>
                     </div>
+                </div>
+            , document.body)}
+
+            {/* Custom confirm modal and toast notifications style */}
+            <style>{`
+                @keyframes toastSlideIn {
+                    from {
+                        transform: translateY(20px) scale(0.95);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateY(0) scale(1);
+                        opacity: 1;
+                    }
+                }
+            `}</style>
+
+            {/* MODAL: CONFIRMAR EXCLUSÃO DE COLABORADOR */}
+            {colabToDelete && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10010 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '450px', width: '90%', textAlign: 'center', padding: '2rem' }}>
+                        <div style={{
+                            width: '70px',
+                            height: '70px',
+                            borderRadius: '50%',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '2px solid #ef4444',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 1.5rem auto',
+                            boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)'
+                        }}>
+                            <Trash2 size={36} color="#ef4444" />
+                        </div>
+                        
+                        <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.8rem', fontWeight: '800' }}>
+                            Excluir Funcionário?
+                        </h3>
+                        
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '2rem' }}>
+                            Tem certeza que deseja excluir o funcionário <strong style={{ color: 'var(--text-primary)' }}>{colabToDelete.displayName || colabToDelete.name}</strong>?<br/>
+                            Esta ação removerá permanentemente o cadastro e não poderá ser desfeita.
+                        </p>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                            <button 
+                                type="button" 
+                                className="btn-confirm-modal" 
+                                onClick={() => setColabToDelete(null)}
+                                style={{ 
+                                    flex: 1, 
+                                    background: 'rgba(255, 255, 255, 0.05)', 
+                                    border: '1.5px solid var(--border-color)', 
+                                    color: 'var(--text-primary)',
+                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                CANCELAR
+                            </button>
+                            <button 
+                                type="button" 
+                                className="btn-clear-modal" 
+                                onClick={confirmDeleteColab}
+                                style={{ 
+                                    flex: 1, 
+                                    background: '#ef4444', 
+                                    border: '1.5px solid #000000', 
+                                    color: '#ffffff',
+                                    boxShadow: '0 4px 0px #000000',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                SIM, EXCLUIR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* TOAST NOTIFICATION SYSTEM */}
+            {toast && createPortal(
+                <div style={{
+                    position: 'fixed',
+                    bottom: '2rem',
+                    right: '2rem',
+                    zIndex: 10020,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.8rem',
+                    padding: '1rem 1.5rem',
+                    background: 'rgba(18, 24, 38, 0.95)',
+                    backdropFilter: 'blur(10px)',
+                    border: `1.5px solid ${toast.type === 'error' ? '#ef4444' : toast.type === 'warning' ? '#f59e0b' : '#14b8a6'}`,
+                    boxShadow: `0 8px 30px rgba(0, 0, 0, 0.5), 0 0 15px ${toast.type === 'error' ? 'rgba(239, 68, 68, 0.15)' : toast.type === 'warning' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(20, 184, 166, 0.15)'}`,
+                    borderRadius: '12px',
+                    color: 'var(--text-primary)',
+                    fontFamily: 'inherit',
+                    animation: 'toastSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    maxWidth: '400px'
+                }}>
+                    {toast.type === 'success' && <Check size={18} color="#14b8a6" />}
+                    {toast.type === 'warning' && <AlertTriangle size={18} color="#f59e0b" />}
+                    {toast.type === 'error' && <AlertTriangle size={18} color="#ef4444" />}
+                    
+                    <span style={{ fontSize: '0.9rem', fontWeight: '600' }}>{toast.message}</span>
+                    
+                    <button 
+                        onClick={() => setToast(null)}
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            padding: '0.2rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            marginLeft: '0.5rem'
+                        }}
+                    >
+                        <X size={14} />
+                    </button>
                 </div>
             , document.body)}
         </div>
