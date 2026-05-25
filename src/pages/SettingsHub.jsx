@@ -980,23 +980,24 @@ export default function SettingsHub() {
                                                                 {colab.status}
                                                             </span>
                                                         </td>
-                                                        <td style={{ textAlign: 'center', width: '150px' }}>
-                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', justifyContent: 'center' }}>
-                                                                <button className="action-btn-sm edit" onClick={() => openColabModalForEdit(colab)} title="Editar" style={{ color: 'var(--text-primary)', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', padding: '0.45rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                    <Edit size={16} />
-                                                                </button>
-                                                                <label className="switch-toggle" title={colab.status === 'Ativo' ? 'Bloquear Funcionário' : 'Ativar Funcionário'}>
-                                                                    <input 
-                                                                        type="checkbox" 
-                                                                        checked={colab.status === 'Ativo'} 
-                                                                        onChange={() => handleToggleColabStatus(colab)} 
-                                                                    />
-                                                                    <span className="slider-toggle"></span>
-                                                                </label>
-                                                                <button className="action-btn-sm delete" onClick={() => handleDeleteColab(colab)} title="Excluir" style={{ color: 'var(--accent-red)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '0.45rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                    <Trash2 size={16} />
-                                                                </button>
-                                                            </div>
+                                                        <td style={{ textAlign: 'center', width: '130px' }}>
+                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                                                                 <button className="action-btn-sm edit" onClick={() => openColabModalForEdit(colab)} title="Editar">
+                                                                     <Edit size={16} />
+                                                                 </button>
+                                                                 <button 
+                                                                     className={`switch-toggle-btn ${colab.status === 'Ativo' ? 'active' : ''}`}
+                                                                     onClick={() => handleToggleColabStatus(colab)}
+                                                                     title={colab.status === 'Ativo' ? 'Bloquear Funcionário' : 'Ativar Funcionário'}
+                                                                 >
+                                                                     <div className="switch-toggle-track">
+                                                                         <div className="switch-toggle-handle"></div>
+                                                                     </div>
+                                                                 </button>
+                                                                 <button className="action-btn-sm delete" onClick={() => handleDeleteColab(colab)} title="Excluir">
+                                                                     <Trash2 size={16} />
+                                                                 </button>
+                                                             </div>
                                                         </td>
                                                     </tr>
                                                 );

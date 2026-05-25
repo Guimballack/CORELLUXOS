@@ -4862,64 +4862,52 @@ main {
     margin-left: 0;
 }
 
-/* Custom Toggle Switch (On/Off) */
-.switch-toggle {
-    position: relative;
-    display: inline-block;
-    width: 44px;
-    height: 22px;
+/* Custom Toggle Switch Button */
+.switch-toggle-btn {
     cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    display: inline-block;
+    outline: none;
     flex-shrink: 0;
+    margin: 0 0.3rem;
+    vertical-align: middle;
 }
 
-.switch-toggle input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider-toggle {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(239, 68, 68, 0.15); /* Red when off/blocked */
+.switch-toggle-track {
+    position: relative;
+    width: 38px;
+    height: 18px;
+    background-color: rgba(239, 68, 68, 0.15); /* Red when off */
     border: 1px solid rgba(239, 68, 68, 0.3);
-    transition: .3s;
     border-radius: 34px;
+    transition: all 0.3s ease;
 }
 
-.slider-toggle:before {
+.switch-toggle-handle {
     position: absolute;
     content: "";
-    height: 14px;
-    width: 14px;
-    left: 3px;
-    bottom: 3px;
+    height: 12px;
+    width: 12px;
+    left: 2px;
+    bottom: 2px;
     background-color: var(--accent-red);
-    transition: .3s;
     border-radius: 50%;
-    box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
 }
 
-.switch-toggle input:checked + .slider-toggle {
-    background-color: rgba(34, 197, 94, 0.15); /* Green when checked/active */
+/* Active State (Ativo/Green) */
+.switch-toggle-btn.active .switch-toggle-track {
+    background-color: rgba(34, 197, 94, 0.15);
     border-color: rgba(34, 197, 94, 0.3);
 }
 
-.switch-toggle input:checked + .slider-toggle:before {
-    transform: translateX(22px);
+.switch-toggle-btn.active .switch-toggle-handle {
+    transform: translateX(20px);
     background-color: var(--accent-green);
-    box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
-}
-
-/* Hover effects for action buttons in settings table */
-.action-btn-sm {
-    transition: all 0.2s ease;
-}
-.action-btn-sm:hover {
-    transform: translateY(-1px);
+    box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
 }
 
 
