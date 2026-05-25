@@ -181,7 +181,7 @@ header.hidden {
 .logo-area {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 1.5rem;
 }
 
 .btn-home-header {
@@ -257,7 +257,7 @@ header.hidden {
     align-items: center;
     border-left: 1px solid var(--border-color);
     padding-left: 2rem;
-    margin-left: 2rem;
+    margin-left: 1.5rem;
     margin-right: 1rem;
     gap: 1.2rem;
 }
@@ -312,6 +312,7 @@ header.hidden {
     margin-right: auto;
     padding-left: 2rem;
     border-left: 1px solid var(--border-color);
+    margin-left: 1.5rem;
 }
 
 .time {
