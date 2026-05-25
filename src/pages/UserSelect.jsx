@@ -15,11 +15,9 @@ export default function UserSelect() {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
-        if (!state.appUsers || state.appUsers.length === 0) {
-            setLoading(true);
-            loadUsers().finally(() => setLoading(false));
-        }
-    }, [state.appUsers]);
+        setLoading(true);
+        loadUsers().finally(() => setLoading(false));
+    }, []);
 
     const activeUsers = (state.appUsers || []).filter(u => u.status === 'Ativo');
 

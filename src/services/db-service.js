@@ -67,11 +67,10 @@ export const DbService = {
 
             if (error) throw error;
             if (!data || data.length === 0) {
-                console.warn('[DbService] Nenhum usuário retornado do Supabase, usando dados locais.');
-                return mockData.users;
+                throw new Error('Nenhum usuário retornado do Supabase');
             }
             const camelUsers = toCamelCase(data);
-            return camelUsers.map(user => {
+            const finalUsers = camelUsers.map(user => {
                 if (user.permissions && user.permissions.extra) {
                     const extra = user.permissions.extra;
                     const cleanPermissions = { ...user.permissions };
@@ -84,8 +83,20 @@ export const DbService = {
                 }
                 return user;
             });
+
+            localStorage.setItem('corellux_users', JSON.stringify(finalUsers));
+            return finalUsers;
         } catch (e) {
             console.error('[DbService] Erro ao buscar usuários no Supabase. Usando fallback local:', e.message || e);
+            const local = localStorage.getItem('corellux_users');
+            if (local) {
+                try {
+                    return JSON.parse(local);
+                } catch (err) {
+                    console.error('[DbService] Erro ao analisar usuários locais:', err);
+                }
+            }
+            localStorage.setItem('corellux_users', JSON.stringify(mockData.users));
             return mockData.users;
         }
     },
@@ -280,7 +291,7 @@ export const DbService = {
             const local = localStorage.getItem('corellux_stock_batches');
             if (local) {
                 const list = JSON.parse(local);
-                const updated = list.filter(b => b.id !== id);
+                const updated = list.filter(b => String(b.id) !== String(id));
                 localStorage.setItem('corellux_stock_batches', JSON.stringify(updated));
             }
             return { success: true };
@@ -290,7 +301,7 @@ export const DbService = {
             if (local) {
                 try {
                     const list = JSON.parse(local);
-                    const updated = list.filter(b => b.id !== id);
+                    const updated = list.filter(b => String(b.id) !== String(id));
                     localStorage.setItem('corellux_stock_batches', JSON.stringify(updated));
                     return { success: true };
                 } catch (err) {
@@ -312,13 +323,14 @@ export const DbService = {
                 .select();
 
             if (error) throw error;
+            if (!data || data.length === 0) throw new Error('Nenhum dado retornado na atualização');
             const updated = toCamelCase(data[0]);
             
             // Sync local
             const local = localStorage.getItem('corellux_stock_batches');
             if (local) {
                 const list = JSON.parse(local);
-                const idx = list.findIndex(b => b.id === id);
+                const idx = list.findIndex(b => String(b.id) === String(id));
                 if (idx !== -1) {
                     list[idx] = { ...list[idx], ...updated };
                     localStorage.setItem('corellux_stock_batches', JSON.stringify(list));
@@ -331,7 +343,7 @@ export const DbService = {
             if (local) {
                 try {
                     const list = JSON.parse(local);
-                    const idx = list.findIndex(b => b.id === id);
+                    const idx = list.findIndex(b => String(b.id) === String(id));
                     if (idx !== -1) {
                         list[idx] = { ...list[idx], ...updates };
                         localStorage.setItem('corellux_stock_batches', JSON.stringify(list));
@@ -389,25 +401,62 @@ export const DbService = {
                     .select();
             }
             if (result.error) throw result.error;
+            if (!result.data || result.data.length === 0) {
+                throw new Error('Usuário não encontrado no banco de dados');
+            }
             
             const savedUser = toCamelCase(result.data[0]);
-            if (savedUser.permissions && savedUser.permissions.extra) {
-                const returnedExtra = savedUser.permissions.extra;
-                const cleanPermissions = { ...savedUser.permissions };
-                delete cleanPermissions.extra;
-                return {
-                    success: true,
-                    data: {
-                        ...savedUser,
-                        permissions: cleanPermissions,
-                        ...returnedExtra
-                    }
-                };
+            const finalUser = savedUser.permissions && savedUser.permissions.extra ? {
+                ...savedUser,
+                permissions: (() => {
+                    const cp = { ...savedUser.permissions };
+                    delete cp.extra;
+                    return cp;
+                })(),
+                ...savedUser.permissions.extra
+            } : savedUser;
+
+            // Sync local
+            const local = localStorage.getItem('corellux_users');
+            if (local) {
+                const list = JSON.parse(local);
+                const idx = list.findIndex(u => String(u.id) === String(finalUser.id));
+                if (idx !== -1) {
+                    list[idx] = finalUser;
+                } else {
+                    list.push(finalUser);
+                }
+                localStorage.setItem('corellux_users', JSON.stringify(list));
             }
-            return { success: true, data: savedUser };
+
+            return { success: true, data: finalUser };
         } catch (e) {
-            console.error('[DbService] Erro ao salvar usuário:', e.message || e);
-            return { success: false, error: e };
+            console.warn('[DbService] Erro ao salvar usuário no Supabase. Gravando localmente:', e.message || e);
+            const local = localStorage.getItem('corellux_users');
+            let list = [];
+            if (local) {
+                try {
+                    list = JSON.parse(local);
+                } catch (err) {
+                    list = [...mockData.users];
+                }
+            } else {
+                list = [...mockData.users];
+            }
+
+            const newUser = {
+                ...user,
+                id: user.id || Date.now() + Math.floor(Math.random() * 1000)
+            };
+
+            const idx = list.findIndex(u => String(u.id) === String(newUser.id));
+            if (idx !== -1) {
+                list[idx] = newUser;
+            } else {
+                list.push(newUser);
+            }
+            localStorage.setItem('corellux_users', JSON.stringify(list));
+            return { success: true, data: newUser };
         }
     },
 
@@ -418,9 +467,28 @@ export const DbService = {
                 .delete()
                 .eq('id', id);
             if (error) throw error;
+
+            // Sync local
+            const local = localStorage.getItem('corellux_users');
+            if (local) {
+                const list = JSON.parse(local);
+                const updated = list.filter(u => String(u.id) !== String(id));
+                localStorage.setItem('corellux_users', JSON.stringify(updated));
+            }
             return { success: true };
         } catch (e) {
-            console.error(`[DbService] Erro ao deletar usuário ${id}:`, e.message || e);
+            console.warn(`[DbService] Erro ao deletar usuário ${id} no Supabase. Removendo localmente:`, e.message || e);
+            const local = localStorage.getItem('corellux_users');
+            if (local) {
+                try {
+                    const list = JSON.parse(local);
+                    const updated = list.filter(u => String(u.id) !== String(id));
+                    localStorage.setItem('corellux_users', JSON.stringify(updated));
+                    return { success: true };
+                } catch (err) {
+                    console.error('[DbService] Erro ao atualizar local:', err);
+                }
+            }
             return { success: false, error: e };
         }
     },
@@ -773,7 +841,7 @@ export const DbService = {
                 lastModified: new Date().toLocaleString('pt-BR')
             };
 
-            const idx = models.findIndex(m => m.id === newModel.id);
+            const idx = models.findIndex(m => String(m.id) === String(newModel.id));
             if (idx !== -1) {
                 models[idx] = newModel;
             } else {
@@ -799,7 +867,7 @@ export const DbService = {
             if (local) {
                 try {
                     const models = JSON.parse(local);
-                    const updated = models.filter(m => m.id !== id);
+                    const updated = models.filter(m => String(m.id) !== String(id));
                     localStorage.setItem('corellux_checklist_models', JSON.stringify(updated));
                     return { success: true };
                 } catch (err) {

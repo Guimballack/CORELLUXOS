@@ -6,7 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useCorelluxState } from '../store/corellux-state';
+import { useCorelluxState, loadUsers, get, set } from '../store/corellux-state';
 import DbService from '../services/db-service';
 import { getUserAvatar } from '../utils/initial-data';
 import { 
@@ -128,7 +128,7 @@ export default function SettingsHub() {
         setLoading(true);
         try {
             const [usersData, prodsData, catsData, supsData] = await Promise.all([
-                DbService.getUsers(),
+                loadUsers(),
                 DbService.getProducts(),
                 DbService.getCategories(),
                 DbService.getSuppliers()
@@ -330,6 +330,14 @@ export default function SettingsHub() {
         }
 
         if (window.confirm(`Tem certeza que deseja excluir o funcionário "${user.displayName || user.name}"?`)) {
+            // Optimistic local update
+            setColaboradores(prev => prev.filter(c => String(c.id) !== String(user.id)));
+
+            // Optimistic global update
+            const currentAppUsers = get('appUsers') || [];
+            const updatedAppUsers = currentAppUsers.filter(c => String(c.id) !== String(user.id));
+            set('appUsers', updatedAppUsers);
+
             const result = await DbService.deleteUser(user.id);
             if (result.success) {
                 alert('Funcionário removido com sucesso.');
@@ -352,6 +360,14 @@ export default function SettingsHub() {
         const newStatus = user.status === 'Ativo' ? 'Bloqueado' : 'Ativo';
         const updatedUser = { ...user, status: newStatus };
         
+        // Optimistic local update
+        setColaboradores(prev => prev.map(c => String(c.id) === String(user.id) ? updatedUser : c));
+
+        // Optimistic global update
+        const currentAppUsers = get('appUsers') || [];
+        const updatedAppUsers = currentAppUsers.map(c => String(c.id) === String(user.id) ? updatedUser : c);
+        set('appUsers', updatedAppUsers);
+
         await DbService.saveUser(updatedUser);
         loadData();
     };
