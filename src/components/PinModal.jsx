@@ -34,7 +34,7 @@ export default function PinModal({ isOpen, onClose }) {
         
         if (state.pin === expectedPin) {
             // Sucesso
-            onClose();
+            onClose(true);
             updatePartial({
                 workstationAuthenticated: true,
                 currentScreen: 'dashboard'

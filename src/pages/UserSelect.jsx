@@ -31,9 +31,11 @@ export default function UserSelect() {
         setPinModalOpen(true);
     };
 
-    const handleClosePinModal = () => {
+    const handleClosePinModal = (isSuccess) => {
         setPinModalOpen(false);
-        setKey('currentUser', null);
+        if (isSuccess !== true) {
+            setKey('currentUser', null);
+        }
     };
 
     const handleExitStation = () => {
