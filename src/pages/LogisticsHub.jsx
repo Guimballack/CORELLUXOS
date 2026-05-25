@@ -1655,9 +1655,12 @@ export default function LogisticsHub() {
 
                         <div className="pin-container" style={{ padding: '1.5rem' }}>
                             <div style={{ marginBottom: '1.5rem' }}>
-                                <h4 style={{ margin: '0 0 1rem 0', color: '#ffffff', fontSize: '1.2rem', fontWeight: '500' }}>
+                                <h4 style={{ margin: '0 0 0.4rem 0', color: '#ffffff', fontSize: '1.2rem', fontWeight: '500' }}>
                                     {numpadProduct.name}
                                 </h4>
+                                <div style={{ fontSize: '0.85rem', color: '#10b981', fontWeight: '600', marginBottom: '1rem' }}>
+                                    Unidade: {numpadProduct.unit} | Estoque: {numpadProduct.stock}
+                                </div>
                                 <div style={{ fontSize: '0.9rem', color: '#94a3b8', marginBottom: '0.4rem' }}>Quantidade</div>
                                 <input 
                                     type="text" 
