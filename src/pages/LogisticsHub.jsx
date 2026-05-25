@@ -97,6 +97,7 @@ export default function LogisticsHub() {
     const [inventoryCategory, setInventoryCategory] = useState('ALL');
     const [sortField, setSortField] = useState('name');
     const [sortOrder, setSortOrder] = useState('asc');
+    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
 
     // Cart for requests
     const [cart, setCart] = useState([]);
@@ -949,25 +950,81 @@ export default function LogisticsHub() {
                                     </h2>
 
                                     <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', flex: '1', justifyContent: 'flex-end', minWidth: '300px' }}>
-                                        {/* Category Select */}
-                                        <select 
-                                            value={inventoryCategory}
-                                            onChange={(e) => setInventoryCategory(e.target.value)}
-                                            style={{
-                                                background: 'var(--bg-input)',
-                                                border: '1px solid var(--border-color)',
-                                                color: 'var(--text-primary)',
-                                                padding: '0.5rem 1rem',
-                                                borderRadius: '8px',
-                                                outline: 'none',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            <option value="ALL">Todas as Categorias</option>
-                                            {categories.map(c => (
-                                                <option key={c.id} value={c.name}>{c.name}</option>
-                                            ))}
-                                        </select>
+                                        {/* Category Custom Select */}
+                                        <div style={{ position: 'relative', minWidth: '200px' }}>
+                                            <div 
+                                                onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
+                                                style={{
+                                                    background: 'var(--bg-input)',
+                                                    border: '1px solid var(--border-color)',
+                                                    color: 'var(--text-primary)',
+                                                    padding: '0.5rem 1rem',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    fontSize: '0.9rem'
+                                                }}
+                                            >
+                                                <span>{inventoryCategory === 'ALL' ? 'Todas as Categorias' : inventoryCategory}</span>
+                                                <ChevronDown size={14} style={{ color: 'var(--text-secondary)' }} />
+                                            </div>
+                                            
+                                            {isCategoryDropdownOpen && (
+                                                <div 
+                                                    className="custom-dropdown-menu"
+                                                    style={{
+                                                    position: 'absolute',
+                                                    top: '100%',
+                                                    left: 0,
+                                                    right: 0,
+                                                    marginTop: '0.3rem',
+                                                    background: 'var(--bg-card)',
+                                                    border: '1px solid var(--border-color)',
+                                                    borderRadius: '8px',
+                                                    boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
+                                                    zIndex: 100,
+                                                    maxHeight: '300px',
+                                                    overflowY: 'auto'
+                                                }}>
+                                                    <div 
+                                                        onClick={() => { setInventoryCategory('ALL'); setIsCategoryDropdownOpen(false); }}
+                                                        style={{
+                                                            padding: '0.6rem 1rem',
+                                                            cursor: 'pointer',
+                                                            background: inventoryCategory === 'ALL' ? 'rgba(168, 85, 247, 0.1)' : 'transparent',
+                                                            color: inventoryCategory === 'ALL' ? 'var(--accent-orange)' : 'var(--text-primary)',
+                                                            borderBottom: '1px solid var(--border-color)',
+                                                            fontSize: '0.9rem',
+                                                            transition: 'background 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                                        onMouseLeave={(e) => e.currentTarget.style.background = inventoryCategory === 'ALL' ? 'rgba(168, 85, 247, 0.1)' : 'transparent'}
+                                                    >
+                                                        Todas as Categorias
+                                                    </div>
+                                                    {categories.map(c => (
+                                                        <div 
+                                                            key={c.id} 
+                                                            onClick={() => { setInventoryCategory(c.name); setIsCategoryDropdownOpen(false); }}
+                                                            style={{
+                                                                padding: '0.6rem 1rem',
+                                                                cursor: 'pointer',
+                                                                background: inventoryCategory === c.name ? 'rgba(168, 85, 247, 0.1)' : 'transparent',
+                                                                color: inventoryCategory === c.name ? 'var(--accent-orange)' : 'var(--text-primary)',
+                                                                fontSize: '0.9rem',
+                                                                transition: 'background 0.2s'
+                                                            }}
+                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                                            onMouseLeave={(e) => e.currentTarget.style.background = inventoryCategory === c.name ? 'rgba(168, 85, 247, 0.1)' : 'transparent'}
+                                                        >
+                                                            {c.name}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
 
                                         {/* Search Box */}
                                         <div className="search-box" style={{ margin: 0 }}>
