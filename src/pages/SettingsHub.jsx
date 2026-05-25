@@ -72,7 +72,7 @@ export default function SettingsHub() {
     const [loading, setLoading] = useState(true);
 
     // Tab control
-    const [activeTab, setActiveTab] = useState('colaboradores'); // colaboradores, produtos, categorias, fornecedores
+    const [activeTab, setActiveTab] = useState('menu'); // menu, colaboradores, produtos, categorias, fornecedores
 
     // Search filters
     const [searchColab, setSearchColab] = useState('');
@@ -867,98 +867,7 @@ export default function SettingsHub() {
     return (
         <div className="screen active with-header" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
             
-            {/* Top Navigation Bar */}
-            <div className="tab-navigation-bar" style={{
-                display: 'flex',
-                background: 'var(--bg-card)',
-                borderBottom: '1px solid var(--border-color)',
-                padding: '0 2rem',
-                gap: '2rem'
-            }}>
-                <button 
-                    className={`tab-nav-btn ${activeTab === 'colaboradores' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('colaboradores')}
-                    style={{
-                        padding: '1.2rem 0',
-                        background: 'transparent',
-                        border: 'none',
-                        borderBottom: activeTab === 'colaboradores' ? '2px solid var(--accent-orange)' : '2px solid transparent',
-                        color: activeTab === 'colaboradores' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        fontWeight: '700',
-                        fontSize: '0.9rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        transition: 'all 0.2s ease'
-                    }}
-                >
-                    <Users size={16} /> COLABORADORES
-                </button>
-
-                <button 
-                    className={`tab-nav-btn ${activeTab === 'produtos' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('produtos')}
-                    style={{
-                        padding: '1.2rem 0',
-                        background: 'transparent',
-                        border: 'none',
-                        borderBottom: activeTab === 'produtos' ? '2px solid var(--accent-orange)' : '2px solid transparent',
-                        color: activeTab === 'produtos' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        fontWeight: '700',
-                        fontSize: '0.9rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        transition: 'all 0.2s ease'
-                    }}
-                >
-                    <Boxes size={16} /> PRODUTOS (INSUMOS)
-                </button>
-
-                <button 
-                    className={`tab-nav-btn ${activeTab === 'categorias' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('categorias')}
-                    style={{
-                        padding: '1.2rem 0',
-                        background: 'transparent',
-                        border: 'none',
-                        borderBottom: activeTab === 'categorias' ? '2px solid var(--accent-orange)' : '2px solid transparent',
-                        color: activeTab === 'categorias' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        fontWeight: '700',
-                        fontSize: '0.9rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        transition: 'all 0.2s ease'
-                    }}
-                >
-                    <Tag size={16} /> CATEGORIAS
-                </button>
-
-                <button 
-                    className={`tab-nav-btn ${activeTab === 'fornecedores' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('fornecedores')}
-                    style={{
-                        padding: '1.2rem 0',
-                        background: 'transparent',
-                        border: 'none',
-                        borderBottom: activeTab === 'fornecedores' ? '2px solid var(--accent-orange)' : '2px solid transparent',
-                        color: activeTab === 'fornecedores' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        fontWeight: '700',
-                        fontSize: '0.9rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        transition: 'all 0.2s ease'
-                    }}
-                >
-                    <Truck size={16} /> FORNECEDORES
-                </button>
-            </div>
+            {/* Navegação orientada exclusivamente a Cards e Botões de Voltar */}
 
             {/* Inner Content Area */}
             <div className="tab-content" style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
@@ -978,11 +887,193 @@ export default function SettingsHub() {
                 ) : (
                     <>
                         {/* =============================================
+                            DASHBOARD DE CADASTROS (MENU)
+                        ============================================= */}
+                        {activeTab === 'menu' && (
+                            <div style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minHeight: '80%',
+                                padding: '2rem 1rem'
+                            }}>
+                                <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+                                    <h2 style={{ fontSize: '2.2rem', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                        Central de Cadastros
+                                    </h2>
+                                    <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '500px', margin: '0 auto' }}>
+                                        Selecione o módulo de cadastro que deseja gerenciar, visualizar ou editar.
+                                    </p>
+                                </div>
+
+                                <div style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                                    gap: '1.5rem',
+                                    width: '100%',
+                                    maxWidth: '1000px'
+                                }}>
+                                    {/* Card 1: Colaboradores */}
+                                    <div 
+                                        onClick={() => setActiveTab('colaboradores')}
+                                        className="dashboard-registry-card"
+                                        style={{
+                                            background: 'var(--bg-card)',
+                                            border: '1px solid var(--border-color)',
+                                            borderRadius: '16px',
+                                            padding: '2.5rem 2rem',
+                                            textAlign: 'center',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: '1rem',
+                                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: '64px',
+                                            height: '64px',
+                                            borderRadius: '12px',
+                                            background: 'rgba(255, 90, 0, 0.1)',
+                                            border: '1px solid rgba(255, 90, 0, 0.3)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: 'var(--accent-orange)'
+                                        }}>
+                                            <Users size={32} />
+                                        </div>
+                                        <div>
+                                            <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>COLABORADORES</h3>
+                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>Funcionários, cargos, salários, horários e checklists.</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Card 2: Produtos */}
+                                    <div 
+                                        onClick={() => setActiveTab('produtos')}
+                                        className="dashboard-registry-card"
+                                        style={{
+                                            background: 'var(--bg-card)',
+                                            border: '1px solid var(--border-color)',
+                                            borderRadius: '16px',
+                                            padding: '2.5rem 2rem',
+                                            textAlign: 'center',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: '1rem',
+                                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: '64px',
+                                            height: '64px',
+                                            borderRadius: '12px',
+                                            background: 'rgba(59, 130, 246, 0.1)',
+                                            border: '1px solid rgba(59, 130, 246, 0.3)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: '#3b82f6'
+                                        }}>
+                                            <Boxes size={32} />
+                                        </div>
+                                        <div>
+                                            <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>PRODUTOS</h3>
+                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>Insumos, controle de estoque, unidades e SKUs.</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Card 3: Categorias */}
+                                    <div 
+                                        onClick={() => setActiveTab('categorias')}
+                                        className="dashboard-registry-card"
+                                        style={{
+                                            background: 'var(--bg-card)',
+                                            border: '1px solid var(--border-color)',
+                                            borderRadius: '16px',
+                                            padding: '2.5rem 2rem',
+                                            textAlign: 'center',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: '1rem',
+                                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: '64px',
+                                            height: '64px',
+                                            borderRadius: '12px',
+                                            background: 'rgba(16, 185, 129, 0.1)',
+                                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: 'var(--accent-green)'
+                                        }}>
+                                            <Tag size={32} />
+                                        </div>
+                                        <div>
+                                            <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>CATEGORIAS</h3>
+                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>Organização de insumos e vinculações de cores.</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Card 4: Fornecedores */}
+                                    <div 
+                                        onClick={() => setActiveTab('fornecedores')}
+                                        className="dashboard-registry-card"
+                                        style={{
+                                            background: 'var(--bg-card)',
+                                            border: '1px solid var(--border-color)',
+                                            borderRadius: '16px',
+                                            padding: '2.5rem 2rem',
+                                            textAlign: 'center',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: '1rem',
+                                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
+                                        }}
+                                    >
+                                        <div style={{
+                                            width: '64px',
+                                            height: '64px',
+                                            borderRadius: '12px',
+                                            background: 'rgba(139, 92, 246, 0.1)',
+                                            border: '1px solid rgba(139, 92, 246, 0.3)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            color: '#8b5cf6'
+                                        }}>
+                                            <Truck size={32} />
+                                        </div>
+                                        <div>
+                                            <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>FORNECEDORES</h3>
+                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>CGC, contatos comerciais, avaliações e prazos.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* =============================================
                             TAB 1: COLABORADORES
                         ============================================= */}
                         {activeTab === 'colaboradores' && (
                             <div className="products-container">
-                                <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <button className="btn-back" onClick={() => setActiveTab('menu')} style={{ cursor: 'pointer' }}>
+                                        ← VOLTAR
+                                    </button>
                                     <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <Users style={{ color: 'var(--accent-orange)' }} /> Cadastro de Funcionários
                                     </h2>
@@ -1083,7 +1174,10 @@ export default function SettingsHub() {
                         ============================================= */}
                         {activeTab === 'produtos' && (
                             <div className="products-container">
-                                <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <button className="btn-back" onClick={() => setActiveTab('menu')} style={{ cursor: 'pointer' }}>
+                                        ← VOLTAR
+                                    </button>
                                     <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <Boxes style={{ color: 'var(--accent-orange)' }} /> Cadastro de Insumos / Produtos
                                     </h2>
@@ -1177,7 +1271,10 @@ export default function SettingsHub() {
                         ============================================= */}
                         {activeTab === 'categorias' && (
                             <div className="products-container">
-                                <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <button className="btn-back" onClick={() => setActiveTab('menu')} style={{ cursor: 'pointer' }}>
+                                        ← VOLTAR
+                                    </button>
                                     <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <Tag style={{ color: 'var(--accent-orange)' }} /> Cadastro de Categorias
                                     </h2>
@@ -1265,7 +1362,10 @@ export default function SettingsHub() {
                         ============================================= */}
                         {activeTab === 'fornecedores' && (
                             <div className="products-container">
-                                <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <button className="btn-back" onClick={() => setActiveTab('menu')} style={{ cursor: 'pointer' }}>
+                                        ← VOLTAR
+                                    </button>
                                     <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <Truck style={{ color: 'var(--accent-orange)' }} /> Cadastro de Fornecedores
                                     </h2>

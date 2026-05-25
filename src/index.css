@@ -4911,4 +4911,22 @@ main {
     box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
 }
 
+/* Dashboard Registry Cards */
+.dashboard-registry-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.dashboard-registry-card:hover {
+    transform: translateY(-8px);
+    border-color: var(--accent-orange) !important;
+    box-shadow: 0 12px 30px rgba(255, 90, 0, 0.15) !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+}
+
+.dashboard-registry-card:active {
+    transform: translateY(-2px);
+}
+
 
