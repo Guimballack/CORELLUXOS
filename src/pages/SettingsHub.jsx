@@ -1038,25 +1038,21 @@ export default function SettingsHub() {
                                                                 {colab.status}
                                                             </span>
                                                         </td>
-                                                        <td style={{ textAlign: 'center', width: '130px' }}>
-                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
-                                                                 <button className="action-btn-sm edit" onClick={() => openColabModalForEdit(colab)} title="Editar">
-                                                                     <Edit size={16} />
-                                                                 </button>
-                                                                 <button 
-                                                                     className={`switch-toggle-btn ${colab.status === 'Ativo' ? 'active' : ''}`}
-                                                                     onClick={() => handleToggleColabStatus(colab)}
-                                                                     title={colab.status === 'Ativo' ? 'Bloquear Funcionário' : 'Ativar Funcionário'}
-                                                                 >
-                                                                     <div className="switch-toggle-track">
-                                                                         <div className="switch-toggle-handle"></div>
-                                                                     </div>
-                                                                 </button>
-                                                                 <button className="action-btn-sm delete" onClick={() => handleDeleteColab(colab)} title="Excluir">
+                                                                                                                 <td style={{ textAlign: 'center', width: '130px' }}>
+                                                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', justifyContent: 'center' }}>
+                                                                 <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
+                                                                     <button className="action-btn-sm edit" onClick={() => openColabModalForEdit(colab)} title="Editar" style={{ color: 'var(--text-primary)', background: 'rgba(255,255,255,0.05)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                                                                         <Edit size={16} />
+                                                                     </button>
+                                                                     <button className="action-btn-sm block" onClick={() => handleToggleColabStatus(colab)} title={colab.status === 'Ativo' ? 'Bloquear Funcionário' : 'Ativar Funcionário'} style={{ color: colab.status === 'Ativo' ? 'var(--text-secondary)' : 'var(--accent-red)', background: 'rgba(255,255,255,0.05)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                                                                         {colab.status === 'Ativo' ? <Lock size={16} /> : <Unlock size={16} />}
+                                                                     </button>
+                                                                 </div>
+                                                                 <button className="action-btn-sm delete" onClick={() => handleDeleteColab(colab)} title="Excluir" style={{ color: 'var(--accent-red)', background: 'rgba(239,68,68,0.1)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
                                                                      <Trash2 size={16} />
                                                                  </button>
                                                              </div>
-                                                        </td>
+                                                         </td>
                                                     </tr>
                                                 );
                                             })}
