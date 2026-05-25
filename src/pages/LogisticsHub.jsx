@@ -951,24 +951,30 @@ export default function LogisticsHub() {
 
                                     <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', flex: '1', justifyContent: 'flex-end', minWidth: '300px' }}>
                                         {/* Category Custom Select */}
-                                        <div style={{ position: 'relative', minWidth: '200px' }}>
+                                        <div style={{ position: 'relative', minWidth: '220px' }}>
                                             <div 
                                                 onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
                                                 style={{
-                                                    background: 'var(--bg-input)',
-                                                    border: '1px solid var(--border-color)',
+                                                    background: 'rgba(255, 255, 255, 0.03)',
+                                                    border: isCategoryDropdownOpen ? '1px solid rgba(168, 85, 247, 0.5)' : '1px solid var(--border-color)',
                                                     color: 'var(--text-primary)',
-                                                    padding: '0.5rem 1rem',
+                                                    padding: '0.6rem 1rem',
                                                     borderRadius: '8px',
                                                     cursor: 'pointer',
                                                     display: 'flex',
                                                     justifyContent: 'space-between',
                                                     alignItems: 'center',
-                                                    fontSize: '0.9rem'
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: '500',
+                                                    transition: 'all 0.3s ease',
+                                                    boxShadow: isCategoryDropdownOpen ? '0 0 0 2px rgba(168, 85, 247, 0.1)' : 'none'
                                                 }}
                                             >
-                                                <span>{inventoryCategory === 'ALL' ? 'Todas as Categorias' : inventoryCategory}</span>
-                                                <ChevronDown size={14} style={{ color: 'var(--text-secondary)' }} />
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: inventoryCategory === 'ALL' ? 'var(--text-secondary)' : 'var(--accent-orange)' }} />
+                                                    {inventoryCategory === 'ALL' ? 'Todas as Categorias' : inventoryCategory}
+                                                </span>
+                                                <ChevronDown size={14} style={{ color: 'var(--text-secondary)', transform: isCategoryDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease' }} />
                                             </div>
                                             
                                             {isCategoryDropdownOpen && (
@@ -979,47 +985,88 @@ export default function LogisticsHub() {
                                                     top: '100%',
                                                     left: 0,
                                                     right: 0,
-                                                    marginTop: '0.3rem',
-                                                    background: 'var(--bg-card)',
-                                                    border: '1px solid var(--border-color)',
-                                                    borderRadius: '8px',
-                                                    boxShadow: '0 4px 15px rgba(0,0,0,0.5)',
+                                                    marginTop: '0.5rem',
+                                                    background: 'rgba(15, 23, 42, 0.95)',
+                                                    backdropFilter: 'blur(12px)',
+                                                    WebkitBackdropFilter: 'blur(12px)',
+                                                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                    borderRadius: '12px',
+                                                    boxShadow: '0 10px 30px -10px rgba(0,0,0,0.7)',
                                                     zIndex: 100,
-                                                    maxHeight: '300px',
-                                                    overflowY: 'auto'
+                                                    maxHeight: '320px',
+                                                    overflowY: 'auto',
+                                                    padding: '0.4rem',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '2px',
+                                                    animation: 'fadeInDown 0.2s ease-out'
                                                 }}>
                                                     <div 
                                                         onClick={() => { setInventoryCategory('ALL'); setIsCategoryDropdownOpen(false); }}
                                                         style={{
-                                                            padding: '0.6rem 1rem',
+                                                            padding: '0.6rem 0.8rem',
                                                             cursor: 'pointer',
-                                                            background: inventoryCategory === 'ALL' ? 'rgba(168, 85, 247, 0.1)' : 'transparent',
-                                                            color: inventoryCategory === 'ALL' ? 'var(--accent-orange)' : 'var(--text-primary)',
-                                                            borderBottom: '1px solid var(--border-color)',
-                                                            fontSize: '0.9rem',
-                                                            transition: 'background 0.2s'
+                                                            background: inventoryCategory === 'ALL' ? 'rgba(168, 85, 247, 0.15)' : 'transparent',
+                                                            color: inventoryCategory === 'ALL' ? '#fff' : 'var(--text-secondary)',
+                                                            borderRadius: '6px',
+                                                            fontSize: '0.85rem',
+                                                            fontWeight: inventoryCategory === 'ALL' ? '600' : '400',
+                                                            transition: 'all 0.2s',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'space-between'
                                                         }}
-                                                        onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                                                        onMouseLeave={(e) => e.currentTarget.style.background = inventoryCategory === 'ALL' ? 'rgba(168, 85, 247, 0.1)' : 'transparent'}
+                                                        onMouseEnter={(e) => {
+                                                            if (inventoryCategory !== 'ALL') {
+                                                                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                                e.currentTarget.style.color = 'var(--text-primary)';
+                                                            }
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            if (inventoryCategory !== 'ALL') {
+                                                                e.currentTarget.style.background = 'transparent';
+                                                                e.currentTarget.style.color = 'var(--text-secondary)';
+                                                            }
+                                                        }}
                                                     >
-                                                        Todas as Categorias
+                                                        <span>Todas as Categorias</span>
+                                                        {inventoryCategory === 'ALL' && <Check size={14} color="#c084fc" />}
                                                     </div>
+                                                    
+                                                    <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '0.2rem 0' }} />
+
                                                     {categories.map(c => (
                                                         <div 
                                                             key={c.id} 
                                                             onClick={() => { setInventoryCategory(c.name); setIsCategoryDropdownOpen(false); }}
                                                             style={{
-                                                                padding: '0.6rem 1rem',
+                                                                padding: '0.6rem 0.8rem',
                                                                 cursor: 'pointer',
-                                                                background: inventoryCategory === c.name ? 'rgba(168, 85, 247, 0.1)' : 'transparent',
-                                                                color: inventoryCategory === c.name ? 'var(--accent-orange)' : 'var(--text-primary)',
-                                                                fontSize: '0.9rem',
-                                                                transition: 'background 0.2s'
+                                                                background: inventoryCategory === c.name ? 'rgba(243, 107, 29, 0.15)' : 'transparent',
+                                                                color: inventoryCategory === c.name ? '#fff' : 'var(--text-secondary)',
+                                                                borderRadius: '6px',
+                                                                fontSize: '0.85rem',
+                                                                fontWeight: inventoryCategory === c.name ? '600' : '400',
+                                                                transition: 'all 0.2s',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'space-between'
                                                             }}
-                                                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
-                                                            onMouseLeave={(e) => e.currentTarget.style.background = inventoryCategory === c.name ? 'rgba(168, 85, 247, 0.1)' : 'transparent'}
+                                                            onMouseEnter={(e) => {
+                                                                if (inventoryCategory !== c.name) {
+                                                                    e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                                    e.currentTarget.style.color = 'var(--text-primary)';
+                                                                }
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                if (inventoryCategory !== c.name) {
+                                                                    e.currentTarget.style.background = 'transparent';
+                                                                    e.currentTarget.style.color = 'var(--text-secondary)';
+                                                                }
+                                                            }}
                                                         >
-                                                            {c.name}
+                                                            <span>{c.name}</span>
+                                                            {inventoryCategory === c.name && <Check size={14} color="var(--accent-orange)" />}
                                                         </div>
                                                     ))}
                                                 </div>
