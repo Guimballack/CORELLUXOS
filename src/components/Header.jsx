@@ -68,23 +68,7 @@ export default function Header() {
                     <Home size={20} />
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
-                        {/* Outer Hexagon */}
-                        <polygon points="50,5 89,27.5 89,72.5 50,95 11,72.5 11,27.5" stroke="#f97316" strokeWidth="6.5" strokeLinejoin="round"/>
-                        
-                        {/* Inner Y-lines */}
-                        <polyline points="11,27.5 50,50 89,27.5" stroke="#f97316" strokeWidth="6.5" strokeLinejoin="round" strokeLinecap="round"/>
-                        <line x1="50" y1="50" x2="50" y2="95" stroke="#f97316" strokeWidth="6.5" strokeLinecap="round"/>
-                        
-                        {/* Top Face Diamond */}
-                        <polygon points="50,18 65,26.6 50,35.3 35,26.6" stroke="#f97316" strokeWidth="6.5" strokeLinejoin="round"/>
-                        
-                        {/* Left Face 'C' with lip */}
-                        <path d="M 42.2 56.75 L 26.6 47.75 L 26.6 70.25 L 42.2 79.25 L 42.2 70.25" stroke="#f97316" strokeWidth="6.5" strokeLinejoin="round" strokeLinecap="round"/>
-                        
-                        {/* Right Face 'S' */}
-                        <path d="M 57.8 56.75 L 73.4 47.75 L 73.4 59 L 57.8 68 L 57.8 79.25 L 73.4 70.25" stroke="#f97316" strokeWidth="6.5" strokeLinejoin="round" strokeLinecap="round"/>
-                    </svg>
+                    <img src="/logo_cubo.png" alt="Logo" style={{ height: '40px', width: 'auto', display: 'block' }} />
                 </div>
             </div>
 
