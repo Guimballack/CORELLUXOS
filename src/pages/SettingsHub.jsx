@@ -980,17 +980,20 @@ export default function SettingsHub() {
                                                                 {colab.status}
                                                             </span>
                                                         </td>
-                                                        <td style={{ textAlign: 'center', width: '90px' }}>
-                                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', justifyContent: 'center' }}>
-                                                                <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
-                                                                    <button className="action-btn-sm edit" onClick={() => openColabModalForEdit(colab)} title="Editar" style={{ color: 'var(--text-primary)', background: 'rgba(255,255,255,0.05)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                                                                        <Edit size={16} />
-                                                                    </button>
-                                                                    <button className="action-btn-sm block" onClick={() => handleToggleColabStatus(colab)} title={colab.status === 'Ativo' ? 'Bloquear' : 'Ativar'} style={{ color: colab.status === 'Ativo' ? 'var(--accent-red)' : 'var(--accent-green)', background: 'rgba(255,255,255,0.05)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                                                                        {colab.status === 'Ativo' ? <Lock size={16} /> : <Unlock size={16} />}
-                                                                    </button>
-                                                                </div>
-                                                                <button className="action-btn-sm delete" onClick={() => handleDeleteColab(colab)} title="Excluir" style={{ color: 'var(--accent-red)', background: 'rgba(239,68,68,0.1)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                                                        <td style={{ textAlign: 'center', width: '150px' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', justifyContent: 'center' }}>
+                                                                <button className="action-btn-sm edit" onClick={() => openColabModalForEdit(colab)} title="Editar" style={{ color: 'var(--text-primary)', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', padding: '0.45rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                    <Edit size={16} />
+                                                                </button>
+                                                                <label className="switch-toggle" title={colab.status === 'Ativo' ? 'Bloquear Funcionário' : 'Ativar Funcionário'}>
+                                                                    <input 
+                                                                        type="checkbox" 
+                                                                        checked={colab.status === 'Ativo'} 
+                                                                        onChange={() => handleToggleColabStatus(colab)} 
+                                                                    />
+                                                                    <span className="slider-toggle"></span>
+                                                                </label>
+                                                                <button className="action-btn-sm delete" onClick={() => handleDeleteColab(colab)} title="Excluir" style={{ color: 'var(--accent-red)', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', padding: '0.45rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                                     <Trash2 size={16} />
                                                                 </button>
                                                             </div>
