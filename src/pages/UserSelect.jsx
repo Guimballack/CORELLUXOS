@@ -50,9 +50,6 @@ export default function UserSelect() {
     return (
         <div id="screen-user-select" className="screen active with-header">
             <div className="auth-header-container">
-                <div className="auth-header-badge">
-                    <ShieldAlert size={14} style={{ marginRight: '0.4rem' }} /> ESTAÇÃO DE AUTENTICAÇÃO
-                </div>
                 <h1 className="auth-header-title">
                     Bem-vindo ao Corellux <span className="brand-orange-text">OS</span>
                 </h1>
