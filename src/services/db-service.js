@@ -70,7 +70,20 @@ export const DbService = {
                 console.warn('[DbService] Nenhum usuário retornado do Supabase, usando dados locais.');
                 return mockData.users;
             }
-            return toCamelCase(data);
+            const camelUsers = toCamelCase(data);
+            return camelUsers.map(user => {
+                if (user.permissions && user.permissions.extra) {
+                    const extra = user.permissions.extra;
+                    const cleanPermissions = { ...user.permissions };
+                    delete cleanPermissions.extra;
+                    return {
+                        ...user,
+                        permissions: cleanPermissions,
+                        ...extra
+                    };
+                }
+                return user;
+            });
         } catch (e) {
             console.error('[DbService] Erro ao buscar usuários no Supabase. Usando fallback local:', e.message || e);
             return mockData.users;
@@ -339,7 +352,28 @@ export const DbService = {
     // USER CRUD
     async saveUser(user) {
         try {
-            const snakeUser = toSnakeCase(user);
+            const dbUser = { ...user };
+            const extraFields = [
+                'cpf', 'rg', 'birthDate', 'gender', 'maritalStatus', 'cep', 'address',
+                'department', 'contractType', 'hireDate', 'salary', 'commission', 'va', 'vt',
+                'bank', 'bankAgency', 'bankAccount', 'pix', 'shift', 'workStart', 'workEnd',
+                'workBreak', 'scale', 'docChecklist', 'healthSafetyChecklist', 'otherDocs'
+            ];
+            
+            const extra = {};
+            extraFields.forEach(field => {
+                if (dbUser[field] !== undefined) {
+                    extra[field] = dbUser[field];
+                    delete dbUser[field];
+                }
+            });
+            
+            dbUser.permissions = {
+                ...(dbUser.permissions || {}),
+                extra: extra
+            };
+
+            const snakeUser = toSnakeCase(dbUser);
             let result;
             if (user.id) {
                 result = await supabase
@@ -355,7 +389,22 @@ export const DbService = {
                     .select();
             }
             if (result.error) throw result.error;
-            return { success: true, data: toCamelCase(result.data[0]) };
+            
+            const savedUser = toCamelCase(result.data[0]);
+            if (savedUser.permissions && savedUser.permissions.extra) {
+                const returnedExtra = savedUser.permissions.extra;
+                const cleanPermissions = { ...savedUser.permissions };
+                delete cleanPermissions.extra;
+                return {
+                    success: true,
+                    data: {
+                        ...savedUser,
+                        permissions: cleanPermissions,
+                        ...returnedExtra
+                    }
+                };
+            }
+            return { success: true, data: savedUser };
         } catch (e) {
             console.error('[DbService] Erro ao salvar usuário:', e.message || e);
             return { success: false, error: e };

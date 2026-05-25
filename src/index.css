@@ -4209,6 +4209,7 @@ main {
 .search-box {
     display: flex;
     align-items: center;
+    gap: 0.5rem;
     background-color: var(--bg-input);
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -4235,7 +4236,7 @@ main {
     background-color: var(--bg-card);
     border-radius: 12px;
     border: 1px solid var(--border-color);
-    overflow: hidden;
+    overflow-x: auto;
 }
 
 .products-table {
@@ -4245,9 +4246,10 @@ main {
 
 .products-table th,
 .products-table td {
-    padding: 1rem 1.5rem;
+    padding: 0.85rem 1rem;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
+    white-space: nowrap;
 }
 
 .products-table th {
@@ -4260,6 +4262,11 @@ main {
 .products-table td {
     font-size: 0.95rem;
     color: var(--text-primary);
+}
+
+.product-desc {
+    white-space: normal;
+    min-width: 200px;
 }
 
 .products-table tbody tr:last-child td {

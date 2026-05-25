@@ -30,8 +30,35 @@ import {
     Shield,
     FileText,
     History,
-    AlertTriangle
+    AlertTriangle,
+    FolderOpen,
+    Paperclip,
+    Camera,
+    Eye,
+    Download
 } from 'lucide-react';
+
+const PERSONAL_DOCS_ITEMS = [
+    { id: 'rg', label: 'RG' },
+    { id: 'cnh', label: 'CNH' },
+    { id: 'address', label: 'Comprovante de Endereço' },
+    { id: 'voter', label: 'Título de Eleitor' },
+    { id: 'military', label: 'Reservista' },
+    { id: 'birth_marriage', label: 'Certidão Nasc/Cas' }
+];
+
+const HEALTH_SAFETY_ITEMS = [
+    { id: 'aso_adm', label: 'ASO Admissional' },
+    { id: 'aso_per', label: 'Periódico' },
+    { id: 'aso_ret', label: 'Retorno ao Trabalho' },
+    { id: 'aso_mud', label: 'Mudança de Função' },
+    { id: 'aso_dem', label: 'Demissional' },
+    { id: 'epi_ent', label: 'Entrega EPI' },
+    { id: 'training', label: 'Treinamentos' },
+    { id: 'norms', label: 'Normas Internas' },
+    { id: 'risks', label: 'Ciência de Riscos' },
+    { id: 'nrs', label: "NR's" }
+];
 
 export default function SettingsHub() {
     const [globalState] = useCorelluxState(['currentUser']);
@@ -70,6 +97,30 @@ export default function SettingsHub() {
     const [tempLinkedProducts, setTempLinkedProducts] = useState([]);
     const [tempNotes, setTempNotes] = useState([]);
     const [newNoteText, setNewNoteText] = useState('');
+
+    // Collaborator form states
+    const [colabOpenSections, setColabOpenSections] = useState({
+        pessoais: true,
+        acesso: false,
+        trabalhistas: false,
+        bancarios: false,
+        cargaHoraria: false,
+        checklistPessoais: false,
+        checklistSaude: false,
+        outrosDocs: false,
+        permissoes: false
+    });
+    
+    const toggleColabSection = (sectionKey) => {
+        setColabOpenSections(prev => ({
+            ...prev,
+            [sectionKey]: !prev[sectionKey]
+        }));
+    };
+
+    const [checklistAttachmentView, setChecklistAttachmentView] = useState(null); // { listType, itemId }
+    const [viewerUrl, setViewerUrl] = useState(null);
+    const [otherDocName, setOtherDocName] = useState('');
 
     // Load data from DB
     const loadData = async () => {
@@ -111,6 +162,13 @@ export default function SettingsHub() {
         status: 'Ativo', pin: '1234', phone: '', email: '',
         shift: '', workStart: '', workEnd: '', scale: '',
         salary: 0, bank: '', bankAgency: '', bankAccount: '', pix: '',
+        cpf: '', rg: '', birthDate: '', gender: '', maritalStatus: '',
+        cep: '', address: '', department: '', contractType: '', hireDate: '',
+        commission: 0, va: 0, vt: 0, workBreak: '',
+        img: 'profile/default-avatar.png',
+        docChecklist: {},
+        healthSafetyChecklist: {},
+        otherDocs: [],
         permissions: {
             entrada: true, saida: true, perdas: true, editar: false,
             relatorios: false, config: false, sendNotif: false, receiveNotif: true,
@@ -142,6 +200,24 @@ export default function SettingsHub() {
             bankAgency: user.bankAgency || '',
             bankAccount: user.bankAccount || '',
             pix: user.pix || '',
+            cpf: user.cpf || '',
+            rg: user.rg || '',
+            birthDate: user.birthDate || '',
+            gender: user.gender || '',
+            maritalStatus: user.maritalStatus || '',
+            cep: user.cep || '',
+            address: user.address || '',
+            department: user.department || '',
+            contractType: user.contractType || '',
+            hireDate: user.hireDate || '',
+            commission: user.commission || 0,
+            va: user.va || 0,
+            vt: user.vt || 0,
+            workBreak: user.workBreak || '',
+            img: user.img || 'profile/default-avatar.png',
+            docChecklist: user.docChecklist || {},
+            healthSafetyChecklist: user.healthSafetyChecklist || {},
+            otherDocs: user.otherDocs || [],
             permissions: user.permissions || {
                 entrada: true, saida: true, perdas: true, editar: false,
                 relatorios: false, config: false, sendNotif: false, receiveNotif: true,
@@ -161,6 +237,13 @@ export default function SettingsHub() {
             status: 'Ativo', pin: '1234', phone: '', email: '',
             shift: '', workStart: '', workEnd: '', scale: '',
             salary: 0, bank: '', bankAgency: '', bankAccount: '', pix: '',
+            cpf: '', rg: '', birthDate: '', gender: '', maritalStatus: '',
+            cep: '', address: '', department: '', contractType: '', hireDate: '',
+            commission: 0, va: 0, vt: 0, workBreak: '',
+            img: 'profile/default-avatar.png',
+            docChecklist: {},
+            healthSafetyChecklist: {},
+            otherDocs: [],
             permissions: {
                 entrada: true, saida: true, perdas: true, editar: false,
                 relatorios: false, config: false, sendNotif: false, receiveNotif: true,
@@ -221,7 +304,7 @@ export default function SettingsHub() {
 
         const payload = {
             ...colabForm,
-            img: editingColab ? editingColab.img : 'profile/default-avatar.png',
+            img: colabForm.img || 'profile/default-avatar.png',
             avatarFallback: colabForm.name.charAt(0).toUpperCase()
         };
 
@@ -270,6 +353,156 @@ export default function SettingsHub() {
         
         await DbService.saveUser(updatedUser);
         loadData();
+    };
+
+    // Collaborator helper methods
+    const handleUpdateChecklistValue = (listType, itemId, key, value) => {
+        setColabForm(prev => {
+            const listKey = listType === 'personal' ? 'docChecklist' : 'healthSafetyChecklist';
+            const currentList = { ...(prev[listKey] || {}) };
+            const currentItem = {
+                received: false, mandatory: true, date: '', expiry: '',
+                isIndeterminate: false, isDateIndeterminate: false, notifyExpiry: false, notifyDays: 30, attachments: [],
+                ...(currentList[itemId] || {})
+            };
+            currentItem[key] = value;
+            return {
+                ...prev,
+                [listKey]: {
+                    ...currentList,
+                    [itemId]: currentItem
+                }
+            };
+        });
+    };
+
+    const handleChecklistFileUpload = (e, listType, itemId) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (uploadEvent) => {
+            const url = uploadEvent.target.result;
+            setColabForm(prev => {
+                const listKey = listType === 'personal' ? 'docChecklist' : 'healthSafetyChecklist';
+                const currentList = { ...(prev[listKey] || {}) };
+                const currentItem = {
+                    received: false, mandatory: true, date: '', expiry: '',
+                    isIndeterminate: false, isDateIndeterminate: false, notifyExpiry: false, notifyDays: 30, attachments: [],
+                    ...(currentList[itemId] || {})
+                };
+                const currentAttachments = [...(currentItem.attachments || [])];
+                currentAttachments.push({
+                    name: file.name,
+                    url: url
+                });
+                currentItem.attachments = currentAttachments;
+                currentItem.received = true; // Auto-check received when attaching
+
+                return {
+                    ...prev,
+                    [listKey]: {
+                        ...currentList,
+                        [itemId]: currentItem
+                    }
+                };
+            });
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleRemoveChecklistAttachment = (listType, itemId, index) => {
+        setColabForm(prev => {
+            const listKey = listType === 'personal' ? 'docChecklist' : 'healthSafetyChecklist';
+            const currentList = { ...(prev[listKey] || {}) };
+            if (!currentList[itemId] || !currentList[itemId].attachments) return prev;
+            
+            const currentAttachments = [...currentList[itemId].attachments];
+            currentAttachments.splice(index, 1);
+            
+            const currentItem = {
+                ...currentList[itemId],
+                attachments: currentAttachments
+            };
+            
+            if (currentAttachments.length === 0) {
+                currentItem.received = false;
+            }
+            
+            return {
+                ...prev,
+                [listKey]: {
+                    ...currentList,
+                    [itemId]: currentItem
+                }
+            };
+        });
+    };
+
+    const handleOtherDocUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        const name = otherDocName.trim() || file.name;
+        const reader = new FileReader();
+        reader.onload = (uploadEvent) => {
+            const url = uploadEvent.target.result;
+            setColabForm(prev => {
+                const currentDocs = [...(prev.otherDocs || [])];
+                currentDocs.push({
+                    name,
+                    url,
+                    date: new Date().toLocaleDateString('pt-BR')
+                });
+                return {
+                    ...prev,
+                    otherDocs: currentDocs
+                };
+            });
+            setOtherDocName('');
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleRemoveOtherDoc = (index) => {
+        setColabForm(prev => {
+            const currentDocs = [...(prev.otherDocs || [])];
+            currentDocs.splice(index, 1);
+            return {
+                ...prev,
+                otherDocs: currentDocs
+            };
+        });
+    };
+
+    const formatCurrencyValue = (num) => {
+        if (num === undefined || num === null) return '0,00';
+        return Number(num).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const handleCurrencyInputChange = (e, field) => {
+        let val = e.target.value;
+        val = val.replace(/\D/g, '');
+        if (!val) {
+            setColabForm(prev => ({ ...prev, [field]: 0 }));
+            return;
+        }
+        const floatVal = parseFloat(val) / 100;
+        setColabForm(prev => ({ ...prev, [field]: floatVal }));
+    };
+
+    const handlePhotoUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (uploadEvent) => {
+            setColabForm(prev => ({
+                ...prev,
+                img: uploadEvent.target.result
+            }));
+        };
+        reader.readAsDataURL(file);
     };
 
     // =============================================
@@ -1052,147 +1285,447 @@ export default function SettingsHub() {
                                 {editingColab ? 'Editar Funcionário' : 'Novo Funcionário'}
                             </h3>
 
-                            {/* Section: Personal Info */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Nome Completo</label>
-                                    <input 
-                                        type="text" 
-                                        required 
-                                        value={colabForm.name} 
-                                        onChange={(e) => setColabForm(prev => ({ ...prev, name: e.target.value }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Nome de Exibição (Crachá)</label>
-                                    <input 
-                                        type="text" 
-                                        required 
-                                        value={colabForm.displayName} 
-                                        onChange={(e) => setColabForm(prev => ({ ...prev, displayName: e.target.value }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Cargo / Função</label>
-                                    <input 
-                                        type="text" 
-                                        required 
-                                        value={colabForm.role} 
-                                        onChange={(e) => setColabForm(prev => ({ ...prev, role: e.target.value }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                    />
-                                </div>
-                            </div>
+                            {/* =======================================
+                                ACCORDION CONTAINER
+                               ======================================= */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom: '1.5rem' }}>
 
-                            {/* Section: Access settings */}
-                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', padding: '1.2rem', borderRadius: '10px', marginBottom: '1.5rem' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--accent-orange)', fontWeight: '700', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                                    <Shield size={16} /> CONFIGURAÇÕES DE ACESSO
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
-                                    <div>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Nível de Acesso</label>
-                                        <select 
-                                            value={colabForm.accessLevel}
-                                            onChange={(e) => handleRoleAccessPreset(e.target.value)}
-                                            disabled={!isAdminUser}
-                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
-                                        >
-                                            <option value="Colaborador">Colaborador (Operador)</option>
-                                            <option value="Administrador">Administrador (Total)</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>PIN Numérico (4 dígitos)</label>
-                                        <input 
-                                            type="text" 
-                                            maxLength="4" 
-                                            required 
-                                            value={colabForm.pin}
-                                            onChange={(e) => {
-                                                if (/^\d*$/.test(e.target.value)) {
-                                                    setColabForm(prev => ({ ...prev, pin: e.target.value }));
-                                                }
-                                            }}
-                                            disabled={!isAdminUser}
-                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', textAlign: 'center', letterSpacing: '0.2em', fontWeight: '700' }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Status da Conta</label>
-                                        <select 
-                                            value={colabForm.status}
-                                            onChange={(e) => setColabForm(prev => ({ ...prev, status: e.target.value }))}
-                                            disabled={!isAdminUser}
-                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
-                                        >
-                                            <option value="Ativo">Ativo</option>
-                                            <option value="Bloqueado">Bloqueado</option>
-                                        </select>
-                                    </div>
+                                {/* SEÇÃO: DADOS PESSOAIS E ENDEREÇO */}
+                                <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                                    <button type="button" onClick={() => toggleColabSection('pessoais')} style={{ width: '100%', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                                            <Users size={18} color="var(--accent-orange)" /> Dados Pessoais e Contato
+                                        </div>
+                                        {colabOpenSections.pessoais ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                    </button>
+                                    {colabOpenSections.pessoais && (
+                                        <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                                            {/* Foto e Campos Básicos */}
+                                            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <div style={{ width: '100px', height: '100px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--accent-orange)' }}>
+                                                        <img src={colabForm.img || 'profile/default-avatar.png'} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    </div>
+                                                    <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--bg-input)', padding: '0.3rem 0.6rem', borderRadius: '4px' }}>
+                                                        <Camera size={12} /> Alterar Foto
+                                                        <input type="file" accept="image/*" onChange={handlePhotoUpload} style={{ display: 'none' }} />
+                                                    </label>
+                                                </div>
+                                                <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Nome Completo</label>
+                                                        <input type="text" required value={colabForm.name} onChange={(e) => setColabForm(prev => ({ ...prev, name: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Nome de Exibição (Crachá)</label>
+                                                        <input type="text" required value={colabForm.displayName} onChange={(e) => setColabForm(prev => ({ ...prev, displayName: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Cargo / Função</label>
+                                                        <input type="text" required value={colabForm.role} onChange={(e) => setColabForm(prev => ({ ...prev, role: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>CPF</label>
+                                                        <input type="text" value={colabForm.cpf} onChange={(e) => setColabForm(prev => ({ ...prev, cpf: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>RG</label>
+                                                        <input type="text" value={colabForm.rg} onChange={(e) => setColabForm(prev => ({ ...prev, rg: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Data de Nascimento</label>
+                                                        <input type="date" value={colabForm.birthDate} onChange={(e) => setColabForm(prev => ({ ...prev, birthDate: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Sexo / Gênero</label>
+                                                        <input type="text" value={colabForm.gender} onChange={(e) => setColabForm(prev => ({ ...prev, gender: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Estado Civil</label>
+                                                        <select value={colabForm.maritalStatus} onChange={(e) => setColabForm(prev => ({ ...prev, maritalStatus: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}>
+                                                            <option value="">Selecione...</option>
+                                                            <option value="Solteiro(a)">Solteiro(a)</option>
+                                                            <option value="Casado(a)">Casado(a)</option>
+                                                            <option value="Divorciado(a)">Divorciado(a)</option>
+                                                            <option value="Viúvo(a)">Viúvo(a)</option>
+                                                            <option value="União Estável">União Estável</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Telefone / WhatsApp</label>
+                                                        <input type="text" value={colabForm.phone} onChange={(e) => setColabForm(prev => ({ ...prev, phone: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>E-mail Pessoal / Corporativo</label>
+                                                        <input type="email" value={colabForm.email} onChange={(e) => setColabForm(prev => ({ ...prev, email: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {/* Endereço */}
+                                            <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '1rem' }}>
+                                                <div>
+                                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>CEP</label>
+                                                    <input type="text" value={colabForm.cep} onChange={(e) => setColabForm(prev => ({ ...prev, cep: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                </div>
+                                                <div>
+                                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Endereço Completo (Rua, Número, Bairro, Cidade)</label>
+                                                    <input type="text" value={colabForm.address} onChange={(e) => setColabForm(prev => ({ ...prev, address: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
-                                {/* Permissions Matrix */}
-                                <div style={{ marginTop: '1.2rem' }}>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.6rem', fontWeight: '700' }}>Matriz de Permissões</label>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.6rem' }}>
-                                        {[
-                                            { label: 'Registrar Entrada Estoque', key: 'entrada' },
-                                            { label: 'Registrar Saída Estoque', key: 'saida' },
-                                            { label: 'Registrar Perdas', key: 'perdas' },
-                                            { label: 'Aprovar Entregas/Pedidos', key: 'approveRequests' },
-                                            { label: 'Configurações de Cadastros', key: 'config' },
-                                            { label: 'Visualizar Relatórios', key: 'relatorios' },
-                                            { label: 'Editar Dados Estruturais', key: 'editar' },
-                                            { label: 'Gerenciar Fornecedores', key: 'supplierCreate' }
-                                        ].map((perm) => (
-                                            <label key={perm.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: isAdminUser ? 'pointer' : 'default', color: colabForm.permissions[perm.key] ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                                                <input 
-                                                    type="checkbox" 
-                                                    checked={colabForm.permissions[perm.key]}
-                                                    disabled={!isAdminUser}
-                                                    onChange={() => handleColabPermissionChange(perm.key)}
-                                                    style={{ accentColor: 'var(--accent-orange)' }}
-                                                />
-                                                {perm.label}
-                                            </label>
-                                        ))}
-                                    </div>
+                                {/* SEÇÃO: ACESSO E PERMISSÕES */}
+                                <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                                    <button type="button" onClick={() => toggleColabSection('acesso')} style={{ width: '100%', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                                            <Shield size={18} color="var(--accent-orange)" /> Acesso e Permissões do Sistema
+                                        </div>
+                                        {colabOpenSections.acesso ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                    </button>
+                                    {colabOpenSections.acesso && (
+                                        <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                                                <div>
+                                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Nível de Acesso</label>
+                                                    <select value={colabForm.accessLevel} onChange={(e) => handleRoleAccessPreset(e.target.value)} disabled={!isAdminUser} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}>
+                                                        <option value="Colaborador">Colaborador (Operador)</option>
+                                                        <option value="Administrador">Administrador (Total)</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>PIN Numérico (Acesso App)</label>
+                                                    <input type="text" maxLength="4" required value={colabForm.pin} onChange={(e) => { if (/^\d*$/.test(e.target.value)) setColabForm(prev => ({ ...prev, pin: e.target.value })); }} disabled={!isAdminUser} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', textAlign: 'center', letterSpacing: '0.2em', fontWeight: '700' }} />
+                                                </div>
+                                                <div>
+                                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Status da Conta</label>
+                                                    <select value={colabForm.status} onChange={(e) => setColabForm(prev => ({ ...prev, status: e.target.value }))} disabled={!isAdminUser} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}>
+                                                        <option value="Ativo">Ativo</option>
+                                                        <option value="Bloqueado">Bloqueado</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div style={{ marginTop: '1.2rem' }}>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.6rem', fontWeight: '700' }}>Matriz de Permissões Específicas</label>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.6rem', background: 'var(--bg-input)', padding: '1rem', borderRadius: '8px' }}>
+                                                    {[
+                                                        { label: 'Entrada Estoque', key: 'entrada' },
+                                                        { label: 'Saída Estoque', key: 'saida' },
+                                                        { label: 'Registrar Perdas', key: 'perdas' },
+                                                        { label: 'Aprovar Pedidos', key: 'approveRequests' },
+                                                        { label: 'Configurações', key: 'config' },
+                                                        { label: 'Ver Relatórios', key: 'relatorios' },
+                                                        { label: 'Editar Cadastros', key: 'editar' },
+                                                        { label: 'Criar Fornecedores', key: 'supplierCreate' }
+                                                    ].map((perm) => (
+                                                        <label key={perm.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: isAdminUser ? 'pointer' : 'default', color: colabForm.permissions[perm.key] ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                                                            <input type="checkbox" checked={colabForm.permissions[perm.key]} disabled={!isAdminUser} onChange={() => handleColabPermissionChange(perm.key)} style={{ accentColor: 'var(--accent-orange)' }} />
+                                                            {perm.label}
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
 
-                            {/* Section: Operational Data */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Telefone</label>
-                                    <input 
-                                        type="text" 
-                                        value={colabForm.phone} 
-                                        onChange={(e) => setColabForm(prev => ({ ...prev, phone: e.target.value }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                    />
+                                {/* SEÇÃO: DADOS TRABALHISTAS E REMUNERAÇÃO */}
+                                <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                                    <button type="button" onClick={() => toggleColabSection('trabalhistas')} style={{ width: '100%', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                                            <FileText size={18} color="var(--accent-orange)" /> Dados Trabalhistas e Remuneração
+                                        </div>
+                                        {colabOpenSections.trabalhistas ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                    </button>
+                                    {colabOpenSections.trabalhistas && (
+                                        <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Departamento / Setor</label>
+                                                <input type="text" value={colabForm.department} onChange={(e) => setColabForm(prev => ({ ...prev, department: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Tipo de Contrato</label>
+                                                <select value={colabForm.contractType} onChange={(e) => setColabForm(prev => ({ ...prev, contractType: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}>
+                                                    <option value="">Selecione...</option>
+                                                    <option value="CLT">CLT</option>
+                                                    <option value="PJ">PJ</option>
+                                                    <option value="Estágio">Estágio</option>
+                                                    <option value="Temporário">Temporário</option>
+                                                    <option value="Freelancer">Freelancer / Extra</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Data de Admissão</label>
+                                                <input type="date" value={colabForm.hireDate} onChange={(e) => setColabForm(prev => ({ ...prev, hireDate: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Salário Base (R$)</label>
+                                                <input type="text" value={formatCurrencyValue(colabForm.salary)} onChange={(e) => handleCurrencyInputChange(e, 'salary')} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Comissão (%)</label>
+                                                <input type="number" step="0.1" value={colabForm.commission} onChange={(e) => setColabForm(prev => ({ ...prev, commission: parseFloat(e.target.value) || 0 }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Vale Alimentação (R$)</label>
+                                                <input type="text" value={formatCurrencyValue(colabForm.va)} onChange={(e) => handleCurrencyInputChange(e, 'va')} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Vale Transporte (R$)</label>
+                                                <input type="text" value={formatCurrencyValue(colabForm.vt)} onChange={(e) => handleCurrencyInputChange(e, 'vt')} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>E-mail</label>
-                                    <input 
-                                        type="email" 
-                                        value={colabForm.email} 
-                                        onChange={(e) => setColabForm(prev => ({ ...prev, email: e.target.value }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                    />
+
+                                {/* SEÇÃO: CARGA HORÁRIA E ESCALA */}
+                                <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                                    <button type="button" onClick={() => toggleColabSection('cargaHoraria')} style={{ width: '100%', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                                            <History size={18} color="var(--accent-orange)" /> Carga Horária e Escala
+                                        </div>
+                                        {colabOpenSections.cargaHoraria ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                    </button>
+                                    {colabOpenSections.cargaHoraria && (
+                                        <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Escala (Ex: 6x1, 5x2, 12x36)</label>
+                                                <input type="text" value={colabForm.scale} onChange={(e) => setColabForm(prev => ({ ...prev, scale: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Turno (Ex: Manhã, Tarde, Noite)</label>
+                                                <input type="text" value={colabForm.shift} onChange={(e) => setColabForm(prev => ({ ...prev, shift: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Horário de Início</label>
+                                                <input type="time" value={colabForm.workStart} onChange={(e) => setColabForm(prev => ({ ...prev, workStart: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Horário de Término</label>
+                                                <input type="time" value={colabForm.workEnd} onChange={(e) => setColabForm(prev => ({ ...prev, workEnd: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Pausa / Almoço</label>
+                                                <input type="text" placeholder="Ex: 1 hora" value={colabForm.workBreak} onChange={(e) => setColabForm(prev => ({ ...prev, workBreak: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Turno / Escala</label>
-                                    <input 
-                                        type="text" 
-                                        placeholder="Ex: 6x1 Diurno" 
-                                        value={colabForm.scale} 
-                                        onChange={(e) => setColabForm(prev => ({ ...prev, scale: e.target.value }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                    />
+
+                                {/* SEÇÃO: DADOS BANCÁRIOS */}
+                                <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                                    <button type="button" onClick={() => toggleColabSection('bancarios')} style={{ width: '100%', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                                            <Users size={18} color="var(--accent-orange)" /> Dados Bancários
+                                        </div>
+                                        {colabOpenSections.bancarios ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                    </button>
+                                    {colabOpenSections.bancarios && (
+                                        <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Banco</label>
+                                                <input type="text" value={colabForm.bank} onChange={(e) => setColabForm(prev => ({ ...prev, bank: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Agência</label>
+                                                <input type="text" value={colabForm.bankAgency} onChange={(e) => setColabForm(prev => ({ ...prev, bankAgency: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Conta com Dígito</label>
+                                                <input type="text" value={colabForm.bankAccount} onChange={(e) => setColabForm(prev => ({ ...prev, bankAccount: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Chave PIX</label>
+                                                <input type="text" value={colabForm.pix} onChange={(e) => setColabForm(prev => ({ ...prev, pix: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
+
+                                {/* SEÇÃO: CHECKLIST DOCUMENTOS PESSOAIS */}
+                                <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                                    <button type="button" onClick={() => toggleColabSection('checklistPessoais')} style={{ width: '100%', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                                            <FolderOpen size={18} color="var(--accent-orange)" /> Checklist de Documentos Pessoais
+                                        </div>
+                                        {colabOpenSections.checklistPessoais ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                    </button>
+                                    {colabOpenSections.checklistPessoais && (
+                                        <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', overflowX: 'auto' }}>
+                                            <table className="data-table" style={{ width: '100%', minWidth: '700px', fontSize: '0.85rem' }}>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Documento</th>
+                                                        <th style={{ textAlign: 'center' }}>Recebido</th>
+                                                        <th style={{ textAlign: 'center' }}>Obrigatório</th>
+                                                        <th>Data / Validade</th>
+                                                        <th>Anexos</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {PERSONAL_DOCS_ITEMS.map(item => {
+                                                        const docState = colabForm.docChecklist?.[item.id] || { received: false, mandatory: true, date: '', expiry: '', attachments: [], isIndeterminate: false };
+                                                        return (
+                                                            <tr key={item.id}>
+                                                                <td style={{ fontWeight: '600' }}>{item.label}</td>
+                                                                <td style={{ textAlign: 'center' }}>
+                                                                    <input type="checkbox" checked={docState.received} onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'received', e.target.checked)} style={{ accentColor: 'var(--accent-orange)', transform: 'scale(1.2)' }} />
+                                                                </td>
+                                                                <td style={{ textAlign: 'center' }}>
+                                                                    <input type="checkbox" checked={docState.mandatory} onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'mandatory', e.target.checked)} style={{ accentColor: 'var(--accent-orange)' }} />
+                                                                </td>
+                                                                <td>
+                                                                    <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+                                                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                                            <input type="checkbox" checked={docState.isIndeterminate} onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'isIndeterminate', e.target.checked)} style={{ accentColor: 'var(--accent-orange)' }} />
+                                                                            Não possui validade
+                                                                        </label>
+                                                                        {!docState.isIndeterminate && (
+                                                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                                                <input type="date" value={docState.date} onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'date', e.target.value)} title="Data de Recebimento / Emissão" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.3rem', borderRadius: '4px', fontSize: '0.8rem', outline: 'none' }} />
+                                                                                <input type="date" value={docState.expiry} onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'expiry', e.target.value)} title="Data de Validade" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.3rem', borderRadius: '4px', fontSize: '0.8rem', outline: 'none' }} />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                                        {docState.attachments?.map((att, idx) => (
+                                                                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem 0.5rem', borderRadius: '4px' }}>
+                                                                                <Paperclip size={14} color="var(--accent-orange)" />
+                                                                                <span style={{ fontSize: '0.75rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', maxWidth: '100px' }} onClick={() => setViewerUrl(att.url)} title={att.name}>{att.name}</span>
+                                                                                <button type="button" onClick={() => handleRemoveChecklistAttachment('personal', item.id, idx)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                                                                            </div>
+                                                                        ))}
+                                                                        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'var(--bg-input)', border: '1px dashed var(--border-color)', padding: '0.4rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                                            <Plus size={14} /> Anexar Arquivo
+                                                                            <input type="file" onChange={(e) => handleChecklistFileUpload(e, 'personal', item.id)} style={{ display: 'none' }} />
+                                                                        </label>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* SEÇÃO: CHECKLIST SAÚDE E SEGURANÇA */}
+                                <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                                    <button type="button" onClick={() => toggleColabSection('checklistSaude')} style={{ width: '100%', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                                            <AlertTriangle size={18} color="var(--accent-orange)" /> Saúde e Segurança Ocupacional (SST)
+                                        </div>
+                                        {colabOpenSections.checklistSaude ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                    </button>
+                                    {colabOpenSections.checklistSaude && (
+                                        <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', overflowX: 'auto' }}>
+                                            <table className="data-table" style={{ width: '100%', minWidth: '700px', fontSize: '0.85rem' }}>
+                                                <thead>
+                                                    <tr>
+                                                        <th>Item / Exame / Treinamento</th>
+                                                        <th style={{ textAlign: 'center' }}>Realizado</th>
+                                                        <th style={{ textAlign: 'center' }}>Obrigatório</th>
+                                                        <th>Data / Validade</th>
+                                                        <th>Anexos</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {HEALTH_SAFETY_ITEMS.map(item => {
+                                                        const docState = colabForm.healthSafetyChecklist?.[item.id] || { received: false, mandatory: true, date: '', expiry: '', attachments: [], isIndeterminate: false };
+                                                        return (
+                                                            <tr key={item.id}>
+                                                                <td style={{ fontWeight: '600' }}>{item.label}</td>
+                                                                <td style={{ textAlign: 'center' }}>
+                                                                    <input type="checkbox" checked={docState.received} onChange={(e) => handleUpdateChecklistValue('health', item.id, 'received', e.target.checked)} style={{ accentColor: 'var(--accent-orange)', transform: 'scale(1.2)' }} />
+                                                                </td>
+                                                                <td style={{ textAlign: 'center' }}>
+                                                                    <input type="checkbox" checked={docState.mandatory} onChange={(e) => handleUpdateChecklistValue('health', item.id, 'mandatory', e.target.checked)} style={{ accentColor: 'var(--accent-orange)' }} />
+                                                                </td>
+                                                                <td>
+                                                                    <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
+                                                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                                            <input type="checkbox" checked={docState.isIndeterminate} onChange={(e) => handleUpdateChecklistValue('health', item.id, 'isIndeterminate', e.target.checked)} style={{ accentColor: 'var(--accent-orange)' }} />
+                                                                            Sem validade (Único)
+                                                                        </label>
+                                                                        {!docState.isIndeterminate && (
+                                                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                                                <input type="date" value={docState.date} onChange={(e) => handleUpdateChecklistValue('health', item.id, 'date', e.target.value)} title="Data de Realização" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.3rem', borderRadius: '4px', fontSize: '0.8rem', outline: 'none' }} />
+                                                                                <input type="date" value={docState.expiry} onChange={(e) => handleUpdateChecklistValue('health', item.id, 'expiry', e.target.value)} title="Data de Vencimento" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.3rem', borderRadius: '4px', fontSize: '0.8rem', outline: 'none' }} />
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                                <td>
+                                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                                        {docState.attachments?.map((att, idx) => (
+                                                                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem 0.5rem', borderRadius: '4px' }}>
+                                                                                <Paperclip size={14} color="var(--accent-orange)" />
+                                                                                <span style={{ fontSize: '0.75rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', maxWidth: '100px' }} onClick={() => setViewerUrl(att.url)} title={att.name}>{att.name}</span>
+                                                                                <button type="button" onClick={() => handleRemoveChecklistAttachment('health', item.id, idx)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer' }}><Trash2 size={14} /></button>
+                                                                            </div>
+                                                                        ))}
+                                                                        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'var(--bg-input)', border: '1px dashed var(--border-color)', padding: '0.4rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                                            <Plus size={14} /> Anexar Arquivo
+                                                                            <input type="file" onChange={(e) => handleChecklistFileUpload(e, 'health', item.id)} style={{ display: 'none' }} />
+                                                                        </label>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* SEÇÃO: OUTROS DOCUMENTOS E ANEXOS */}
+                                <div style={{ border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                                    <button type="button" onClick={() => toggleColabSection('outrosDocs')} style={{ width: '100%', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', border: 'none', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                                            <Paperclip size={18} color="var(--accent-orange)" /> Outros Documentos e Anexos Livres
+                                        </div>
+                                        {colabOpenSections.outrosDocs ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                                    </button>
+                                    {colabOpenSections.outrosDocs && (
+                                        <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)' }}>
+                                            <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem', alignItems: 'flex-end' }}>
+                                                <div style={{ flex: 1 }}>
+                                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Nome / Descrição do Documento</label>
+                                                    <input type="text" value={otherDocName} onChange={(e) => setOtherDocName(e.target.value)} placeholder="Ex: Certificado de Curso de Vendas" style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                </div>
+                                                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'var(--accent-orange)', color: '#fff', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', height: '38px' }}>
+                                                    <Plus size={16} /> Selecionar e Anexar
+                                                    <input type="file" onChange={handleOtherDocUpload} style={{ display: 'none' }} />
+                                                </label>
+                                            </div>
+
+                                            {colabForm.otherDocs && colabForm.otherDocs.length > 0 ? (
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
+                                                    {colabForm.otherDocs.map((doc, idx) => (
+                                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.05)', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                                            <FileText size={24} color="var(--accent-orange)" />
+                                                            <div style={{ flex: 1, overflow: 'hidden' }}>
+                                                                <div style={{ fontWeight: '600', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', cursor: 'pointer' }} onClick={() => setViewerUrl(doc.url)} title={doc.name}>{doc.name}</div>
+                                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Anexado em: {doc.date}</div>
+                                                            </div>
+                                                            <button type="button" onClick={() => handleRemoveOtherDoc(idx)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer', padding: '0.5rem' }} title="Remover"><Trash2 size={16} /></button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            ) : (
+                                                <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', border: '1px dashed var(--border-color)' }}>
+                                                    Nenhum documento extra anexado.
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
                             </div>
 
                             {/* Actions */}
@@ -1202,6 +1735,22 @@ export default function SettingsHub() {
                             </div>
                         </form>
                     </div>
+
+                    {/* Viewer Overlay for Attachments */}
+                    {viewerUrl && (
+                        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.9)', zIndex: 9999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: '100%', padding: '1rem', display: 'flex', justifyContent: 'flex-end' }}>
+                                <button type="button" onClick={() => setViewerUrl(null)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.2rem', fontWeight: 'bold' }}><X size={24} /> Fechar</button>
+                            </div>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '2rem', overflow: 'hidden' }}>
+                                {viewerUrl.startsWith('data:image/') ? (
+                                    <img src={viewerUrl} alt="Visualização" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                                ) : (
+                                    <iframe src={viewerUrl} title="Documento" style={{ width: '90%', height: '90%', background: '#fff', border: 'none', borderRadius: '8px' }} />
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

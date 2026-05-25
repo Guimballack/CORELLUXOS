@@ -1097,7 +1097,7 @@ export default function LogisticsHub() {
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{p.avgStock || 0}</td>
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{p.maxStock || 0}</td>
                                                                 <td style={{ textAlign: 'center' }}>
-                                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                                                                         {isOut ? (
                                                                             <span className="stock-badge stock-out"><X size={12} /> ZERADO</span>
                                                                         ) : isLow ? (
