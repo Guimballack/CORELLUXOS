@@ -84,6 +84,9 @@ export default function SettingsHub() {
     const [showColabModal, setShowColabModal] = useState(false);
     const [editingColab, setEditingColab] = useState(null);
     const [colabToDelete, setColabToDelete] = useState(null);
+    const [prodToDelete, setProdToDelete] = useState(null);
+    const [catToDelete, setCatToDelete] = useState(null);
+    const [fornToDelete, setFornToDelete] = useState(null);
     const [toast, setToast] = useState(null);
 
     const [showProdModal, setShowProdModal] = useState(false);
@@ -583,31 +586,37 @@ export default function SettingsHub() {
         e.preventDefault();
         
         if (!editingProd && produtos.some(p => p.sku.toLowerCase() === prodForm.sku.toLowerCase())) {
-            alert('Erro: Já existe um produto cadastrado com este SKU.');
+            showToast('Erro: Já existe um produto cadastrado com este SKU.', 'error');
             return;
         }
 
         const result = await DbService.saveProduct(prodForm, editingProd ? editingProd.sku : null);
         if (result.success) {
-            alert('Produto gravado com sucesso!');
+            showToast('Produto gravado com sucesso!', 'success');
         } else {
-            alert('[Aviso] Gravado em cache local offline.');
+            showToast('[Aviso] Gravado em cache local offline.', 'warning');
         }
 
         setShowProdModal(false);
         loadData();
     };
 
-    const handleDeleteProd = async (prod) => {
-        if (window.confirm(`Tem certeza que deseja excluir o produto "${prod.name}" (${prod.sku})?`)) {
-            const result = await DbService.deleteProduct(prod.sku);
-            if (result.success) {
-                alert('Produto excluído com sucesso.');
-            } else {
-                alert('[Aviso] Removido no cache local offline.');
-            }
-            loadData();
+    const handleDeleteProd = (prod) => {
+        setProdToDelete(prod);
+    };
+
+    const confirmDeleteProd = async () => {
+        if (!prodToDelete) return;
+        const prod = prodToDelete;
+        setProdToDelete(null);
+
+        const result = await DbService.deleteProduct(prod.sku);
+        if (result.success) {
+            showToast('Produto excluído com sucesso.', 'success');
+        } else {
+            showToast('[Aviso] Removido no cache local offline.', 'warning');
         }
+        loadData();
     };
 
     const handleToggleProdStatus = async (prod) => {
@@ -656,25 +665,31 @@ export default function SettingsHub() {
 
         const result = await DbService.saveCategory(payload);
         if (result.success) {
-            alert('Categoria gravada com sucesso!');
+            showToast('Categoria gravada com sucesso!', 'success');
         } else {
-            alert('[Aviso] Gravada em cache local offline.');
+            showToast('[Aviso] Gravada em cache local offline.', 'warning');
         }
 
         setShowCatModal(false);
         loadData();
     };
 
-    const handleDeleteCat = async (cat) => {
-        if (window.confirm(`Excluir a categoria "${cat.name}"? Isso não apagará os produtos dela, mas removerá o vínculo.`)) {
-            const result = await DbService.deleteCategory(cat.id);
-            if (result.success) {
-                alert('Categoria excluída com sucesso.');
-            } else {
-                alert('[Aviso] Removida no cache local offline.');
-            }
-            loadData();
+    const handleDeleteCat = (cat) => {
+        setCatToDelete(cat);
+    };
+
+    const confirmDeleteCat = async () => {
+        if (!catToDelete) return;
+        const cat = catToDelete;
+        setCatToDelete(null);
+
+        const result = await DbService.deleteCategory(cat.id);
+        if (result.success) {
+            showToast('Categoria excluída com sucesso.', 'success');
+        } else {
+            showToast('[Aviso] Removida no cache local offline.', 'warning');
         }
+        loadData();
     };
 
     const handleToggleCatStatus = async (cat) => {
@@ -756,25 +771,31 @@ export default function SettingsHub() {
 
         const result = await DbService.saveSupplier(payload);
         if (result.success) {
-            alert('Fornecedor gravado com sucesso!');
+            showToast('Fornecedor gravado com sucesso!', 'success');
         } else {
-            alert('[Aviso] Gravado em cache local offline.');
+            showToast('[Aviso] Gravado em cache local offline.', 'warning');
         }
 
         setShowFornModal(false);
         loadData();
     };
 
-    const handleDeleteForn = async (sup) => {
-        if (window.confirm(`Excluir o fornecedor "${sup.nomeFantasia || sup.razaoSocial}"?`)) {
-            const result = await DbService.deleteSupplier(sup.id);
-            if (result.success) {
-                alert('Fornecedor removido com sucesso.');
-            } else {
-                alert('[Aviso] Removido no cache local offline.');
-            }
-            loadData();
+    const handleDeleteForn = (sup) => {
+        setFornToDelete(sup);
+    };
+
+    const confirmDeleteForn = async () => {
+        if (!fornToDelete) return;
+        const sup = fornToDelete;
+        setFornToDelete(null);
+
+        const result = await DbService.deleteSupplier(sup.id);
+        if (result.success) {
+            showToast('Fornecedor removido com sucesso.', 'success');
+        } else {
+            showToast('[Aviso] Removido no cache local offline.', 'warning');
         }
+        loadData();
     };
 
     const handleToggleFornStatus = async (sup) => {
@@ -1083,8 +1104,8 @@ export default function SettingsHub() {
                                                 <th>Unidade</th>
                                                 <th>Categoria</th>
                                                 <th>Estoque</th>
-                                                <th>Status</th>
-                                                <th style={{ textAlign: 'center' }}>Ações</th>
+                                                <th style={{ width: '120px' }}>Status</th>
+                                                <th style={{ textAlign: 'center', width: '130px' }}>Ações</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1101,15 +1122,18 @@ export default function SettingsHub() {
                                                     <td>{prod.unit}</td>
                                                     <td><span className="category-tag">{prod.category}</span></td>
                                                     <td>{prod.stock}</td>
-                                                    <td>
+                                                    <td style={{ width: '120px' }}>
                                                         <span className={`status-badge ${prod.status === 'Ativo' ? 'badge-ativo' : 'badge-desligado'}`} style={{
                                                             background: prod.status === 'Ativo' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
                                                             color: prod.status === 'Ativo' ? 'var(--accent-green)' : 'var(--accent-red)',
+                                                            width: '95px',
+                                                            display: 'inline-block',
+                                                            textAlign: 'center'
                                                         }}>
                                                             {prod.status}
                                                         </span>
                                                     </td>
-                                                    <td style={{ textAlign: 'center', width: '90px' }}>
+                                                    <td style={{ textAlign: 'center', width: '130px' }}>
                                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', justifyContent: 'center' }}>
                                                             <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
                                                                 <button className="action-btn-sm edit" onClick={() => openProdModalForEdit(prod)} title="Editar" style={{ color: 'var(--text-primary)', background: 'rgba(255,255,255,0.05)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
@@ -1166,8 +1190,8 @@ export default function SettingsHub() {
                                             <tr>
                                                 <th>Nome</th>
                                                 <th>Descrição</th>
-                                                <th>Status</th>
-                                                <th style={{ textAlign: 'center' }}>Ações</th>
+                                                <th style={{ width: '120px' }}>Status</th>
+                                                <th style={{ textAlign: 'center', width: '130px' }}>Ações</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1182,15 +1206,18 @@ export default function SettingsHub() {
                                                         </div>
                                                     </td>
                                                     <td style={{ color: 'var(--text-secondary)' }}>{cat.desc || '-'}</td>
-                                                    <td>
+                                                    <td style={{ width: '120px' }}>
                                                         <span className={`status-badge ${cat.status === 'Ativo' ? 'badge-ativo' : 'badge-desligado'}`} style={{
                                                             background: cat.status === 'Ativo' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
                                                             color: cat.status === 'Ativo' ? 'var(--accent-green)' : 'var(--accent-red)',
+                                                            width: '95px',
+                                                            display: 'inline-block',
+                                                            textAlign: 'center'
                                                         }}>
                                                             {cat.status}
                                                         </span>
                                                     </td>
-                                                    <td style={{ textAlign: 'center', width: '90px' }}>
+                                                    <td style={{ textAlign: 'center', width: '130px' }}>
                                                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', justifyContent: 'center' }}>
                                                             <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
                                                                 <button className="action-btn-sm edit" onClick={() => openCatModalForEdit(cat)} title="Editar" style={{ color: 'var(--text-primary)', background: 'rgba(255,255,255,0.05)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
@@ -1250,8 +1277,8 @@ export default function SettingsHub() {
                                                 <th>Contato Comercial</th>
                                                 <th>Prazo Logístico</th>
                                                 <th>Avaliação Média</th>
-                                                <th>Situação</th>
-                                                <th style={{ textAlign: 'center' }}>Ações</th>
+                                                <th style={{ width: '120px' }}>Situação</th>
+                                                <th style={{ textAlign: 'center', width: '130px' }}>Ações</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1279,15 +1306,18 @@ export default function SettingsHub() {
                                                                 <Star size={14} style={{ fill: 'var(--accent-orange)' }} /> {avgRating.toFixed(1)}
                                                             </span>
                                                         </td>
-                                                        <td>
+                                                        <td style={{ width: '120px' }}>
                                                             <span className={`status-badge ${badge}`} style={{
                                                                 background: forn.situacao === 'Ativo' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
                                                                 color: forn.situacao === 'Ativo' ? 'var(--accent-green)' : 'var(--accent-red)',
+                                                                width: '95px',
+                                                                display: 'inline-block',
+                                                                textAlign: 'center'
                                                             }}>
                                                                 {forn.situacao}
                                                             </span>
                                                         </td>
-                                                        <td style={{ textAlign: 'center', width: '90px' }}>
+                                                        <td style={{ textAlign: 'center', width: '130px' }}>
                                                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', justifyContent: 'center' }}>
                                                                 <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
                                                                     <button className="action-btn-sm edit" onClick={() => openFornModalForEdit(forn)} title="Editar/Detalhes" style={{ color: 'var(--text-primary)', background: 'rgba(255,255,255,0.05)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
@@ -2513,6 +2543,204 @@ export default function SettingsHub() {
                     >
                         <X size={14} />
                     </button>
+                </div>
+            , document.body)}
+
+            {/* MODAL: CONFIRMAR EXCLUSÃO DE PRODUTO */}
+            {prodToDelete && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10010 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '450px', width: '90%', textAlign: 'center', padding: '2rem' }}>
+                        <div style={{
+                            width: '70px',
+                            height: '70px',
+                            borderRadius: '50%',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '2px solid #ef4444',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 1.5rem auto',
+                            boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)'
+                        }}>
+                            <Trash2 size={36} color="#ef4444" />
+                        </div>
+                        
+                        <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.8rem', fontWeight: '800' }}>
+                            Excluir Produto?
+                        </h3>
+                        
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '2rem' }}>
+                            Tem certeza que deseja excluir o produto <strong style={{ color: 'var(--text-primary)' }}>{prodToDelete.name}</strong> ({prodToDelete.sku})?<br/>
+                            Esta ação removerá permanentemente o cadastro e não poderá ser desfeita.
+                        </p>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                            <button 
+                                type="button" 
+                                className="btn-confirm-modal" 
+                                onClick={() => setProdToDelete(null)}
+                                style={{ 
+                                    flex: 1, 
+                                    background: 'rgba(255, 255, 255, 0.05)', 
+                                    border: '1.5px solid var(--border-color)', 
+                                    color: 'var(--text-primary)',
+                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                CANCELAR
+                            </button>
+                            <button 
+                                type="button" 
+                                className="btn-clear-modal" 
+                                onClick={confirmDeleteProd}
+                                style={{ 
+                                    flex: 1, 
+                                    background: '#ef4444', 
+                                    border: '1.5px solid #000000', 
+                                    color: '#ffffff',
+                                    boxShadow: '0 4px 0px #000000',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                SIM, EXCLUIR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* MODAL: CONFIRMAR EXCLUSÃO DE CATEGORIA */}
+            {catToDelete && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10010 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '450px', width: '90%', textAlign: 'center', padding: '2rem' }}>
+                        <div style={{
+                            width: '70px',
+                            height: '70px',
+                            borderRadius: '50%',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '2px solid #ef4444',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 1.5rem auto',
+                            boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)'
+                        }}>
+                            <Trash2 size={36} color="#ef4444" />
+                        </div>
+                        
+                        <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.8rem', fontWeight: '800' }}>
+                            Excluir Categoria?
+                        </h3>
+                        
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '2rem' }}>
+                            Tem certeza que deseja excluir a categoria <strong style={{ color: 'var(--text-primary)' }}>{catToDelete.name}</strong>?<br/>
+                            Isso não apagará os produtos dela, mas removerá o vínculo. Esta ação não poderá ser desfeita.
+                        </p>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                            <button 
+                                type="button" 
+                                className="btn-confirm-modal" 
+                                onClick={() => setCatToDelete(null)}
+                                style={{ 
+                                    flex: 1, 
+                                    background: 'rgba(255, 255, 255, 0.05)', 
+                                    border: '1.5px solid var(--border-color)', 
+                                    color: 'var(--text-primary)',
+                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                CANCELAR
+                            </button>
+                            <button 
+                                type="button" 
+                                className="btn-clear-modal" 
+                                onClick={confirmDeleteCat}
+                                style={{ 
+                                    flex: 1, 
+                                    background: '#ef4444', 
+                                    border: '1.5px solid #000000', 
+                                    color: '#ffffff',
+                                    boxShadow: '0 4px 0px #000000',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                SIM, EXCLUIR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* MODAL: CONFIRMAR EXCLUSÃO DE FORNECEDOR */}
+            {fornToDelete && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10010 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '450px', width: '90%', textAlign: 'center', padding: '2rem' }}>
+                        <div style={{
+                            width: '70px',
+                            height: '70px',
+                            borderRadius: '50%',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '2px solid #ef4444',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 1.5rem auto',
+                            boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)'
+                        }}>
+                            <Trash2 size={36} color="#ef4444" />
+                        </div>
+                        
+                        <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.8rem', fontWeight: '800' }}>
+                            Excluir Fornecedor?
+                        </h3>
+                        
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '2rem' }}>
+                            Tem certeza que deseja excluir o fornecedor <strong style={{ color: 'var(--text-primary)' }}>{fornToDelete.nomeFantasia || fornToDelete.razaoSocial}</strong>?<br/>
+                            Esta ação removerá permanentemente o cadastro e não poderá ser desfeita.
+                        </p>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                            <button 
+                                type="button" 
+                                className="btn-confirm-modal" 
+                                onClick={() => setFornToDelete(null)}
+                                style={{ 
+                                    flex: 1, 
+                                    background: 'rgba(255, 255, 255, 0.05)', 
+                                    border: '1.5px solid var(--border-color)', 
+                                    color: 'var(--text-primary)',
+                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                CANCELAR
+                            </button>
+                            <button 
+                                type="button" 
+                                className="btn-clear-modal" 
+                                onClick={confirmDeleteForn}
+                                style={{ 
+                                    flex: 1, 
+                                    background: '#ef4444', 
+                                    border: '1.5px solid #000000', 
+                                    color: '#ffffff',
+                                    boxShadow: '0 4px 0px #000000',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                SIM, EXCLUIR
+                            </button>
+                        </div>
+                    </div>
                 </div>
             , document.body)}
         </div>
