@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useCorelluxState } from '../store/corellux-state';
 import DbService from '../services/db-service';
 import { getUserAvatar } from '../utils/initial-data';
@@ -1275,8 +1276,8 @@ export default function SettingsHub() {
             {/* =============================================
                 MODAL 1: CADASTRO/EDIÇÃO COLABORADOR
             ============================================= */}
-            {showColabModal && (
-                <div className="pin-modal-overlay active" style={{ zIndex: 1000, overflowY: 'auto' }}>
+            {showColabModal && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000, overflowY: 'auto' }}>
                     <div className="pin-modal-card" style={{ maxWidth: '750px', width: '90%', margin: '2rem auto' }}>
                         <button className="btn-close-modal" onClick={() => setShowColabModal(false)}><X size={18} /></button>
                         
@@ -1752,13 +1753,13 @@ export default function SettingsHub() {
                         </div>
                     )}
                 </div>
-            )}
+            , document.body)}
 
             {/* =============================================
                 MODAL 2: CADASTRO/EDIÇÃO PRODUTO
             ============================================= */}
-            {showProdModal && (
-                <div className="pin-modal-overlay active" style={{ zIndex: 1000 }}>
+            {showProdModal && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
                     <div className="pin-modal-card" style={{ maxWidth: '650px', width: '90%' }}>
                         <button className="btn-close-modal" onClick={() => setShowProdModal(false)}><X size={18} /></button>
                         
@@ -1900,13 +1901,13 @@ export default function SettingsHub() {
                         </form>
                     </div>
                 </div>
-            )}
+            , document.body)}
 
             {/* =============================================
                 MODAL 3: CADASTRO/EDIÇÃO CATEGORIA
             ============================================= */}
-            {showCatModal && (
-                <div className="pin-modal-overlay active" style={{ zIndex: 1000 }}>
+            {showCatModal && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
                     <div className="pin-modal-card" style={{ maxWidth: '500px', width: '90%' }}>
                         <button className="btn-close-modal" onClick={() => setShowCatModal(false)}><X size={18} /></button>
                         
@@ -1964,13 +1965,13 @@ export default function SettingsHub() {
                         </form>
                     </div>
                 </div>
-            )}
+            , document.body)}
 
             {/* =============================================
                 MODAL 4: CADASTRO/EDIÇÃO FORNECEDOR (COMPLEX MODAL)
             ============================================= */}
-            {showFornModal && (
-                <div className="pin-modal-overlay active" style={{ zIndex: 1000, overflowY: 'auto' }}>
+            {showFornModal && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000, overflowY: 'auto' }}>
                     <div className="pin-modal-card" style={{ maxWidth: '850px', width: '90%', margin: '2rem auto' }}>
                         <button className="btn-close-modal" onClick={() => setShowFornModal(false)}><X size={18} /></button>
                         
@@ -2347,7 +2348,7 @@ export default function SettingsHub() {
                         </form>
                     </div>
                 </div>
-            )}
+            , document.body)}
         </div>
     );
 }

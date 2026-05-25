@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useCorelluxState, loadUsers } from '../store/corellux-state';
 import DbService from '../services/db-service';
 import { getUserAvatar } from '../utils/initial-data';
@@ -1763,8 +1764,8 @@ export default function CentralHub() {
             </div>
 
             {/* MODAL DETALHADO DO AVISO */}
-            {activeNotification && (
-                <div className="modal-overlay" onClick={() => setActiveNotification(null)}>
+            {activeNotification && createPortal(
+                <div className="modal-overlay" onClick={() => setActiveNotification(null)} style={{ zIndex: 10000 }}>
                     <div className="notif-detail-card" onClick={(e) => e.stopPropagation()}>
                         <div className="modal-header-notif">
                             <h3>{activeNotification.title}</h3>
@@ -1828,11 +1829,11 @@ export default function CentralHub() {
                         </div>
                     </div>
                 </div>
-            )}
+            , document.body)}
 
             {/* MODAL DETALHADO DO HISTÓRICO DE CHECKLIST */}
-            {activeExecutionDetail && (
-                <div className="modal-overlay" onClick={() => setActiveExecutionDetail(null)}>
+            {activeExecutionDetail && createPortal(
+                <div className="modal-overlay" onClick={() => setActiveExecutionDetail(null)} style={{ zIndex: 10000 }}>
                     <div className="notif-detail-card" onClick={(e) => e.stopPropagation()} style={{ width: '850px' }}>
                         <div className="modal-header-notif">
                             <div>
@@ -1960,7 +1961,7 @@ export default function CentralHub() {
                         </div>
                     </div>
                 </div>
-            )}
+            , document.body)}
         </div>
     );
 }
