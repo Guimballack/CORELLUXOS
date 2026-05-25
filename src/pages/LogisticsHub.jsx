@@ -1680,18 +1680,26 @@ export default function LogisticsHub() {
                             </div>
 
                             <div className="pin-entry-area" style={{ width: '100%' }}>
-                                <div className="numpad" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.6rem', marginBottom: '1.5rem' }}>
-                                    {[{l:'7',v:'7'},{l:'8',v:'8'},{l:'9',v:'9'},{l:<Delete size={22}/>,v:'del'}].map((k, i) => (
-                                        <button key={'r1'+i} onClick={() => handleNumpadKey(k.v)} style={{ height: '60px', fontSize: '1.3rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', color: '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }} onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'} onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>{k.l}</button>
+                                <div className="numpad" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.8rem', marginBottom: '1.8rem', width: '100%' }}>
+                                    {[{l:'7',v:'7'},{l:'8',v:'8'},{l:'9',v:'9'},{l:<Delete size={20} />,v:'del'}].map((k, i) => (
+                                        <button key={'r1'+i} className="num-key" onClick={() => handleNumpadKey(k.v)} style={{ width: '100%', height: '65px', fontSize: '1.4rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }}>
+                                            {k.l}
+                                        </button>
                                     ))}
                                     {[{l:'4',v:'4'},{l:'5',v:'5'},{l:'6',v:'6'},{l:'x',v:'*'}].map((k, i) => (
-                                        <button key={'r2'+i} onClick={() => handleNumpadKey(k.v)} style={{ height: '60px', fontSize: '1.3rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', color: '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }} onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'} onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>{k.l}</button>
+                                        <button key={'r2'+i} className="num-key" onClick={() => handleNumpadKey(k.v)} style={{ width: '100%', height: '65px', fontSize: '1.4rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }}>
+                                            {k.l}
+                                        </button>
                                     ))}
                                     {[{l:'1',v:'1'},{l:'2',v:'2'},{l:'3',v:'3'},{l:'-',v:'-'}].map((k, i) => (
-                                        <button key={'r3'+i} onClick={() => handleNumpadKey(k.v)} style={{ height: '60px', fontSize: '1.3rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', color: '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }} onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'} onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>{k.l}</button>
+                                        <button key={'r3'+i} className="num-key" onClick={() => handleNumpadKey(k.v)} style={{ width: '100%', height: '65px', fontSize: '1.4rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }}>
+                                            {k.l}
+                                        </button>
                                     ))}
                                     {[{l:'0',v:'0'},{l:',',v:','},{l:'+',v:'+'},{l:'=',v:'=', g:true}].map((k, i) => (
-                                        <button key={'r4'+i} onClick={() => handleNumpadKey(k.v)} style={{ height: '60px', fontSize: '1.4rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '8px', color: k.g ? '#10b981' : '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }} onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'} onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>{k.l}</button>
+                                        <button key={'r4'+i} className="num-key" onClick={() => handleNumpadKey(k.v)} style={{ width: '100%', height: '65px', fontSize: '1.5rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: k.g ? '#10b981' : '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }}>
+                                            {k.l}
+                                        </button>
                                     ))}
                                 </div>
 
