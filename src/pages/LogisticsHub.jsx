@@ -1642,23 +1642,21 @@ export default function LogisticsHub() {
             ============================================= */}
             {showNumpad && numpadProduct && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
-                    <div className="pin-modal-card" style={{ maxWidth: '400px', border: '1px solid var(--accent-orange)' }}>
-                        <button className="btn-close-modal" onClick={() => setShowNumpad(false)} title="Fechar">
-                            <X size={18} />
-                        </button>
-                        
-                        <div className="pin-container" style={{ padding: '1rem' }}>
-                            <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                                <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '380px', border: '1px solid #f97316', backgroundColor: '#0f131a', borderRadius: '16px', padding: '2rem 1.5rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
+                        <div className="pin-container" style={{ width: '100%' }}>
+                            <div style={{ textAlign: 'center', marginBottom: '0.8rem' }}>
+                                <span style={{ fontSize: '0.8rem', fontWeight: '800', color: '#7b879a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                                     DEFINIR QUANTIDADE
                                 </span>
-                                <h3 style={{ margin: '0.3rem 0', color: 'var(--text-primary)', fontSize: '1.1rem' }}>
+                                <h3 style={{ margin: '0.4rem 0', color: '#ffffff', fontSize: '1.3rem', fontWeight: '700' }}>
                                     {numpadProduct.name}
                                 </h3>
-                                <span style={{ fontSize: '0.8rem', color: 'var(--accent-orange)', fontWeight: '600' }}>
+                                <span style={{ fontSize: '0.85rem', color: '#f97316', fontWeight: '600' }}>
                                     Unidade: {numpadProduct.unit} | Estoque: {numpadProduct.stock}
                                 </span>
                             </div>
+
+                            <hr style={{ border: 'none', borderTop: '1px solid rgba(255,255,255,0.08)', margin: '1.2rem 0' }} />
 
                             <div className="pin-entry-area" style={{ width: '100%' }}>
                                 <input 
@@ -1667,42 +1665,82 @@ export default function LogisticsHub() {
                                     readOnly 
                                     style={{
                                         width: '100%',
-                                        background: 'var(--bg-input)',
-                                        border: '1px solid var(--border-color)',
-                                        color: 'var(--text-primary)',
+                                        backgroundColor: '#1b2333',
+                                        border: '1px solid rgba(255,255,255,0.02)',
+                                        color: '#ffffff',
                                         textAlign: 'center',
-                                        fontSize: '1.8rem',
+                                        fontSize: '2.5rem',
                                         fontWeight: '700',
-                                        padding: '0.5rem 1rem',
+                                        padding: '1rem',
                                         borderRadius: '8px',
-                                        marginBottom: '1rem',
-                                        outline: 'none'
+                                        marginBottom: '1.5rem',
+                                        outline: 'none',
+                                        boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)'
                                     }}
                                 />
 
-                                <div className="numpad" style={{ gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginBottom: '1.2rem' }}>
+                                <div className="numpad" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.8rem', marginBottom: '1.8rem' }}>
                                     {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                                         <button 
                                             key={num} 
                                             className="num-key" 
                                             onClick={() => handleNumpadKey(num.toString())}
-                                            style={{ height: '55px', fontSize: '1.2rem' }}
+                                            style={{ 
+                                                height: '65px', 
+                                                fontSize: '1.4rem', 
+                                                backgroundColor: '#111827', 
+                                                border: '1px solid rgba(255,255,255,0.05)', 
+                                                borderRadius: '12px',
+                                                color: '#ffffff',
+                                                fontWeight: '700',
+                                                boxShadow: '0 4px 6px rgba(0,0,0,0.2)',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.1s ease'
+                                            }}
+                                            onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+                                            onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                                         >
                                             {num}
                                         </button>
                                     ))}
-                                    <button className="num-key action-key" onClick={() => handleNumpadKey('C')} style={{ height: '55px', fontSize: '0.9rem' }}>C</button>
-                                    <button className="num-key" onClick={() => handleNumpadKey('0')} style={{ height: '55px', fontSize: '1.2rem' }}>0</button>
-                                    <button className="num-key action-key" onClick={() => handleNumpadKey('del')} style={{ height: '55px' }}>
+                                    <button 
+                                        className="num-key action-key" 
+                                        onClick={() => handleNumpadKey('C')} 
+                                        style={{ height: '65px', fontSize: '1.2rem', backgroundColor: '#111827', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: '#ffffff', fontWeight: '700', boxShadow: '0 4px 6px rgba(0,0,0,0.2)', cursor: 'pointer', transition: 'all 0.1s ease' }}
+                                        onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+                                        onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    >
+                                        C
+                                    </button>
+                                    <button 
+                                        className="num-key" 
+                                        onClick={() => handleNumpadKey('0')} 
+                                        style={{ height: '65px', fontSize: '1.4rem', backgroundColor: '#111827', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: '#ffffff', fontWeight: '700', boxShadow: '0 4px 6px rgba(0,0,0,0.2)', cursor: 'pointer', transition: 'all 0.1s ease' }}
+                                        onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+                                        onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    >
+                                        0
+                                    </button>
+                                    <button 
+                                        className="num-key action-key" 
+                                        onClick={() => handleNumpadKey('del')} 
+                                        style={{ height: '65px', fontSize: '1.1rem', backgroundColor: '#111827', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: '#ffffff', fontWeight: '700', boxShadow: '0 4px 6px rgba(0,0,0,0.2)', cursor: 'pointer', transition: 'all 0.1s ease' }}
+                                        onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.95)'}
+                                        onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                    >
                                         Apagar
                                     </button>
                                 </div>
 
-                                <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <button className="btn-clear-modal" style={{ flex: 1 }} onClick={() => setShowNumpad(false)}>
+                                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                                    <button className="btn-clear-modal" onClick={() => setShowNumpad(false)} style={{ flex: 1, padding: '1rem', fontSize: '1rem' }}>
                                         CANCELAR
                                     </button>
-                                    <button className="btn-confirm-modal" style={{ flex: 1 }} onClick={confirmNumpad}>
+                                    <button className="btn-confirm-modal" onClick={confirmNumpad} style={{ flex: 1, padding: '1rem', fontSize: '1rem' }}>
                                         OK
                                     </button>
                                 </div>
