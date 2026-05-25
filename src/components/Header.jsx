@@ -68,7 +68,7 @@ export default function Header() {
                     <Home size={20} />
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <img src="/logo_cubo.png?v=3" alt="Logo" style={{ height: '85px', width: 'auto', display: 'block' }} />
+                    <img src="/logo_cubo.png?v=4" alt="Logo" style={{ height: '75px', width: 'auto', display: 'block' }} />
                 </div>
             </div>
 
