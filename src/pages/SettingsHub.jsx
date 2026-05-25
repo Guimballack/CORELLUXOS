@@ -980,8 +980,8 @@ export default function SettingsHub() {
                                                 <th>Nome</th>
                                                 <th>Cargo</th>
                                                 <th>Nível Acesso</th>
-                                                <th>Status</th>
-                                                <th style={{ textAlign: 'center' }}>Ações</th>
+                                                <th style={{ width: '120px' }}>Status</th>
+                                                <th style={{ textAlign: 'center', width: '130px' }}>Ações</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1005,11 +1005,14 @@ export default function SettingsHub() {
                                                         </td>
                                                         <td>{colab.role}</td>
                                                         <td>{colab.accessLevel}</td>
-                                                        <td>
+                                                        <td style={{ width: '120px' }}>
                                                             <span className={`status-badge ${statusBadge}`} style={{
                                                                 background: colab.status === 'Ativo' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
                                                                 color: colab.status === 'Ativo' ? 'var(--accent-green)' : 'var(--accent-red)',
                                                                 border: colab.status === 'Ativo' ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
+                                                                width: '95px',
+                                                                display: 'inline-block',
+                                                                textAlign: 'center'
                                                             }}>
                                                                 {colab.status}
                                                             </span>
