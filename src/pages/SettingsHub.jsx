@@ -1038,17 +1038,21 @@ export default function SettingsHub() {
                                                                 {colab.status}
                                                             </span>
                                                         </td>
-                                                                                                                 <td style={{ textAlign: 'center', width: '130px' }}>
-                                                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', justifyContent: 'center' }}>
-                                                                 <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
-                                                                     <button className="action-btn-sm edit" onClick={() => openColabModalForEdit(colab)} title="Editar" style={{ color: 'var(--text-primary)', background: 'rgba(255,255,255,0.05)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                                                                         <Edit size={16} />
-                                                                     </button>
-                                                                     <button className="action-btn-sm block" onClick={() => handleToggleColabStatus(colab)} title={colab.status === 'Ativo' ? 'Bloquear Funcionário' : 'Ativar Funcionário'} style={{ color: colab.status === 'Ativo' ? 'var(--text-secondary)' : 'var(--accent-red)', background: 'rgba(255,255,255,0.05)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                                                                         {colab.status === 'Ativo' ? <Lock size={16} /> : <Unlock size={16} />}
-                                                                     </button>
-                                                                 </div>
-                                                                 <button className="action-btn-sm delete" onClick={() => handleDeleteColab(colab)} title="Excluir" style={{ color: 'var(--accent-red)', background: 'rgba(239,68,68,0.1)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                                                        <td style={{ textAlign: 'center', width: '130px' }}>
+                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                                                                 <button className="action-btn-sm edit" onClick={() => openColabModalForEdit(colab)} title="Editar">
+                                                                     <Edit size={16} />
+                                                                 </button>
+                                                                 <button 
+                                                                     className={`switch-toggle-btn ${colab.status === 'Ativo' ? 'active' : ''}`}
+                                                                     onClick={() => handleToggleColabStatus(colab)}
+                                                                     title={colab.status === 'Ativo' ? 'Bloquear Funcionário' : 'Ativar Funcionário'}
+                                                                 >
+                                                                     <div className="switch-toggle-track">
+                                                                         <div className="switch-toggle-handle"></div>
+                                                                     </div>
+                                                                 </button>
+                                                                 <button className="action-btn-sm delete" onClick={() => handleDeleteColab(colab)} title="Excluir">
                                                                      <Trash2 size={16} />
                                                                  </button>
                                                              </div>
@@ -1130,20 +1134,24 @@ export default function SettingsHub() {
                                                         </span>
                                                     </td>
                                                     <td style={{ textAlign: 'center', width: '130px' }}>
-                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', justifyContent: 'center' }}>
-                                                            <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
-                                                                <button className="action-btn-sm edit" onClick={() => openProdModalForEdit(prod)} title="Editar" style={{ color: 'var(--text-primary)', background: 'rgba(255,255,255,0.05)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                                                                    <Edit size={16} />
-                                                                </button>
-                                                                <button className="action-btn-sm block" onClick={() => handleToggleProdStatus(prod)} title={prod.status === 'Ativo' ? 'Inativar' : 'Ativar'} style={{ color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                                                                    {prod.status === 'Ativo' ? <Lock size={16} /> : <Unlock size={16} />}
-                                                                </button>
-                                                            </div>
-                                                            <button className="action-btn-sm delete" onClick={() => handleDeleteProd(prod)} title="Excluir" style={{ color: 'var(--accent-red)', background: 'rgba(239,68,68,0.1)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                                                                <Trash2 size={16} />
-                                                            </button>
-                                                        </div>
-                                                    </td>
+                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                                                             <button className="action-btn-sm edit" onClick={() => openProdModalForEdit(prod)} title="Editar">
+                                                                 <Edit size={16} />
+                                                             </button>
+                                                             <button 
+                                                                 className={`switch-toggle-btn ${prod.status === 'Ativo' ? 'active' : ''}`}
+                                                                 onClick={() => handleToggleProdStatus(prod)}
+                                                                 title={prod.status === 'Ativo' ? 'Inativar' : 'Ativar'}
+                                                             >
+                                                                 <div className="switch-toggle-track">
+                                                                     <div className="switch-toggle-handle"></div>
+                                                                 </div>
+                                                             </button>
+                                                             <button className="action-btn-sm delete" onClick={() => handleDeleteProd(prod)} title="Excluir">
+                                                                 <Trash2 size={16} />
+                                                             </button>
+                                                         </div>
+                                                     </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -1214,20 +1222,24 @@ export default function SettingsHub() {
                                                         </span>
                                                     </td>
                                                     <td style={{ textAlign: 'center', width: '130px' }}>
-                                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', justifyContent: 'center' }}>
-                                                            <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
-                                                                <button className="action-btn-sm edit" onClick={() => openCatModalForEdit(cat)} title="Editar" style={{ color: 'var(--text-primary)', background: 'rgba(255,255,255,0.05)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                                                                    <Edit size={16} />
-                                                                </button>
-                                                                <button className="action-btn-sm block" onClick={() => handleToggleCatStatus(cat)} title={cat.status === 'Ativo' ? 'Inativar' : 'Ativar'} style={{ color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                                                                    {cat.status === 'Ativo' ? <Lock size={16} /> : <Unlock size={16} />}
-                                                                </button>
-                                                            </div>
-                                                            <button className="action-btn-sm delete" onClick={() => handleDeleteCat(cat)} title="Excluir" style={{ color: 'var(--accent-red)', background: 'rgba(239,68,68,0.1)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                                                                <Trash2 size={16} />
-                                                            </button>
-                                                        </div>
-                                                    </td>
+                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                                                             <button className="action-btn-sm edit" onClick={() => openCatModalForEdit(cat)} title="Editar">
+                                                                 <Edit size={16} />
+                                                             </button>
+                                                             <button 
+                                                                 className={`switch-toggle-btn ${cat.status === 'Ativo' ? 'active' : ''}`}
+                                                                 onClick={() => handleToggleCatStatus(cat)}
+                                                                 title={cat.status === 'Ativo' ? 'Inativar' : 'Ativar'}
+                                                             >
+                                                                 <div className="switch-toggle-track">
+                                                                     <div className="switch-toggle-handle"></div>
+                                                                 </div>
+                                                             </button>
+                                                             <button className="action-btn-sm delete" onClick={() => handleDeleteCat(cat)} title="Excluir">
+                                                                 <Trash2 size={16} />
+                                                             </button>
+                                                         </div>
+                                                     </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -1314,20 +1326,24 @@ export default function SettingsHub() {
                                                             </span>
                                                         </td>
                                                         <td style={{ textAlign: 'center', width: '130px' }}>
-                                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', justifyContent: 'center' }}>
-                                                                <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center' }}>
-                                                                    <button className="action-btn-sm edit" onClick={() => openFornModalForEdit(forn)} title="Editar/Detalhes" style={{ color: 'var(--text-primary)', background: 'rgba(255,255,255,0.05)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                                                                        <Edit size={16} />
-                                                                    </button>
-                                                                    <button className="action-btn-sm block" onClick={() => handleToggleFornStatus(forn)} title={forn.situacao === 'Ativo' ? 'Bloquear' : 'Desbloquear'} style={{ color: forn.situacao === 'Ativo' ? 'var(--accent-red)' : 'var(--accent-green)', background: 'rgba(255,255,255,0.05)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                                                                        {forn.situacao === 'Ativo' ? <Lock size={16} /> : <Unlock size={16} />}
-                                                                    </button>
-                                                                </div>
-                                                                <button className="action-btn-sm delete" onClick={() => handleDeleteForn(forn)} title="Excluir" style={{ color: 'var(--accent-red)', background: 'rgba(239,68,68,0.1)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
-                                                                    <Trash2 size={16} />
-                                                                </button>
-                                                            </div>
-                                                        </td>
+                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                                                                 <button className="action-btn-sm edit" onClick={() => openFornModalForEdit(forn)} title="Editar/Detalhes">
+                                                                     <Edit size={16} />
+                                                                 </button>
+                                                                 <button 
+                                                                     className={`switch-toggle-btn ${forn.situacao === 'Ativo' ? 'active' : ''}`}
+                                                                     onClick={() => handleToggleFornStatus(forn)}
+                                                                     title={forn.situacao === 'Ativo' ? 'Bloquear' : 'Desbloquear'}
+                                                                 >
+                                                                     <div className="switch-toggle-track">
+                                                                         <div className="switch-toggle-handle"></div>
+                                                                     </div>
+                                                                 </button>
+                                                                 <button className="action-btn-sm delete" onClick={() => handleDeleteForn(forn)} title="Excluir">
+                                                                     <Trash2 size={16} />
+                                                                 </button>
+                                                             </div>
+                                                         </td>
                                                     </tr>
                                                 );
                                             })}
