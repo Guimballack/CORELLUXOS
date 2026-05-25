@@ -1400,7 +1400,7 @@ export default function SettingsHub() {
                                             <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
                                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
                                                     <div style={{ width: '100px', height: '100px', borderRadius: '50%', overflow: 'hidden', border: '2px solid var(--accent-orange)' }}>
-                                                        <img src={colabForm.img || 'profile/default-avatar.png'} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                        <img src={getUserAvatar(colabForm.img)} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                     </div>
                                                     <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--bg-input)', padding: '0.3rem 0.6rem', borderRadius: '4px' }}>
                                                         <Camera size={12} /> Alterar Foto
