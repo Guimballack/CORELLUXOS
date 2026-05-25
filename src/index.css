@@ -1635,10 +1635,16 @@ main {
     margin-top: -0.5rem;
 }
 
-.login-logo img {
+.login-logo-img {
     width: 100%;
     max-width: 320px;
     height: auto;
+    display: block;
+}
+
+.login-logo-cube {
+    height: 60px;
+    width: auto;
     display: block;
 }
 

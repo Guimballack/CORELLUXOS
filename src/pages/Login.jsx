@@ -30,8 +30,16 @@ export default function Login() {
     return (
         <div id="screen-login" className="screen active">
             <div className="login-box">
-                <div className="login-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2.5rem' }}>
-                    <img src="/logo_completa.png?v=4" alt="CORELUX OS Logo" style={{ width: '100%', maxWidth: '320px', height: 'auto', display: 'block' }} />
+                <div className="login-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.2rem', marginBottom: '2.5rem' }}>
+                    <img src="/logo_cubo.png?v=5" alt="Corelux Cube" className="login-logo-cube" />
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                        <span style={{ fontSize: '2.2rem', fontWeight: '900', letterSpacing: '0px', lineHeight: '1.1', fontFamily: 'Inter, sans-serif' }}>
+                            <span style={{ color: '#ffffff' }}>CORELUX</span> <span style={{ color: '#f97316' }}>OS</span>
+                        </span>
+                        <span style={{ color: '#ffffff', fontSize: '0.85rem', fontWeight: '600', letterSpacing: '1px', marginTop: '0.2rem', fontFamily: 'Inter, sans-serif' }}>
+                            ENTERPRISE CORE
+                        </span>
+                    </div>
                 </div>
                 
                 <form id="login-form" onSubmit={handleSubmit}>
