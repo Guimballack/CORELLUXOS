@@ -68,9 +68,16 @@ export default function Header() {
                     <Home size={20} />
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: '1.2rem', fontWeight: '800', letterSpacing: '1px' }}>
-                        CORELLUX<span style={{ color: 'var(--accent-orange)' }}>OS</span>
-                    </span>
+                    <svg width="40" height="40" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+                        <path d="M50 5 L90 28.09 L90 74.27 L50 97.36 L10 74.27 L10 28.09 Z" stroke="#f97316" strokeWidth="7" strokeLinejoin="round"/>
+                        <path d="M10 28.09 L50 51.18 L90 28.09" stroke="#f97316" strokeWidth="7" strokeLinejoin="round"/>
+                        <path d="M50 51.18 L50 97.36" stroke="#f97316" strokeWidth="7" strokeLinejoin="round"/>
+                        <path d="M50 18 L63 25.5 L50 33 L37 25.5 Z" stroke="#f97316" strokeWidth="5.5" strokeLinejoin="round"/>
+                        <path d="M28 65 L40 72 L40 85" stroke="#f97316" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M28 65 L28 48 L36 43.5" stroke="#f97316" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M72 65 L60 72 L60 85" stroke="#f97316" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M72 65 L72 48 L64 43.5" stroke="#f97316" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
                 </div>
             </div>
 
