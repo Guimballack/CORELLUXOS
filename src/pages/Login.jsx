@@ -31,7 +31,7 @@ export default function Login() {
         <div id="screen-login" className="screen active">
             <div className="login-box">
                 <div className="login-logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2.5rem' }}>
-                    <img src="/logo_completa.png" alt="CORELUX OS Logo" style={{ width: '100%', maxWidth: '320px', height: 'auto', display: 'block' }} />
+                    <img src="/logo_completa.png?v=2" alt="CORELUX OS Logo" style={{ width: '100%', maxWidth: '320px', height: 'auto', display: 'block' }} />
                 </div>
                 
                 <form id="login-form" onSubmit={handleSubmit}>
