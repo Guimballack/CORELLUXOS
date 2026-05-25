@@ -4246,21 +4246,20 @@ main {
 
 .products-table th,
 .products-table td {
-    padding: 0.85rem 1rem;
+    padding: 0.6rem 0.5rem;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
-    white-space: nowrap;
 }
 
 .products-table th {
     color: var(--text-secondary);
     font-weight: 500;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     background-color: var(--bg-card-hover);
 }
 
 .products-table td {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     color: var(--text-primary);
 }
 
@@ -4383,15 +4382,14 @@ main {
 
 /* Stock Health Level Badges */
 .stock-badge {
-    padding: 0.4rem 0.9rem;
+    padding: 0.4rem 0.6rem;
     border-radius: 20px;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
     font-weight: 700;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 0.35rem;
-    min-width: 110px;
+    gap: 0.25rem;
     letter-spacing: 0.02em;
 }
 
