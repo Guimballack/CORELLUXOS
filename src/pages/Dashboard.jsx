@@ -28,10 +28,7 @@ export default function Dashboard() {
 
     return (
         <div id="screen-dashboard" className="screen active with-header">
-            <div className="screen-title" style={{ textAlign: 'center', marginBottom: '3rem', marginTop: '1rem' }}>
-                <h2>PAINEL OPERACIONAL</h2>
-                <p>Selecione um módulo abaixo para iniciar o trabalho</p>
-            </div>
+
 
             <div className="dashboard-menu">
                 <button 
