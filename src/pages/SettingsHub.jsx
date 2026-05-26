@@ -39,7 +39,8 @@ import {
     Download,
     ChevronRight,
     LayoutGrid,
-    Briefcase
+    Briefcase,
+    ShoppingBag
 } from 'lucide-react';
 
 const PERSONAL_DOCS_ITEMS = [
@@ -1092,8 +1093,20 @@ export default function SettingsHub() {
                                 >
                                     <div className="card-icon"><Boxes size={24} /></div>
                                     <div className="card-content">
-                                        <h3>PRODUTOS</h3>
+                                        <h3>INSUMOS</h3>
                                         <p>Insumos, controle de estoque, unidades e SKUs.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
+
+                                <button 
+                                    className="menu-card pink" 
+                                    onClick={() => setActiveTab('produto')}
+                                >
+                                    <div className="card-icon"><ShoppingBag size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>PRODUTO</h3>
+                                        <p>Gestão de produtos finais de venda e cardápio.</p>
                                     </div>
                                     <ChevronRight className="chevron" size={20} />
                                 </button>
@@ -1256,7 +1269,7 @@ export default function SettingsHub() {
                             <div className="products-container">
                                 <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                     <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <Boxes style={{ color: 'var(--accent-orange)' }} /> Cadastro de Insumos / Produtos
+                                        <Boxes style={{ color: 'var(--accent-orange)' }} /> Cadastro de Insumos
                                     </h2>
                                     
                                     <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', flex: '1', justifyContent: 'flex-end', minWidth: '300px' }}>
@@ -1271,7 +1284,7 @@ export default function SettingsHub() {
                                         </div>
                                         {isAdminUser && (
                                             <button className="btn-primary" onClick={openProdModalForCreate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                <PlusCircle size={16} /> NOVO PRODUTO
+                                                <PlusCircle size={16} /> NOVO INSUMO
                                             </button>
                                         )}
                                     </div>
@@ -1724,6 +1737,34 @@ export default function SettingsHub() {
                                             )}
                                         </tbody>
                                     </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'produto' && (
+                            <div className="products-container">
+                                <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <ShoppingBag style={{ color: 'var(--accent-orange)' }} /> Cadastro de Produto
+                                    </h2>
+                                </div>
+                                <div style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '5rem 2rem',
+                                    background: 'rgba(0, 0, 0, 0.12)',
+                                    borderRadius: '12px',
+                                    border: '1.5px dashed var(--border-color)',
+                                    textAlign: 'center',
+                                    gap: '1rem'
+                                }}>
+                                    <ShoppingBag size={48} style={{ color: 'var(--text-secondary)', opacity: 0.5 }} />
+                                    <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Módulo de Produtos para Venda</h3>
+                                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '400px' }}>
+                                        Esta funcionalidade está em fase de planejamento e estará disponível em breve para o cadastro de produtos finais e cardápio.
+                                    </p>
                                 </div>
                             </div>
                         )}

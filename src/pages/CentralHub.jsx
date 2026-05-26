@@ -37,7 +37,8 @@ import {
     UserCheck,
     CheckCircle2,
     ChevronRight,
-    Lock
+    Lock,
+    Info
 } from 'lucide-react';
 
 export default function CentralHub() {
@@ -89,6 +90,30 @@ export default function CentralHub() {
     const [builderQuestions, setBuilderQuestions] = useState([]); // Array of { id, type, label, required, conditionalPhoto, conditionalObs }
 
     const fileInputRef = useRef(null);
+
+    // Custom System dialog state
+    const [systemDialog, setSystemDialog] = useState(null);
+
+    const showSystemAlert = (message, title = 'Aviso', onConfirm = null) => {
+        setSystemDialog({
+            type: 'alert',
+            title,
+            message,
+            onConfirm: () => {
+                if (onConfirm) onConfirm();
+            }
+        });
+    };
+
+    const showSystemConfirm = (message, onConfirm, onCancel = null, title = 'Confirmação') => {
+        setSystemDialog({
+            type: 'confirm',
+            title,
+            message,
+            onConfirm,
+            onCancel
+        });
+    };
 
     // Load initial data
     useEffect(() => {
@@ -261,7 +286,7 @@ export default function CentralHub() {
             setComposeMessage(prev => prev + signatureText);
             setCharCount(prev => prev + signatureText.length);
         } else {
-            alert('Limite de caracteres excedido.');
+            showSystemAlert('Limite de caracteres excedido.', 'Atenção');
         }
     };
 
@@ -269,7 +294,7 @@ export default function CentralHub() {
         const file = e.target.files[0];
         if (!file) return;
         if (file.size > 5 * 1024 * 1024) {
-            alert('O anexo deve ter no máximo 5MB.');
+            showSystemAlert('O anexo deve ter no máximo 5MB.', 'Atenção');
             return;
         }
 
@@ -291,11 +316,11 @@ export default function CentralHub() {
 
     const handleSendNotification = async () => {
         if (!currentUser.permissions.sendNotif) {
-            alert('Você não tem permissão para enviar avisos.');
+            showSystemAlert('Você não tem permissão para enviar avisos.', 'Acesso Negado');
             return;
         }
         if (!composeTitle.trim() || !composeMessage.trim() || selectedUserIds.length === 0) {
-            alert('Preencha todos os campos obrigatórios.');
+            showSystemAlert('Preencha todos os campos obrigatórios.', 'Atenção');
             return;
         }
 
@@ -325,7 +350,7 @@ export default function CentralHub() {
             setKey('selectedUserIds', []);
             setKey('pendingAttachment', null);
             if (fileInputRef.current) fileInputRef.current.value = '';
-            alert('Aviso enviado com sucesso!');
+            showSystemAlert('Aviso enviado com sucesso!', 'Sucesso');
             setActiveTab('feed');
         }
     };
@@ -399,15 +424,15 @@ export default function CentralHub() {
 
     const handleSaveChecklistModel = async () => {
         if (!builderName.trim()) {
-            alert('Por favor, digite o nome do modelo.');
+            showSystemAlert('Por favor, digite o nome do modelo.', 'Atenção');
             return;
         }
         if (builderQuestions.length === 0) {
-            alert('Adicione pelo menos um item ao checklist.');
+            showSystemAlert('Adicione pelo menos um item ao checklist.', 'Atenção');
             return;
         }
         if (builderQuestions.some(q => !q.label.trim())) {
-            alert('Preencha a descrição/pergunta de todos os itens.');
+            showSystemAlert('Preencha a descrição/pergunta de todos os itens.', 'Atenção');
             return;
         }
 
@@ -422,7 +447,7 @@ export default function CentralHub() {
 
         const result = await DbService.saveChecklistModel(model);
         if (result.success) {
-            alert('Modelo de checklist salvo com sucesso!');
+            showSystemAlert('Modelo de checklist salvo com sucesso!', 'Sucesso');
             
             // Refresh models from db/localStorage
             const data = await DbService.getChecklistModels();
@@ -432,15 +457,15 @@ export default function CentralHub() {
         }
     };
 
-    const handleDeleteChecklistModel = async (id) => {
-        if (confirm('Tem certeza que deseja excluir este modelo?')) {
+    const handleDeleteChecklistModel = (id) => {
+        showSystemConfirm('Tem certeza que deseja excluir este modelo?', async () => {
             const result = await DbService.deleteChecklistModel(id);
             if (result.success) {
                 const data = await DbService.getChecklistModels();
                 setKey('checklistModels', data);
-                alert('Modelo de checklist excluído.');
+                showSystemAlert('Modelo de checklist excluído.', 'Sucesso');
             }
-        }
+        });
     };
 
     // =============================================
@@ -512,7 +537,7 @@ export default function CentralHub() {
         // Mock capture photo as a dummy dataURL (colored box)
         const dummyPhoto = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='200'><rect width='100%' height='100%' fill='%231e293b'/><text x='50%' y='50%' font-size='14' fill='%2394a3b8' dominant-baseline='middle' text-anchor='middle'>📷 FOTO REGISTRADA POR WEBCAM</text></svg>";
         handleSetAnswerValue(itemId, 'photo', dummyPhoto);
-        alert('Foto registrada com sucesso!');
+        showSystemAlert('Foto registrada com sucesso!', 'Sucesso');
     };
 
     const handleChecklistPhotoUpload = (itemId, e) => {
@@ -534,19 +559,19 @@ export default function CentralHub() {
             // Check required
             if (item.required) {
                 if (item.type === 'sim_nao' && !stateAns.answer) {
-                    alert(`O item "${item.label}" é obrigatório.`);
+                    showSystemAlert(`O item "${item.label}" é obrigatório.`, 'Atenção');
                     return;
                 }
                 if (item.type === 'texto' && !stateAns.answer.trim()) {
-                    alert(`O item "${item.label}" exige uma resposta de texto.`);
+                    showSystemAlert(`O item "${item.label}" exige uma resposta de texto.`, 'Atenção');
                     return;
                 }
                 if (item.type === 'numero' && stateAns.answer === '') {
-                    alert(`O item "${item.label}" exige uma resposta numérica.`);
+                    showSystemAlert(`O item "${item.label}" exige uma resposta numérica.`, 'Atenção');
                     return;
                 }
                 if (item.type === 'foto' && !stateAns.photo) {
-                    alert(`O item "${item.label}" exige uma foto obrigatória.`);
+                    showSystemAlert(`O item "${item.label}" exige uma foto obrigatória.`, 'Atenção');
                     return;
                 }
             }
@@ -554,11 +579,11 @@ export default function CentralHub() {
             // Conditional rules for "Não"
             if (item.type === 'sim_nao' && stateAns.answer === 'Não') {
                 if (item.conditionalPhoto && !stateAns.photo) {
-                    alert(`Foto obrigatória para a não conformidade no item: "${item.label}".`);
+                    showSystemAlert(`Foto obrigatória para a não conformidade no item: "${item.label}".`, 'Atenção');
                     return;
                 }
                 if (item.conditionalObs && !stateAns.obs.trim()) {
-                    alert(`Justificativa obrigatória para a não conformidade no item: "${item.label}".`);
+                    showSystemAlert(`Justificativa obrigatória para a não conformidade no item: "${item.label}".`, 'Atenção');
                     return;
                 }
             }
@@ -616,7 +641,7 @@ export default function CentralHub() {
             const notifsData = await DbService.getNotifications();
             setKey('notifications', notifsData);
 
-            alert('Checklist finalizado e salvo com sucesso!');
+            showSystemAlert('Checklist finalizado e salvo com sucesso!', 'Sucesso');
             setActiveModelForExecution(null);
             setChecklistSubTab('dashboard');
         }
@@ -1058,10 +1083,10 @@ export default function CentralHub() {
                         className={`checklist-subnav-btn ${['dashboard', 'execution'].includes(checklistSubTab) ? 'active' : ''}`}
                         onClick={() => {
                             if (activeModelForExecution) {
-                                if (confirm('Um checklist está em andamento. Voltar para o painel descartará suas respostas atuais. Continuar?')) {
+                                showSystemConfirm('Um checklist está em andamento. Voltar para o painel descartará suas respostas atuais. Continuar?', () => {
                                     setActiveModelForExecution(null);
                                     setChecklistSubTab('dashboard');
-                                }
+                                });
                             } else {
                                 setChecklistSubTab('dashboard');
                             }
@@ -1073,10 +1098,10 @@ export default function CentralHub() {
                         className={`checklist-subnav-btn ${checklistSubTab === 'history' ? 'active' : ''}`}
                         onClick={() => {
                             if (activeModelForExecution) {
-                                if (confirm('Um checklist está em andamento. Ir para o histórico descartará suas respostas atuais. Continuar?')) {
+                                showSystemConfirm('Um checklist está em andamento. Ir para o histórico descartará suas respostas atuais. Continuar?', () => {
                                     setActiveModelForExecution(null);
                                     setChecklistSubTab('history');
-                                }
+                                });
                             } else {
                                 setChecklistSubTab('history');
                             }
@@ -1088,10 +1113,10 @@ export default function CentralHub() {
                         className={`checklist-subnav-btn ${['models', 'builder'].includes(checklistSubTab) ? 'active' : ''}`}
                         onClick={() => {
                             if (activeModelForExecution) {
-                                if (confirm('Um checklist está em andamento. Ir para modelos descartará suas respostas atuais. Continuar?')) {
+                                showSystemConfirm('Um checklist está em andamento. Ir para modelos descartará suas respostas atuais. Continuar?', () => {
                                     setActiveModelForExecution(null);
                                     setChecklistSubTab('models');
-                                }
+                                });
                             } else {
                                 setChecklistSubTab('models');
                             }
@@ -1791,10 +1816,10 @@ export default function CentralHub() {
                                         className="btn-tool" 
                                         style={{ padding: '0.7rem 1.5rem' }} 
                                         onClick={() => {
-                                            if (confirm('Deseja realmente cancelar? Suas respostas atuais serão apagadas.')) {
+                                            showSystemConfirm('Deseja realmente cancelar? Suas respostas atuais serão apagadas.', () => {
                                                 setActiveModelForExecution(null);
                                                 setChecklistSubTab('dashboard');
-                                            }
+                                            });
                                         }}
                                     >
                                         Cancelar
@@ -2008,6 +2033,90 @@ export default function CentralHub() {
                                 ) : (
                                     <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Carregando dados das questões do checklist...</div>
                                 )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* =============================================
+                MODAL: SYSTEM GENERIC DIALOG (ALERT / CONFIRM)
+            ============================================= */}
+            {systemDialog && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 20000 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '480px', width: '90%', padding: '2rem', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', alignItems: 'center' }}>
+                            <div style={{
+                                width: '60px',
+                                height: '60px',
+                                borderRadius: '50%',
+                                background: systemDialog.type === 'confirm' ? 'rgba(243, 107, 29, 0.1)' : (systemDialog.title.toLowerCase().includes('erro') ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)'),
+                                border: '2px solid',
+                                borderColor: systemDialog.type === 'confirm' ? 'var(--accent-orange)' : (systemDialog.title.toLowerCase().includes('erro') ? 'var(--accent-red)' : 'var(--accent-green)'),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContainer: 'center',
+                                justifyContent: 'center',
+                                boxShadow: systemDialog.type === 'confirm' ? '0 0 15px rgba(243, 107, 29, 0.2)' : (systemDialog.title.toLowerCase().includes('erro') ? '0 0 15px rgba(239, 68, 68, 0.2)' : '0 0 15px rgba(34, 197, 94, 0.2)')
+                            }}>
+                                <Info size={28} style={{ color: systemDialog.type === 'confirm' ? 'var(--accent-orange)' : (systemDialog.title.toLowerCase().includes('erro') ? 'var(--accent-red)' : 'var(--accent-green)') }} />
+                            </div>
+
+                            <h3 style={{ fontSize: '1.3rem', color: 'var(--text-primary)', margin: 0, fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                {systemDialog.title}
+                            </h3>
+
+                            <p style={{ 
+                                color: 'var(--text-secondary)', 
+                                fontSize: '0.95rem', 
+                                lineHeight: '1.6', 
+                                margin: 0,
+                                whiteSpace: 'pre-line',
+                                textAlign: 'center',
+                                width: '100%',
+                                padding: '0 0.5rem'
+                            }}>
+                                {systemDialog.message}
+                            </p>
+
+                            <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '1rem' }}>
+                                {systemDialog.type === 'confirm' && (
+                                    <button 
+                                        className="btn-clear-modal" 
+                                        style={{ 
+                                            flex: 1, 
+                                            background: 'rgba(255, 255, 255, 0.03)', 
+                                            border: '1.5px solid var(--border-color)', 
+                                            color: 'var(--text-primary)',
+                                            fontWeight: '700',
+                                            height: '42px'
+                                        }} 
+                                        onClick={() => {
+                                            const cancelCb = systemDialog.onCancel;
+                                            setSystemDialog(null);
+                                            if (cancelCb) cancelCb();
+                                        }}
+                                    >
+                                        CANCELAR
+                                    </button>
+                                )}
+                                <button 
+                                    className="btn-confirm-modal" 
+                                    style={{ 
+                                        flex: 1, 
+                                        backgroundColor: systemDialog.type === 'confirm' ? 'var(--accent-orange)' : (systemDialog.title.toLowerCase().includes('erro') ? 'var(--accent-red)' : 'var(--accent-green)'), 
+                                        color: '#ffffff',
+                                        fontWeight: '800',
+                                        height: '42px'
+                                    }} 
+                                    onClick={() => {
+                                        const confirmCb = systemDialog.onConfirm;
+                                        setSystemDialog(null);
+                                        if (confirmCb) confirmCb();
+                                    }}
+                                >
+                                    {systemDialog.type === 'confirm' ? 'OK' : 'ENTENDIDO'}
+                                </button>
                             </div>
                         </div>
                     </div>

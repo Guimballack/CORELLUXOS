@@ -163,6 +163,30 @@ export default function LogisticsHub() {
     const [selectedRequisitionSector, setSelectedRequisitionSector] = useState('');
     const [showCartModal, setShowCartModal] = useState(false);
 
+    // Custom System dialog state
+    const [systemDialog, setSystemDialog] = useState(null);
+
+    const showSystemAlert = (message, title = 'Aviso', onConfirm = null) => {
+        setSystemDialog({
+            type: 'alert',
+            title,
+            message,
+            onConfirm: () => {
+                if (onConfirm) onConfirm();
+            }
+        });
+    };
+
+    const showSystemConfirm = (message, onConfirm, onCancel = null, title = 'Confirmação') => {
+        setSystemDialog({
+            type: 'confirm',
+            title,
+            message,
+            onConfirm,
+            onCancel
+        });
+    };
+
 
 
     // Load Data & Reset Active Tab
@@ -404,9 +428,9 @@ export default function LogisticsHub() {
         if (result.success) {
             setStockBatches(prev => prev.filter(b => b.id !== batchId));
             await recalculateProductStockFromBatches();
-            alert('Lote removido com sucesso!');
+            showSystemAlert('Lote removido com sucesso!', 'Sucesso');
         } else {
-            alert('Falha ao remover o lote.');
+            showSystemAlert('Falha ao remover o lote.', 'Erro');
         }
     };
 
@@ -414,13 +438,13 @@ export default function LogisticsHub() {
         e.preventDefault();
         
         if (!batchLot || !batchQty) {
-            alert('Por favor, preencha o código do lote e a quantidade.');
+            showSystemAlert('Por favor, preencha o código do lote e a quantidade.', 'Atenção');
             return;
         }
 
         const qtyNum = parseFloat(batchQty);
         if (isNaN(qtyNum) || qtyNum <= 0) {
-            alert('A quantidade deve ser um número maior que zero.');
+            showSystemAlert('A quantidade deve ser um número maior que zero.', 'Atenção');
             return;
         }
 
@@ -441,16 +465,16 @@ export default function LogisticsHub() {
             batchData.createdAt = new Date().toISOString();
             const result = await DbService.addStockBatch(batchData);
             if (result.success) {
-                alert('Lote cadastrado com sucesso!');
+                showSystemAlert('Lote cadastrado com sucesso!', 'Sucesso');
             } else {
-                alert('Erro ao cadastrar lote.');
+                showSystemAlert('Erro ao cadastrar lote.', 'Erro');
             }
         } else {
             const result = await DbService.updateStockBatch(editingBatch.id, batchData);
             if (result.success) {
-                alert('Lote atualizado com sucesso!');
+                showSystemAlert('Lote atualizado com sucesso!', 'Sucesso');
             } else {
-                alert('Erro ao atualizar lote.');
+                showSystemAlert('Erro ao atualizar lote.', 'Erro');
             }
         }
 
@@ -593,7 +617,7 @@ export default function LogisticsHub() {
 
     // XML Import logic
     const handleXmlImport = () => {
-        alert('Funcionalidade de importar XML de Nota Fiscal (NF-e) em desenvolvimento. A integração com APIs SEFAZ estará disponível em breve.');
+        showSystemAlert('Funcionalidade de importar XML de Nota Fiscal (NF-e) em desenvolvimento. A integração com APIs SEFAZ estará disponível em breve.', 'Integração');
     };
 
     // =============================================
@@ -653,7 +677,7 @@ export default function LogisticsHub() {
         }
 
         if (parsedVal <= 0) {
-            alert('Quantidade deve ser maior que zero.');
+            showSystemAlert('Quantidade deve ser maior que zero.', 'Atenção');
             return;
         }
 
@@ -662,7 +686,7 @@ export default function LogisticsHub() {
         if (flowType === 'solicitacao') {
             // Validate availability
             if (parsedVal > numpadProduct.stock) {
-                alert(`Quantidade solicitada (${parsedVal}) maior que o estoque atual (${numpadProduct.stock} ${numpadProduct.unit}).`);
+                showSystemAlert(`Quantidade solicitada (${parsedVal}) maior que o estoque atual (${numpadProduct.stock} ${numpadProduct.unit}).`, 'Atenção');
                 return;
             }
 
@@ -725,7 +749,7 @@ export default function LogisticsHub() {
                 registeredAt: new Date().toLocaleString('pt-BR')
             };
             saveLossRecord(lossEntry);
-            alert(`Perda registrada: ${pendingQty} ${pendingProduct.unit} de "${pendingProduct.name}" (${reason === 'Outros' && customReasonText ? customReasonText : reason}). Estoque não foi alterado.`);
+            showSystemAlert(`Perda registrada: ${pendingQty} ${pendingProduct.unit} de "${pendingProduct.name}" (${reason === 'Outros' && customReasonText ? customReasonText : reason}). Estoque não foi alterado.`, 'Descarte Registrado');
 
             // Reset flow
             setFlowStep('category');
@@ -749,7 +773,7 @@ export default function LogisticsHub() {
 
         if (productBatches.length > 0 && flowType === 'saida') {
             await deductStockFromBatchesFefo(sku, pendingQty);
-            alert(`Estoque atualizado com sucesso via FEFO para o item: ${pendingProduct.name}.`);
+            showSystemAlert(`Estoque atualizado com sucesso via FEFO para o item: ${pendingProduct.name}.`, 'Sucesso');
         } else {
             // 1. Update on Supabase
             const result = await DbService.updateProductStock(sku, newStock);
@@ -757,11 +781,11 @@ export default function LogisticsHub() {
             // 2. Update local state copy
             if (result.success) {
                 setProducts(prev => prev.map(p => p.sku === sku ? { ...p, stock: newStock } : p));
-                alert(`Estoque atualizado com sucesso para o item: ${pendingProduct.name}. Novo estoque: ${newStock} ${pendingProduct.unit}`);
+                showSystemAlert(`Estoque atualizado com sucesso para o item: ${pendingProduct.name}. Novo estoque: ${newStock} ${pendingProduct.unit}`, 'Sucesso');
             } else {
                 // Even if Supabase fails, update local memory so the user sees the change
                 setProducts(prev => prev.map(p => p.sku === sku ? { ...p, stock: newStock } : p));
-                alert(`[Aviso] Salvo localmente: estoque de ${pendingProduct.name} alterado para ${newStock}.`);
+                showSystemAlert(`[Aviso] Salvo localmente: estoque de ${pendingProduct.name} alterado para ${newStock}.`, 'Salvo Localmente');
             }
         }
 
@@ -778,11 +802,11 @@ export default function LogisticsHub() {
 
     const handleConfirmReason = () => {
         if (!selectedReason) {
-            alert('Por favor, selecione um motivo para o descarte.');
+            showSystemAlert('Por favor, selecione um motivo para o descarte.', 'Atenção');
             return;
         }
         if (selectedReason === 'Outros' && !customReasonText.trim()) {
-            alert('Por favor, descreva o motivo do descarte.');
+            showSystemAlert('Por favor, descreva o motivo do descarte.', 'Atenção');
             return;
         }
         setShowReason(false);
@@ -808,12 +832,12 @@ export default function LogisticsHub() {
     const handleSubmitRequests = () => {
         if (cart.length === 0) return;
         if (!selectedRequisitionSector) {
-            alert('Por favor, selecione o setor da solicitação.');
+            showSystemAlert('Por favor, selecione o setor da solicitação.', 'Atenção');
             return;
         }
 
         const confirmMsg = `Deseja enviar essa lista com ${cart.length} produto(s) para aprovação?`;
-        if (window.confirm(confirmMsg)) {
+        showSystemConfirm(confirmMsg, () => {
             const userName = state.currentUser ? state.currentUser.name : 'Operador';
             const userRole = state.currentUser ? state.currentUser.role : 'Geral';
             
@@ -838,9 +862,9 @@ export default function LogisticsHub() {
             setCart([]);
             setSelectedRequisitionSector('');
             setShowCartModal(false);
-            alert('Solicitação de insumos enviada com sucesso!');
+            showSystemAlert('Solicitação de insumos enviada com sucesso!', 'Sucesso');
             setActiveTab('estoque');
-        }
+        });
     };
 
     // =============================================
@@ -853,12 +877,12 @@ export default function LogisticsHub() {
 
         const product = products.find(p => p.sku === req.itemSku);
         if (!product) {
-            alert('Erro: Produto não encontrado no estoque.');
+            showSystemAlert('Erro: Produto não encontrado no estoque.', 'Erro');
             return;
         }
 
         if (product.stock < req.quantity) {
-            alert(`Estoque insuficiente! Disponível: ${product.stock} ${product.unit}. Solicitado: ${req.quantity} ${product.unit}.`);
+            showSystemAlert(`Estoque insuficiente! Disponível: ${product.stock} ${product.unit}. Solicitado: ${req.quantity} ${product.unit}.`, 'Erro');
             return;
         }
 
@@ -874,7 +898,7 @@ export default function LogisticsHub() {
             }
         }
 
-        if (window.confirm(confirmMsg)) {
+        showSystemConfirm(confirmMsg, async () => {
             if (productBatches.length > 0) {
                 await deductStockFromBatchesFefo(req.itemSku, req.quantity);
             } else {
@@ -892,8 +916,8 @@ export default function LogisticsHub() {
             } : r);
 
             saveRequests(updatedRequests);
-            alert('Solicitação aprovada e insumo baixado do estoque!');
-        }
+            showSystemAlert('Solicitação aprovada e insumo baixado do estoque!', 'Sucesso');
+        });
     };
 
     const handleRejectRequest = (reqId) => {
@@ -920,7 +944,7 @@ export default function LogisticsHub() {
         setShowRejectionModal(false);
         setRejectionTargetReqId(null);
         setRejectionReasonText('');
-        alert('Solicitação recusada.');
+        showSystemAlert('Solicitação recusada.', 'Supervisor');
     };
 
     const handleCancelRejection = () => {
@@ -2588,6 +2612,89 @@ export default function LogisticsHub() {
                                     }}
                                 >
                                     FECHAR
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* =============================================
+                MODAL: SYSTEM GENERIC DIALOG (ALERT / CONFIRM)
+            ============================================= */}
+            {systemDialog && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 20000 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '480px', width: '90%', padding: '2rem', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', alignItems: 'center' }}>
+                            <div style={{
+                                width: '60px',
+                                height: '60px',
+                                borderRadius: '50%',
+                                background: systemDialog.type === 'confirm' ? 'rgba(243, 107, 29, 0.1)' : (systemDialog.title.toLowerCase().includes('erro') ? 'rgba(239, 68, 68, 0.1)' : 'rgba(34, 197, 94, 0.1)'),
+                                border: '2px solid',
+                                borderColor: systemDialog.type === 'confirm' ? 'var(--accent-orange)' : (systemDialog.title.toLowerCase().includes('erro') ? 'var(--accent-red)' : 'var(--accent-green)'),
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                boxShadow: systemDialog.type === 'confirm' ? '0 0 15px rgba(243, 107, 29, 0.2)' : (systemDialog.title.toLowerCase().includes('erro') ? '0 0 15px rgba(239, 68, 68, 0.2)' : '0 0 15px rgba(34, 197, 94, 0.2)')
+                            }}>
+                                <Info size={28} style={{ color: systemDialog.type === 'confirm' ? 'var(--accent-orange)' : (systemDialog.title.toLowerCase().includes('erro') ? 'var(--accent-red)' : 'var(--accent-green)') }} />
+                            </div>
+
+                            <h3 style={{ fontSize: '1.3rem', color: 'var(--text-primary)', margin: 0, fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                {systemDialog.title}
+                            </h3>
+
+                            <p style={{ 
+                                color: 'var(--text-secondary)', 
+                                fontSize: '0.95rem', 
+                                lineHeight: '1.6', 
+                                margin: 0,
+                                whiteSpace: 'pre-line',
+                                textAlign: 'center',
+                                width: '100%',
+                                padding: '0 0.5rem'
+                            }}>
+                                {systemDialog.message}
+                            </p>
+
+                            <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '1rem' }}>
+                                {systemDialog.type === 'confirm' && (
+                                    <button 
+                                        className="btn-clear-modal" 
+                                        style={{ 
+                                            flex: 1, 
+                                            background: 'rgba(255, 255, 255, 0.03)', 
+                                            border: '1.5px solid var(--border-color)', 
+                                            color: 'var(--text-primary)',
+                                            fontWeight: '700',
+                                            height: '42px'
+                                        }} 
+                                        onClick={() => {
+                                            const cancelCb = systemDialog.onCancel;
+                                            setSystemDialog(null);
+                                            if (cancelCb) cancelCb();
+                                        }}
+                                    >
+                                        CANCELAR
+                                    </button>
+                                )}
+                                <button 
+                                    className="btn-confirm-modal" 
+                                    style={{ 
+                                        flex: 1, 
+                                        backgroundColor: systemDialog.type === 'confirm' ? 'var(--accent-orange)' : (systemDialog.title.toLowerCase().includes('erro') ? 'var(--accent-red)' : 'var(--accent-green)'), 
+                                        color: '#ffffff',
+                                        fontWeight: '800',
+                                        height: '42px'
+                                    }} 
+                                    onClick={() => {
+                                        const confirmCb = systemDialog.onConfirm;
+                                        setSystemDialog(null);
+                                        if (confirmCb) confirmCb();
+                                    }}
+                                >
+                                    {systemDialog.type === 'confirm' ? 'OK' : 'ENTENDIDO'}
                                 </button>
                             </div>
                         </div>
