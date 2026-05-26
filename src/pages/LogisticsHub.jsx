@@ -920,25 +920,11 @@ export default function LogisticsHub() {
                                                     onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
                                                     style={{ position: 'relative', minWidth: '170px', cursor: 'pointer', userSelect: 'none' }}
                                                 >
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'space-between' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                                                             Categoria
                                                             <ChevronDown size={14} style={{ transform: isCategoryDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease', opacity: 0.8 }} />
                                                         </span>
-                                                        {inventoryCategory !== 'ALL' && (
-                                                            <span style={{ 
-                                                                fontSize: '0.7rem', 
-                                                                background: 'var(--accent-orange)', 
-                                                                color: '#fff', 
-                                                                padding: '0.15rem 0.4rem', 
-                                                                borderRadius: '4px',
-                                                                textTransform: 'uppercase',
-                                                                fontWeight: 'bold',
-                                                                whiteSpace: 'nowrap'
-                                                            }}>
-                                                                {inventoryCategory}
-                                                            </span>
-                                                        )}
                                                     </div>
                                                     
                                                     {isCategoryDropdownOpen && (
