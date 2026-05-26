@@ -1478,6 +1478,7 @@ export default function LogisticsHub() {
                                         <thead>
                                             <tr>
                                                 <th>Produto</th>
+                                                <th>Endereçamento</th>
                                                 <th>Quantidade</th>
                                                 <th>Solicitado Por</th>
                                                 <th>Setor / Função</th>
@@ -1489,7 +1490,7 @@ export default function LogisticsHub() {
                                         <tbody>
                                             {requests.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                                    <td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                                                         Nenhuma solicitação de insumos registrada no sistema.
                                                     </td>
                                                 </tr>
@@ -1500,12 +1501,38 @@ export default function LogisticsHub() {
                                                     if (req.status === 'Pendente') badgeClass = 'badge-pendente';
                                                     if (req.status === 'Recusado') badgeClass = 'badge-recusado';
 
+                                                    const productBatchesForReq = stockBatches.filter(
+                                                        b => b.itemSku === req.itemSku && b.address
+                                                    );
+                                                    const activeBatches = productBatchesForReq.filter(b => b.quantity > 0);
+                                                    const batchesToUse = activeBatches.length > 0 ? activeBatches : productBatchesForReq;
+                                                    const uniqueAddresses = [
+                                                        ...new Set(batchesToUse.map(b => b.address))
+                                                    ];
+                                                    const addressDisplay = uniqueAddresses.length > 0 
+                                                        ? uniqueAddresses.join(', ') 
+                                                        : 'Sem endereço';
+
                                                     return (
                                                         <tr key={req.id}>
                                                             <td>
                                                                 <strong>{req.itemName}</strong>
                                                                 <br />
                                                                 <small style={{ color: 'var(--text-secondary)' }}>{req.itemSku}</small>
+                                                            </td>
+                                                            <td>
+                                                                <span style={{ 
+                                                                    background: 'rgba(192, 132, 252, 0.1)', 
+                                                                    border: '1px solid rgba(192, 132, 252, 0.3)',
+                                                                    color: '#c084fc', 
+                                                                    padding: '0.2rem 0.5rem', 
+                                                                    borderRadius: '4px',
+                                                                    fontSize: '0.8rem',
+                                                                    fontWeight: '700',
+                                                                    fontFamily: 'monospace'
+                                                                }}>
+                                                                    {addressDisplay}
+                                                                </span>
                                                             </td>
                                                             <td><span style={{ fontWeight: '700' }}>{req.quantity}</span></td>
                                                             <td>{req.requestedBy}</td>
