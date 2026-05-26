@@ -844,7 +844,7 @@ export default function LogisticsHub() {
                                 >
                                     <div className="card-icon"><ShoppingCart size={24} /></div>
                                     <div className="card-content">
-                                        <h3>SOLICITAÇÃO DE INSUMOS</h3>
+                                        <h3>REQUISIÇÃO</h3>
                                         <p>Criar solicitações e pedidos de insumos para cozinha ou outros setores operacionais.</p>
                                     </div>
                                     <ChevronRight className="chevron" size={20} />
@@ -863,7 +863,7 @@ export default function LogisticsHub() {
                                         )}
                                     </div>
                                     <div className="card-content">
-                                        <h3>CONTROLE DE PENDÊNCIAS</h3>
+                                        <h3>APROVAÇÃO</h3>
                                         <p>Visualizar e autorizar solicitações de retirada de insumos (acesso restrito).</p>
                                     </div>
                                     <ChevronRight className="chevron" size={20} />
