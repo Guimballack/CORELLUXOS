@@ -1141,6 +1141,60 @@ main {
     cursor: not-allowed;
 }
 
+/* Custom Date Picker Styling */
+.custom-date-picker-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    width: 100%;
+}
+
+.custom-date-picker-icon {
+    position: absolute;
+    left: 0.8rem;
+    color: var(--accent-orange);
+    pointer-events: none;
+    z-index: 2;
+}
+
+.custom-date-picker-input {
+    width: 100%;
+    padding: 0.6rem 0.6rem 0.6rem 2.2rem;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-input);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    color-scheme: dark;
+}
+
+.custom-date-picker-input:hover {
+    border-color: rgba(243, 107, 29, 0.4);
+}
+
+.custom-date-picker-input:focus {
+    border-color: var(--accent-orange);
+    box-shadow: 0 0 0 3px rgba(243, 107, 29, 0.2);
+}
+
+.custom-date-picker-input::-webkit-calendar-picker-indicator {
+    background: transparent;
+    bottom: 0;
+    color: transparent;
+    cursor: pointer;
+    height: auto;
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: auto;
+    z-index: 3;
+}
+
 /* Formulário de Cadastro de Colaboradores / Itens */
 .form-section-title {
     color: var(--accent-orange);
@@ -4284,7 +4338,7 @@ main {
 
 .products-table th,
 .products-table td {
-    padding: 0.6rem 0.5rem;
+    padding: 0.8rem 0.8rem;
     text-align: left;
     border-bottom: 1px solid var(--border-color);
 }
@@ -4297,13 +4351,13 @@ main {
 }
 
 .products-table td {
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     color: var(--text-primary);
 }
 
 .product-desc {
     white-space: normal;
-    min-width: 200px;
+    min-width: 160px;
 }
 
 .products-table tbody tr:last-child td {
@@ -4387,8 +4441,8 @@ main {
 }
 
 .products-table td {
-    padding: 1.1rem 1.5rem;
-    font-size: 0.92rem;
+    padding: 0.8rem 0.8rem;
+    font-size: 0.88rem;
     vertical-align: middle;
 }
 

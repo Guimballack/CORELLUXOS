@@ -10,6 +10,7 @@ import DbService from '../services/db-service';
 import { getUserAvatar } from '../utils/initial-data';
 import { 
     Boxes, 
+    Calendar,
     ArrowUp, 
     ArrowDown, 
     Trash2, 
@@ -364,26 +365,6 @@ export default function LogisticsHub() {
                     <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontStyle: 'italic' }}>
                         Nenhum lote cadastrado para este item.
                     </span>
-                    <button
-                        type="button"
-                        onClick={() => handleOpenAddBatch(product)}
-                        style={{
-                            background: 'rgba(168, 85, 247, 0.15)',
-                            border: '1px solid var(--accent-purple)',
-                            color: 'var(--accent-purple)',
-                            padding: '0.5rem 1.5rem',
-                            borderRadius: '8px',
-                            fontWeight: '600',
-                            fontSize: '0.85rem',
-                            cursor: 'pointer',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.4rem',
-                            transition: 'all 0.2s'
-                        }}
-                    >
-                        + Cadastrar Primeiro Lote
-                    </button>
                 </div>
             );
         }
@@ -406,7 +387,6 @@ export default function LogisticsHub() {
                             <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold', textAlign: 'center' }}>Validade</th>
                             <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold', textAlign: 'center' }}>Endereço</th>
                             <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Marca / Fornecedor</th>
-                            <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold', textAlign: 'center' }}>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -443,26 +423,6 @@ export default function LogisticsHub() {
                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                                             <span style={{ fontWeight: '500' }}>{b.brand || product.brand || 'Sem Marca'}</span>
                                             <small style={{ color: 'var(--text-secondary)' }}>{b.supplier ? limitChars(b.supplier, 15) : 'N/A'}</small>
-                                        </div>
-                                    </td>
-                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'center' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
-                                            <button
-                                                type="button"
-                                                className="action-btn-sm edit"
-                                                onClick={() => handleOpenEditBatch(product, b)}
-                                                title="Editar"
-                                            >
-                                                <Edit size={16} />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="action-btn-sm delete"
-                                                onClick={() => handleDeleteBatch(b)}
-                                                title="Excluir"
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -828,7 +788,7 @@ export default function LogisticsHub() {
                                 >
                                     <div className="card-icon"><Boxes size={24} /></div>
                                     <div className="card-content">
-                                        <h3>VISÃO GERAL DO ESTOQUE</h3>
+                                        <h3>Stock View</h3>
                                         <p>Registro geral de itens, consulta de SKU, saldo atual e controle de validades por lote (FEFO).</p>
                                     </div>
                                     <ChevronRight className="chevron" size={20} />
@@ -898,24 +858,24 @@ export default function LogisticsHub() {
                                     <table className="products-table">
                                         <thead>
                                             <tr>
-                                                <th style={{ width: '70px', textAlign: 'center' }}>
+                                                <th style={{ width: '48px', textAlign: 'center' }}>
                                                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', justifyContent: 'center' }}>
                                                         <Boxes size={18} style={{ color: '#c084fc' }} />
                                                     </div>
                                                 </th>
-                                                <th onClick={() => handleSort('sku')} style={{ cursor: 'pointer', minWidth: '100px' }} className={sortField === 'sku' ? 'active-sort' : ''}>
+                                                <th onClick={() => handleSort('sku')} style={{ cursor: 'pointer', minWidth: '85px' }} className={sortField === 'sku' ? 'active-sort' : ''}>
                                                     SKU {sortField === 'sku' && (sortOrder === 'asc' ? '▲' : '▼')}
                                                 </th>
-                                                <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', minWidth: '220px' }} className={sortField === 'name' ? 'active-sort' : ''}>
+                                                <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', minWidth: '180px' }} className={sortField === 'name' ? 'active-sort' : ''}>
                                                     Produto {sortField === 'name' && (sortOrder === 'asc' ? '▲' : '▼')}
                                                 </th>
-                                                <th onClick={() => handleSort('brand')} style={{ cursor: 'pointer', minWidth: '120px' }} className={sortField === 'brand' ? 'active-sort' : ''}>
+                                                <th onClick={() => handleSort('brand')} style={{ cursor: 'pointer', minWidth: '90px' }} className={sortField === 'brand' ? 'active-sort' : ''}>
                                                     Marca {sortField === 'brand' && (sortOrder === 'asc' ? '▲' : '▼')}
                                                 </th>
-                                                <th style={{ minWidth: '90px' }}>Unidade</th>
+                                                <th style={{ minWidth: '70px' }}>Unidade</th>
                                                 <th 
                                                     onClick={() => setIsCategoryDropdownOpen(!isCategoryDropdownOpen)}
-                                                    style={{ position: 'relative', minWidth: '170px', cursor: 'pointer', userSelect: 'none' }}
+                                                    style={{ position: 'relative', minWidth: '120px', cursor: 'pointer', userSelect: 'none' }}
                                                 >
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -930,7 +890,7 @@ export default function LogisticsHub() {
                                                                 position: 'absolute',
                                                                 top: '100%',
                                                                 right: 0,
-                                                                left: 0,
+                                                                width: '180px',
                                                                 marginTop: '0.3rem',
                                                                 background: 'rgba(15, 23, 42, 0.98)',
                                                                 backdropFilter: 'blur(12px)',
@@ -997,7 +957,7 @@ export default function LogisticsHub() {
                                                 <th style={{ textAlign: 'center' }}>Mínimo</th>
                                                 <th style={{ textAlign: 'center' }}>Médio</th>
                                                 <th style={{ textAlign: 'center' }}>Máximo</th>
-                                                <th onClick={() => handleSort('stock')} style={{ cursor: 'pointer', textAlign: 'center', minWidth: '190px' }} className={sortField === 'stock' ? 'active-sort' : ''}>
+                                                <th onClick={() => handleSort('stock')} style={{ cursor: 'pointer', textAlign: 'center', minWidth: '120px' }} className={sortField === 'stock' ? 'active-sort' : ''}>
                                                     Estoque Atual {sortField === 'stock' && (sortOrder === 'asc' ? '▲' : '▼')}
                                                 </th>
                                             </tr>
@@ -1105,26 +1065,6 @@ export default function LogisticsHub() {
                                                                                     <Clock size={10} /> FEFO
                                                                                 </span>
                                                                             </div>
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => handleOpenAddBatch(p)}
-                                                                                style={{
-                                                                                    padding: '0.4rem 1rem',
-                                                                                    fontSize: '0.75rem',
-                                                                                    background: 'rgba(168, 85, 247, 0.15)',
-                                                                                    border: '1px solid rgba(168, 85, 247, 0.4)',
-                                                                                    color: '#c084fc',
-                                                                                    borderRadius: '6px',
-                                                                                    cursor: 'pointer',
-                                                                                    fontWeight: 'bold',
-                                                                                    display: 'flex',
-                                                                                    alignItems: 'center',
-                                                                                    gap: '0.3rem',
-                                                                                    transition: 'all 0.2s'
-                                                                                }}
-                                                                            >
-                                                                                + Adicionar Lote
-                                                                            </button>
                                                                         </div>
                                                                         
                                                                         {renderLotesSection(p)}
@@ -1841,36 +1781,28 @@ export default function LogisticsHub() {
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                                     <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>DATA DE FABRICAÇÃO</label>
-                                    <input 
-                                        type="date"
-                                        value={batchMfgDate}
-                                        onChange={(e) => setBatchMfgDate(e.target.value)}
-                                        style={{
-                                            padding: '0.6rem',
-                                            borderRadius: '6px',
-                                            border: '1px solid var(--border-color)',
-                                            background: 'var(--bg-input)',
-                                            color: 'var(--text-primary)',
-                                            outline: 'none'
-                                        }}
-                                    />
+                                    <div className="custom-date-picker-wrapper">
+                                        <Calendar className="custom-date-picker-icon" size={16} />
+                                        <input 
+                                            type="date"
+                                            value={batchMfgDate}
+                                            onChange={(e) => setBatchMfgDate(e.target.value)}
+                                            className="custom-date-picker-input"
+                                        />
+                                    </div>
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                                     <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>DATA DE VALIDADE *</label>
-                                    <input 
-                                        type="date"
-                                        value={batchExpDate}
-                                        onChange={(e) => setBatchExpDate(e.target.value)}
-                                        required
-                                        style={{
-                                            padding: '0.6rem',
-                                            borderRadius: '6px',
-                                            border: '1px solid var(--border-color)',
-                                            background: 'var(--bg-input)',
-                                            color: 'var(--text-primary)',
-                                            outline: 'none'
-                                        }}
-                                    />
+                                    <div className="custom-date-picker-wrapper">
+                                        <Calendar className="custom-date-picker-icon" size={16} />
+                                        <input 
+                                            type="date"
+                                            value={batchExpDate}
+                                            onChange={(e) => setBatchExpDate(e.target.value)}
+                                            required
+                                            className="custom-date-picker-input"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
@@ -1883,7 +1815,7 @@ export default function LogisticsHub() {
                                     className="btn-confirm-modal" 
                                     style={{ flex: 1, backgroundColor: 'var(--accent-orange)', color: '#fff' }}
                                 >
-                                    {batchModalMode === 'add' ? 'SALVAR LOTE' : 'ATUALIZAR LOTE'}
+                                    {batchModalMode === 'add' ? 'SALVAR LOTE' : 'CONFIRMAR'}
                                 </button>
                             </div>
                         </form>
