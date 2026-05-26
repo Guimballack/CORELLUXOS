@@ -891,66 +891,54 @@ export default function SettingsHub() {
                             DASHBOARD DE CADASTROS (MENU)
                         ============================================= */}
                         {activeTab === 'menu' && (
-                            <div style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                minHeight: '80%',
-                                padding: '2rem 1rem'
-                            }}>
-                                <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                                </div>
+                            <div className="dashboard-menu">
+                                <button 
+                                    className="menu-card orange" 
+                                    onClick={() => setActiveTab('colaboradores')}
+                                >
+                                    <div className="card-icon"><Users size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>COLABORADORES</h3>
+                                        <p>Funcionários, cargos, salários, horários e checklists.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
 
-                                <div className="dashboard-menu">
-                                    <button 
-                                        className="menu-card orange" 
-                                        onClick={() => setActiveTab('colaboradores')}
-                                    >
-                                        <div className="card-icon"><Users size={24} /></div>
-                                        <div className="card-content">
-                                            <h3>COLABORADORES</h3>
-                                            <p>Funcionários, cargos, salários, horários e checklists.</p>
-                                        </div>
-                                        <ChevronRight className="chevron" size={20} />
-                                    </button>
+                                <button 
+                                    className="menu-card blue" 
+                                    onClick={() => setActiveTab('produtos')}
+                                >
+                                    <div className="card-icon"><Boxes size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>PRODUTOS</h3>
+                                        <p>Insumos, controle de estoque, unidades e SKUs.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
 
-                                    <button 
-                                        className="menu-card blue" 
-                                        onClick={() => setActiveTab('produtos')}
-                                    >
-                                        <div className="card-icon"><Boxes size={24} /></div>
-                                        <div className="card-content">
-                                            <h3>PRODUTOS</h3>
-                                            <p>Insumos, controle de estoque, unidades e SKUs.</p>
-                                        </div>
-                                        <ChevronRight className="chevron" size={20} />
-                                    </button>
+                                <button 
+                                    className="menu-card green" 
+                                    onClick={() => setActiveTab('categorias')}
+                                >
+                                    <div className="card-icon"><Tag size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>CATEGORIAS</h3>
+                                        <p>Organização de insumos e vinculações de cores.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
 
-                                    <button 
-                                        className="menu-card green" 
-                                        onClick={() => setActiveTab('categorias')}
-                                    >
-                                        <div className="card-icon"><Tag size={24} /></div>
-                                        <div className="card-content">
-                                            <h3>CATEGORIAS</h3>
-                                            <p>Organização de insumos e vinculações de cores.</p>
-                                        </div>
-                                        <ChevronRight className="chevron" size={20} />
-                                    </button>
-
-                                    <button 
-                                        className="menu-card purple" 
-                                        onClick={() => setActiveTab('fornecedores')}
-                                    >
-                                        <div className="card-icon"><Truck size={24} /></div>
-                                        <div className="card-content">
-                                            <h3>FORNECEDORES</h3>
-                                            <p>CGC, contatos comerciais, avaliações e prazos.</p>
-                                        </div>
-                                        <ChevronRight className="chevron" size={20} />
-                                    </button>
-                                </div>
+                                <button 
+                                    className="menu-card purple" 
+                                    onClick={() => setActiveTab('fornecedores')}
+                                >
+                                    <div className="card-icon"><Truck size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>FORNECEDORES</h3>
+                                        <p>CGC, contatos comerciais, avaliações e prazos.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
                             </div>
                         )}
 

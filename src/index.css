@@ -19,6 +19,12 @@
     --accent-pink: #ec4899;
     --border-color: #2a374a;
     --border-orange: #d95e16;
+
+    /* Layout Spacing Standards */
+    --screen-padding: 2rem;
+    --menu-gap: 1.5rem;
+    --menu-margin: 2rem auto;
+    --menu-max-width: 1200px;
 }
 
 * {
@@ -452,7 +458,7 @@ main {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
-    padding: 2rem;
+    padding: var(--screen-padding);
     z-index: 0;
 }
 
@@ -701,9 +707,9 @@ main {
 .dashboard-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 1.5rem;
-    max-width: 1200px;
-    margin: 2rem auto;
+    gap: var(--menu-gap);
+    max-width: var(--menu-max-width);
+    margin: var(--menu-margin);
     width: 100%;
 }
 
