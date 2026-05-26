@@ -139,6 +139,9 @@ export default function LogisticsHub() {
     // Cart for requests
     const [cart, setCart] = useState([]);
 
+    // Loss records history
+    const [lossRecords, setLossRecords] = useState([]);
+
     // Load Data & Reset Active Tab
     useEffect(() => {
         setKey('logisticsActiveTab', 'menu');
@@ -161,6 +164,14 @@ export default function LogisticsHub() {
                     setRequests(JSON.parse(savedRequests));
                 } else {
                     setRequests([]);
+                }
+
+                // Load loss records from LocalStorage
+                const savedLosses = localStorage.getItem('corellux_loss_records');
+                if (savedLosses) {
+                    setLossRecords(JSON.parse(savedLosses));
+                } else {
+                    setLossRecords([]);
                 }
             } catch (err) {
                 console.error('[LogisticsHub] Error loading initial data:', err);
@@ -218,6 +229,15 @@ export default function LogisticsHub() {
     const saveRequests = (newRequests) => {
         setRequests(newRequests);
         localStorage.setItem('corellux_item_requests', JSON.stringify(newRequests));
+    };
+
+    // Save a single loss record to LocalStorage
+    const saveLossRecord = (record) => {
+        setLossRecords(prev => {
+            const updated = [record, ...prev];
+            localStorage.setItem('corellux_loss_records', JSON.stringify(updated));
+            return updated;
+        });
     };
 
     // =============================================
@@ -666,16 +686,41 @@ export default function LogisticsHub() {
         const currentStock = pendingProduct.stock;
         let newStock = currentStock;
 
+        // PERDAS: does NOT change stock — only saves a loss record
+        if (flowType === 'perdas') {
+            const lossEntry = {
+                id: Date.now(),
+                sku: sku,
+                productName: pendingProduct.name,
+                unit: pendingProduct.unit,
+                quantity: pendingQty,
+                reason: reason || 'Não informado',
+                registeredBy: state.currentUser ? state.currentUser.name : 'Operador',
+                registeredAt: new Date().toLocaleString('pt-BR')
+            };
+            saveLossRecord(lossEntry);
+            alert(`Perda registrada: ${pendingQty} ${pendingProduct.unit} de "${pendingProduct.name}" (${reason}). Estoque não foi alterado.`);
+
+            // Reset flow
+            setFlowStep('category');
+            setCurrentCategory(null);
+            setPendingProduct(null);
+            setPendingQty(0);
+            setSelectedReason('');
+            return;
+        }
+
+        // ENTRADA / SAIDA: change stock normally
         if (flowType === 'entrada') {
             newStock += pendingQty;
-        } else if (flowType === 'saida' || flowType === 'perdas') {
+        } else if (flowType === 'saida') {
             newStock -= pendingQty;
             if (newStock < 0) newStock = 0;
         }
 
         const productBatches = stockBatches.filter(b => b.itemSku === sku);
 
-        if (productBatches.length > 0 && (flowType === 'saida' || flowType === 'perdas')) {
+        if (productBatches.length > 0 && flowType === 'saida') {
             await deductStockFromBatchesFefo(sku, pendingQty);
             alert(`Estoque atualizado com sucesso via FEFO para o item: ${pendingProduct.name}.`);
         } else {
@@ -687,14 +732,14 @@ export default function LogisticsHub() {
                 setProducts(prev => prev.map(p => p.sku === sku ? { ...p, stock: newStock } : p));
                 alert(`Estoque atualizado com sucesso para o item: ${pendingProduct.name}. Novo estoque: ${newStock} ${pendingProduct.unit}`);
             } else {
-                // Even if Supabase fails (e.g. anon key blocked), we update local memory to let the user play with the app.
+                // Even if Supabase fails, update local memory so the user sees the change
                 setProducts(prev => prev.map(p => p.sku === sku ? { ...p, stock: newStock } : p));
-                alert(`[Aviso] Salvo localmente (offline): estoque de ${pendingProduct.name} alterado para ${newStock}.`);
+                alert(`[Aviso] Salvo localmente: estoque de ${pendingProduct.name} alterado para ${newStock}.`);
             }
         }
 
-        // Log transaction locally (mock log)
-        console.log(`[Logistics] ${flowType.toUpperCase()} - SKU: ${sku}, Qtd: ${pendingQty}, Motivo: ${reason}`);
+        // Log transaction
+        console.log(`[Logistics] ${flowType.toUpperCase()} - SKU: ${sku}, Qtd: ${pendingQty}`);
 
         // Reset flow
         setFlowStep('category');
@@ -959,6 +1004,25 @@ export default function LogisticsHub() {
                                     <div className="card-content">
                                         <h3>APROVAÇÃO</h3>
                                         <p>Visualizar e autorizar solicitações de retirada de insumos (acesso restrito).</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
+
+                                <button 
+                                    className="menu-card red" 
+                                    onClick={() => setActiveTab('perdas_historico')}
+                                >
+                                    <div className="card-icon">
+                                        <AlertTriangle size={24} />
+                                        {lossRecords.length > 0 && (
+                                            <span className="notification-badge" style={{ backgroundColor: 'var(--accent-yellow)' }}>
+                                                {lossRecords.length}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="card-content">
+                                        <h3>HISTÓRICO DE PERDAS</h3>
+                                        <p>Consultar todos os registros de descarte e perdas de insumos.</p>
                                     </div>
                                     <ChevronRight className="chevron" size={20} />
                                 </button>
@@ -1503,6 +1567,104 @@ export default function LogisticsHub() {
                                                         </tr>
                                                     );
                                                 })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                        {/* TAB 5: HISTÓRICO DE PERDAS */}
+                        {activeTab === 'perdas_historico' && (
+                            <div className="products-container">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                    <div>
+                                        <h2 style={{ margin: 0, color: 'var(--accent-red)', fontSize: '1.3rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <AlertTriangle size={20} /> HISTÓRICO DE PERDAS
+                                        </h2>
+                                        <p style={{ margin: '0.3rem 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                            {lossRecords.length} registro(s) de descarte e perda de insumos.
+                                        </p>
+                                    </div>
+                                    {lossRecords.length > 0 && (
+                                        <button
+                                            onClick={() => {
+                                                if (window.confirm('Deseja limpar todo o histórico de perdas? Esta ação não pode ser desfeita.')) {
+                                                    setLossRecords([]);
+                                                    localStorage.removeItem('corellux_loss_records');
+                                                }
+                                            }}
+                                            style={{
+                                                background: 'rgba(239,68,68,0.1)',
+                                                border: '1px solid var(--accent-red)',
+                                                color: 'var(--accent-red)',
+                                                borderRadius: '8px',
+                                                padding: '0.5rem 1rem',
+                                                cursor: 'pointer',
+                                                fontWeight: '700',
+                                                fontSize: '0.8rem',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '0.4rem'
+                                            }}
+                                        >
+                                            <Trash2 size={14} /> LIMPAR HISTÓRICO
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="table-responsive">
+                                    <table className="products-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Data / Hora</th>
+                                                <th>Produto</th>
+                                                <th>SKU</th>
+                                                <th>Qtd</th>
+                                                <th>Unidade</th>
+                                                <th>Motivo</th>
+                                                <th>Registrado Por</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {lossRecords.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                                        <AlertTriangle size={32} style={{ color: 'var(--accent-yellow)', marginBottom: '0.5rem' }} />
+                                                        <br />Nenhum registro de perda encontrado.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                lossRecords.map(rec => (
+                                                    <tr key={rec.id}>
+                                                        <td><small style={{ color: 'var(--text-secondary)' }}>{rec.registeredAt}</small></td>
+                                                        <td><strong>{rec.productName}</strong></td>
+                                                        <td><span style={{ color: 'var(--accent-orange)', fontWeight: '600', fontSize: '0.8rem' }}>{rec.sku}</span></td>
+                                                        <td>
+                                                            <span style={{
+                                                                color: 'var(--accent-red)',
+                                                                fontWeight: '800',
+                                                                fontSize: '1rem'
+                                                            }}>
+                                                                -{rec.quantity}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ color: 'var(--text-secondary)' }}>{rec.unit}</td>
+                                                        <td>
+                                                            <span style={{
+                                                                background: 'rgba(234,179,8,0.1)',
+                                                                border: '1px solid rgba(234,179,8,0.3)',
+                                                                color: 'var(--accent-yellow)',
+                                                                padding: '0.2rem 0.6rem',
+                                                                borderRadius: '4px',
+                                                                fontSize: '0.75rem',
+                                                                fontWeight: '700'
+                                                            }}>
+                                                                {rec.reason}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{rec.registeredBy}</td>
+                                                    </tr>
+                                                ))
                                             )}
                                         </tbody>
                                     </table>
