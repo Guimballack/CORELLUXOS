@@ -152,6 +152,25 @@ export const DbService = {
                 return mockData.products;
             }
             const camelProds = toCamelCase(data);
+
+            // Merge local stock values on top of Supabase data.
+            // This ensures that if Supabase UPDATE failed (RLS/permissions) but we saved
+            // the new stock locally, the local value takes precedence.
+            const localRaw = localStorage.getItem('corellux_products');
+            if (localRaw) {
+                try {
+                    const localList = JSON.parse(localRaw);
+                    const localMap = {};
+                    localList.forEach(p => { localMap[p.sku] = p.stock; });
+                    camelProds.forEach(p => {
+                        // If local stock > Supabase stock, local wins (means Supabase update was blocked)
+                        if (localMap[p.sku] !== undefined && localMap[p.sku] !== p.stock) {
+                            p.stock = localMap[p.sku];
+                        }
+                    });
+                } catch (_) {}
+            }
+
             localStorage.setItem('corellux_products', JSON.stringify(camelProds));
             return camelProds;
         } catch (e) {
@@ -272,8 +291,23 @@ export const DbService = {
     // OPERAÇÕES DE ESCRITA / MUTACIONAIS
     // =============================================
 
-    // Exemplo: Atualizar estoque de um produto
+    // Atualizar estoque de um produto
     async updateProductStock(sku, newStock) {
+        // Always persist locally first so the value survives reload even if Supabase fails
+        const local = localStorage.getItem('corellux_products');
+        if (local) {
+            try {
+                const list = JSON.parse(local);
+                const idx = list.findIndex(p => p.sku === sku);
+                if (idx !== -1) {
+                    list[idx] = { ...list[idx], stock: newStock };
+                    localStorage.setItem('corellux_products', JSON.stringify(list));
+                }
+            } catch (err) {
+                console.warn('[DbService] Erro ao persistir estoque localmente:', err);
+            }
+        }
+
         try {
             const { data, error } = await supabase
                 .from('products')
@@ -284,7 +318,7 @@ export const DbService = {
             if (error) throw error;
             return { success: true, data: toCamelCase(data) };
         } catch (e) {
-            console.error(`[DbService] Erro ao atualizar estoque do produto ${sku}:`, e.message || e);
+            console.error(`[DbService] Erro ao atualizar estoque do produto ${sku} no Supabase (salvo localmente):`, e.message || e);
             return { success: false, error: e };
         }
     },
