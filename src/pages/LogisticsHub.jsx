@@ -32,8 +32,10 @@ import {
     FileText,
     History,
     Delete,
-    Edit
+    Edit,
+    Info
 } from 'lucide-react';
+
 
 const indirectEval = eval;
 
@@ -129,6 +131,7 @@ export default function LogisticsHub() {
     // Reason Modal States (for Perdas)
     const [showReason, setShowReason] = useState(false);
     const [selectedReason, setSelectedReason] = useState('');
+    const [customReasonText, setCustomReasonText] = useState('');
 
     // Inventory Filtering & Sorting
     const [inventoryCategory, setInventoryCategory] = useState('ALL');
@@ -142,6 +145,21 @@ export default function LogisticsHub() {
     // Loss records history
     const [lossRecords, setLossRecords] = useState([]);
 
+    // Rejection Dialog States
+    const [showRejectionModal, setShowRejectionModal] = useState(false);
+    const [rejectionTargetReqId, setRejectionTargetReqId] = useState(null);
+    const [rejectionReasonText, setRejectionReasonText] = useState('');
+
+    // Info Dialog States (for Rejection Info)
+    const [showInfoModal, setShowInfoModal] = useState(false);
+    const [infoModalRequest, setInfoModalRequest] = useState(null);
+
+    // Requisition Sector States
+    const [sectors, setSectors] = useState([]);
+    const [selectedRequisitionSector, setSelectedRequisitionSector] = useState('');
+
+
+
     // Load Data & Reset Active Tab
     useEffect(() => {
         setKey('logisticsActiveTab', 'menu');
@@ -149,14 +167,16 @@ export default function LogisticsHub() {
         const loadAllData = async () => {
             setLoading(true);
             try {
-                const [prodsData, catsData, batchesData] = await Promise.all([
+                const [prodsData, catsData, batchesData, sectorsData] = await Promise.all([
                     DbService.getProducts(),
                     DbService.getCategories(),
-                    DbService.getStockBatches()
+                    DbService.getStockBatches(),
+                    DbService.getSectors()
                 ]);
                 setProducts(prodsData);
                 setCategories(catsData.filter(c => c.status === 'Ativo'));
                 setStockBatches(batchesData);
+                setSectors(sectorsData || []);
                 
                 // Load requests from LocalStorage
                 const savedRequests = localStorage.getItem('corellux_item_requests');
@@ -695,11 +715,12 @@ export default function LogisticsHub() {
                 unit: pendingProduct.unit,
                 quantity: pendingQty,
                 reason: reason || 'Não informado',
+                customReason: reason === 'Outros' ? (customReasonText.trim() || 'Não especificado') : '',
                 registeredBy: state.currentUser ? state.currentUser.name : 'Operador',
                 registeredAt: new Date().toLocaleString('pt-BR')
             };
             saveLossRecord(lossEntry);
-            alert(`Perda registrada: ${pendingQty} ${pendingProduct.unit} de "${pendingProduct.name}" (${reason}). Estoque não foi alterado.`);
+            alert(`Perda registrada: ${pendingQty} ${pendingProduct.unit} de "${pendingProduct.name}" (${reason === 'Outros' && customReasonText ? customReasonText : reason}). Estoque não foi alterado.`);
 
             // Reset flow
             setFlowStep('category');
@@ -707,6 +728,7 @@ export default function LogisticsHub() {
             setPendingProduct(null);
             setPendingQty(0);
             setSelectedReason('');
+            setCustomReasonText('');
             return;
         }
 
@@ -754,6 +776,10 @@ export default function LogisticsHub() {
             alert('Por favor, selecione um motivo para o descarte.');
             return;
         }
+        if (selectedReason === 'Outros' && !customReasonText.trim()) {
+            alert('Por favor, descreva o motivo do descarte.');
+            return;
+        }
         setShowReason(false);
         processStockUpdate(selectedReason);
     };
@@ -768,6 +794,10 @@ export default function LogisticsHub() {
 
     const handleSubmitRequests = () => {
         if (cart.length === 0) return;
+        if (!selectedRequisitionSector) {
+            alert('Por favor, selecione o setor da solicitação.');
+            return;
+        }
 
         const confirmMsg = `Deseja enviar essa lista com ${cart.length} produto(s) para aprovação?`;
         if (window.confirm(confirmMsg)) {
@@ -786,13 +816,14 @@ export default function LogisticsHub() {
                     status: 'Pendente',
                     approvedBy: null,
                     approvedAt: null,
-                    sector: 'COZINHA', // Default operational sector
+                    sector: selectedRequisitionSector,
                     area: userRole
                 });
             });
 
             saveRequests(newRequests);
             setCart([]);
+            setSelectedRequisitionSector('');
             alert('Solicitação de insumos enviada com sucesso!');
             setActiveTab('estoque');
         }
@@ -855,17 +886,33 @@ export default function LogisticsHub() {
         const req = requests.find(r => r.id === reqId);
         if (!req || req.status !== 'Pendente') return;
 
-        if (window.confirm(`Recusar a solicitação de ${req.quantity} de "${req.itemName}"?`)) {
-            const updatedRequests = requests.map(r => r.id === reqId ? {
-                ...r,
-                status: 'Recusado',
-                approvedBy: state.currentUser ? state.currentUser.name : 'Supervisor',
-                approvedAt: new Date().toLocaleString('pt-BR')
-            } : r);
+        setRejectionTargetReqId(reqId);
+        setRejectionReasonText('');
+        setShowRejectionModal(true);
+    };
 
-            saveRequests(updatedRequests);
-            alert('Solicitação recusada.');
-        }
+    const handleConfirmRejection = () => {
+        if (!rejectionTargetReqId) return;
+
+        const updatedRequests = requests.map(r => r.id === rejectionTargetReqId ? {
+            ...r,
+            status: 'Recusado',
+            rejectionReason: rejectionReasonText.trim(),
+            approvedBy: state.currentUser ? state.currentUser.name : 'Supervisor',
+            approvedAt: new Date().toLocaleString('pt-BR')
+        } : r);
+
+        saveRequests(updatedRequests);
+        setShowRejectionModal(false);
+        setRejectionTargetReqId(null);
+        setRejectionReasonText('');
+        alert('Solicitação recusada.');
+    };
+
+    const handleCancelRejection = () => {
+        setShowRejectionModal(false);
+        setRejectionTargetReqId(null);
+        setRejectionReasonText('');
     };
 
     // Check permissions
@@ -1459,9 +1506,40 @@ export default function LogisticsHub() {
                                                 {cart.length} item(ns) selecionado(s) para solicitação
                                             </span>
                                         </div>
-                                        <div style={{ display: 'flex', gap: '1rem' }}>
-                                            <button className="btn-clear-modal" onClick={() => setCart([])}>LIMPAR TUDO</button>
-                                            <button className="btn-confirm-modal" onClick={handleSubmitRequests}>ENVIAR SOLICITAÇÃO</button>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <label style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-secondary)' }}>SETOR:</label>
+                                                <select
+                                                    value={selectedRequisitionSector}
+                                                    onChange={(e) => setSelectedRequisitionSector(e.target.value)}
+                                                    style={{
+                                                        background: '#111827',
+                                                        border: '1.5px solid var(--accent-orange)',
+                                                        color: 'var(--text-primary)',
+                                                        borderRadius: '8px',
+                                                        padding: '0.4rem 0.8rem',
+                                                        fontSize: '0.85rem',
+                                                        fontWeight: '700',
+                                                        outline: 'none',
+                                                        cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    <option value="">Selecione o Setor...</option>
+                                                    {sectors.length > 0 ? (
+                                                        sectors.map(s => (
+                                                            <option key={s.id} value={s.name}>{s.name.toUpperCase()}</option>
+                                                        ))
+                                                    ) : (
+                                                        ['Cozinha', 'Salão', 'Bar', 'Logística', 'Administração'].map(s => (
+                                                            <option key={s} value={s}>{s.toUpperCase()}</option>
+                                                        ))
+                                                    )}
+                                                </select>
+                                            </div>
+                                            <div style={{ display: 'flex', gap: '1rem' }}>
+                                                <button className="btn-clear-modal" onClick={() => setCart([])}>LIMPAR TUDO</button>
+                                                <button className="btn-confirm-modal" onClick={handleSubmitRequests}>ENVIAR SOLICITAÇÃO</button>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -1570,17 +1648,32 @@ export default function LogisticsHub() {
                                                             <td><small>{req.requestedAt}</small></td>
                                                             <td>
                                                                 {/* Map styles manually to match consolidated index.css */}
-                                                                <span className={`status-badge ${badgeClass}`} style={{
-                                                                    padding: '0.2rem 0.6rem',
-                                                                    borderRadius: '4px',
-                                                                    fontSize: '0.75rem',
-                                                                    fontWeight: '700',
-                                                                    textTransform: 'uppercase',
-                                                                    background: req.status === 'Pendente' ? 'rgba(245, 158, 11, 0.15)' : (req.status === 'Entregue' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'),
-                                                                    color: req.status === 'Pendente' ? 'var(--accent-orange)' : (req.status === 'Entregue' ? 'var(--accent-green)' : 'var(--accent-red)'),
-                                                                    border: req.status === 'Pendente' ? '1px solid rgba(245, 158, 11, 0.3)' : (req.status === 'Entregue' ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'),
-                                                                }}>
+                                                                <span 
+                                                                    className={`status-badge ${badgeClass}`} 
+                                                                    style={{
+                                                                        padding: '0.2rem 0.6rem',
+                                                                        borderRadius: '4px',
+                                                                        fontSize: '0.75rem',
+                                                                        fontWeight: '700',
+                                                                        textTransform: 'uppercase',
+                                                                        background: req.status === 'Pendente' ? 'rgba(245, 158, 11, 0.15)' : (req.status === 'Entregue' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)'),
+                                                                        color: req.status === 'Pendente' ? 'var(--accent-orange)' : (req.status === 'Entregue' ? 'var(--accent-green)' : 'var(--accent-red)'),
+                                                                        border: req.status === 'Pendente' ? '1px solid rgba(245, 158, 11, 0.3)' : (req.status === 'Entregue' ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)'),
+                                                                        cursor: req.status === 'Recusado' ? 'pointer' : 'default',
+                                                                        display: 'inline-flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '0.3rem'
+                                                                    }}
+                                                                    onClick={() => {
+                                                                        if (req.status === 'Recusado') {
+                                                                            setInfoModalRequest(req);
+                                                                            setShowInfoModal(true);
+                                                                        }
+                                                                    }}
+                                                                    title={req.status === 'Recusado' ? (req.rejectionReason ? `Motivo da Recusa: ${req.rejectionReason}` : 'Recusado (Sem motivo informado)') : ''}
+                                                                >
                                                                     {req.status}
+                                                                    {req.status === 'Recusado' && <Info size={12} />}
                                                                 </span>
                                                             </td>
                                                             <td style={{ textAlign: 'center' }}>
@@ -1636,31 +1729,6 @@ export default function LogisticsHub() {
                                             {lossRecords.length} registro(s) de descarte e perda de insumos.
                                         </p>
                                     </div>
-                                    {lossRecords.length > 0 && (
-                                        <button
-                                            onClick={() => {
-                                                if (window.confirm('Deseja limpar todo o histórico de perdas? Esta ação não pode ser desfeita.')) {
-                                                    setLossRecords([]);
-                                                    localStorage.removeItem('corellux_loss_records');
-                                                }
-                                            }}
-                                            style={{
-                                                background: 'rgba(239,68,68,0.1)',
-                                                border: '1px solid var(--accent-red)',
-                                                color: 'var(--accent-red)',
-                                                borderRadius: '8px',
-                                                padding: '0.5rem 1rem',
-                                                cursor: 'pointer',
-                                                fontWeight: '700',
-                                                fontSize: '0.8rem',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.4rem'
-                                            }}
-                                        >
-                                            <Trash2 size={14} /> LIMPAR HISTÓRICO
-                                        </button>
-                                    )}
                                 </div>
 
                                 <div className="table-responsive">
@@ -1701,17 +1769,42 @@ export default function LogisticsHub() {
                                                         </td>
                                                         <td style={{ color: 'var(--text-secondary)' }}>{rec.unit}</td>
                                                         <td>
-                                                            <span style={{
-                                                                background: 'rgba(234,179,8,0.1)',
-                                                                border: '1px solid rgba(234,179,8,0.3)',
-                                                                color: 'var(--accent-yellow)',
-                                                                padding: '0.2rem 0.6rem',
-                                                                borderRadius: '4px',
-                                                                fontSize: '0.75rem',
-                                                                fontWeight: '700'
-                                                            }}>
-                                                                {rec.reason}
-                                                            </span>
+                                                            {rec.reason === 'Outros' ? (
+                                                                <span 
+                                                                    style={{
+                                                                        background: 'rgba(234,179,8,0.15)',
+                                                                        border: '1px solid var(--accent-yellow)',
+                                                                        color: 'var(--accent-yellow)',
+                                                                        padding: '0.2rem 0.6rem',
+                                                                        borderRadius: '4px',
+                                                                        fontSize: '0.75rem',
+                                                                        fontWeight: '700',
+                                                                        cursor: 'pointer',
+                                                                        display: 'inline-flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '0.3rem'
+                                                                    }}
+                                                                    onClick={() => {
+                                                                        alert(`Motivo Detalhado (Outros):\n${rec.customReason || 'Não informado'}`);
+                                                                    }}
+                                                                    title={rec.customReason ? `Motivo: ${rec.customReason} (Clique para detalhes)` : 'Clique para ver o motivo'}
+                                                                >
+                                                                    {rec.reason}
+                                                                    <Info size={12} />
+                                                                </span>
+                                                            ) : (
+                                                                <span style={{
+                                                                    background: 'rgba(234,179,8,0.1)',
+                                                                    border: '1px solid rgba(234,179,8,0.3)',
+                                                                    color: 'var(--accent-yellow)',
+                                                                    padding: '0.2rem 0.6rem',
+                                                                    borderRadius: '4px',
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: '700'
+                                                                }}>
+                                                                    {rec.reason}
+                                                                </span>
+                                                            )}
                                                         </td>
                                                         <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{rec.registeredBy}</td>
                                                     </tr>
@@ -1828,7 +1921,7 @@ export default function LogisticsHub() {
                             </p>
 
                             {/* FEFO Allocation Preview */}
-                            {(flowType === 'saida' || flowType === 'perdas') && (() => {
+                            {flowType === 'saida' && (() => {
                                 const productBatches = stockBatches.filter(b => b.itemSku === pendingProduct.sku);
                                 if (productBatches.length > 0) {
                                     const fefo = calculateFefoPlan(pendingProduct.sku, pendingQty);
@@ -1932,6 +2025,32 @@ export default function LogisticsHub() {
                                 ))}
                             </div>
 
+                            {selectedReason === 'Outros' && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.2rem' }}>
+                                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                                        Descreva o motivo (obrigatório):
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={customReasonText}
+                                        onChange={(e) => setCustomReasonText(e.target.value)}
+                                        placeholder="Digite o motivo do descarte..."
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.8rem',
+                                            background: 'rgba(255, 255, 255, 0.05)',
+                                            border: '1px solid var(--border-color)',
+                                            borderRadius: '8px',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '0.9rem',
+                                            outline: 'none',
+                                            transition: 'border-color 0.2s',
+                                        }}
+                                        autoFocus
+                                    />
+                                </div>
+                            )}
+
                             <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '1.2rem' }}>
                                 <button className="btn-clear-modal" style={{ flex: 1 }} onClick={() => { setShowReason(false); setPendingProduct(null); }}>
                                     CANCELAR
@@ -1941,7 +2060,7 @@ export default function LogisticsHub() {
                                     style={{ flex: 1, backgroundColor: 'var(--accent-yellow)', color: '#422006' }} 
                                     onClick={handleConfirmReason}
                                 >
-                                    REGISTRAR DESCARTE
+                                    CONFIRMAR
                                 </button>
                             </div>
                         </div>
@@ -2182,6 +2301,150 @@ export default function LogisticsHub() {
                             >
                                 SIM, EXCLUIR
                             </button>
+                        </div>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* =============================================
+                MODAL: REJECTION REASON DIALOG
+            ============================================= */}
+            {showRejectionModal && rejectionTargetReqId && (() => {
+                const req = requests.find(r => r.id === rejectionTargetReqId);
+                if (!req) return null;
+                return createPortal(
+                    <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
+                        <div className="pin-modal-card" style={{ maxWidth: '450px', padding: '2rem' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <X size={24} style={{ color: 'var(--accent-red)' }} />
+                                    <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Motivo da Recusa</h3>
+                                </div>
+                                
+                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
+                                    Você está recusando a solicitação de <strong>{req.quantity}</strong> unidade(s) de <strong>{req.itemName}</strong> para o setor <strong>{req.sector || 'COZINHA'}</strong>.
+                                </p>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                    <label style={{ fontSize: '0.8rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                                        Motivo da recusa (opcional):
+                                    </label>
+                                    <textarea
+                                        value={rejectionReasonText}
+                                        onChange={(e) => setRejectionReasonText(e.target.value)}
+                                        placeholder="Descreva o motivo para o colaborador (opcional)..."
+                                        rows={4}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.8rem',
+                                            background: 'rgba(255, 255, 255, 0.05)',
+                                            border: '1px solid var(--border-color)',
+                                            borderRadius: '8px',
+                                            color: 'var(--text-primary)',
+                                            fontSize: '0.9rem',
+                                            outline: 'none',
+                                            resize: 'none',
+                                            transition: 'border-color 0.2s',
+                                        }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '0.8rem' }}>
+                                    <button 
+                                        className="btn-clear-modal" 
+                                        style={{ flex: 1 }} 
+                                        onClick={handleCancelRejection}
+                                    >
+                                        CANCELAR
+                                    </button>
+                                    <button 
+                                        className="btn-confirm-modal" 
+                                        style={{ flex: 1, backgroundColor: 'var(--accent-red)', color: '#ffffff' }} 
+                                        onClick={handleConfirmRejection}
+                                    >
+                                        RECUSAR
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                , document.body);
+            })()}
+
+            {/* =============================================
+                MODAL: REJECTION INFO DIALOG
+            ============================================= */}
+            {showInfoModal && infoModalRequest && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '450px', padding: '2rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Info size={24} style={{ color: '#60a5fa' }} />
+                                <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Detalhes da Recusa</h3>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Insumo:</span>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{infoModalRequest.itemName}</strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Quantidade:</span>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{infoModalRequest.quantity}</strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Solicitado por:</span>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{infoModalRequest.requestedBy}</strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Setor / Função:</span>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{infoModalRequest.sector || 'COZINHA'} / {infoModalRequest.area || 'Auxiliar'}</strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Data da Solicitação:</span>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{infoModalRequest.requestedAt}</strong>
+                                </div>
+                                <hr style={{ border: '0', borderTop: '1px solid var(--border-color)', margin: '0.2rem 0' }} />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Recusado por:</span>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{infoModalRequest.approvedBy || 'Supervisor'}</strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Data da Recusa:</span>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{infoModalRequest.approvedAt}</strong>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Motivo da Recusa:</span>
+                                <div style={{ 
+                                    padding: '1rem', 
+                                    background: 'rgba(239, 68, 68, 0.05)', 
+                                    border: '1px solid rgba(239, 68, 68, 0.15)', 
+                                    borderRadius: '8px', 
+                                    color: 'var(--text-primary)',
+                                    fontSize: '0.9rem',
+                                    lineHeight: '1.4',
+                                    whiteSpace: 'pre-wrap',
+                                    minHeight: '60px',
+                                    fontStyle: infoModalRequest.rejectionReason ? 'normal' : 'italic'
+                                }}>
+                                    {infoModalRequest.rejectionReason || 'Nenhum motivo específico foi informado.'}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                                <button 
+                                    className="btn-confirm-modal" 
+                                    style={{ width: '100%', padding: '0.8rem' }} 
+                                    onClick={() => {
+                                        setShowInfoModal(false);
+                                        setInfoModalRequest(null);
+                                    }}
+                                >
+                                    FECHAR
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

@@ -37,7 +37,9 @@ import {
     Camera,
     Eye,
     Download,
-    ChevronRight
+    ChevronRight,
+    LayoutGrid,
+    Briefcase
 } from 'lucide-react';
 
 const PERSONAL_DOCS_ITEMS = [
@@ -70,6 +72,8 @@ export default function SettingsHub() {
     const [produtos, setProdutos] = useState([]);
     const [categorias, setCategorias] = useState([]);
     const [fornecedores, setFornecedores] = useState([]);
+    const [setores, setSetores] = useState([]);
+    const [cargos, setCargos] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // Tab control
@@ -81,6 +85,8 @@ export default function SettingsHub() {
     const [searchProd, setSearchProd] = useState('');
     const [searchCat, setSearchCat] = useState('');
     const [searchForn, setSearchForn] = useState('');
+    const [searchSector, setSearchSector] = useState('');
+    const [searchCargo, setSearchCargo] = useState('');
 
     // Modals control
     const [showColabModal, setShowColabModal] = useState(false);
@@ -89,6 +95,8 @@ export default function SettingsHub() {
     const [prodToDelete, setProdToDelete] = useState(null);
     const [catToDelete, setCatToDelete] = useState(null);
     const [fornToDelete, setFornToDelete] = useState(null);
+    const [sectorToDelete, setSectorToDelete] = useState(null);
+    const [cargoToDelete, setCargoToDelete] = useState(null);
     const [toast, setToast] = useState(null);
 
     const [showProdModal, setShowProdModal] = useState(false);
@@ -96,6 +104,18 @@ export default function SettingsHub() {
 
     const [showCatModal, setShowCatModal] = useState(false);
     const [editingCat, setEditingCat] = useState(null);
+
+    const [showSectorModal, setShowSectorModal] = useState(false);
+    const [editingSector, setEditingSector] = useState(null);
+    const [sectorForm, setSectorForm] = useState({
+        name: '', icon: 'fa-folder', color: 'color-blue', description: '', status: 'Ativo'
+    });
+
+    const [showCargoModal, setShowCargoModal] = useState(false);
+    const [editingCargo, setEditingCargo] = useState(null);
+    const [cargoForm, setCargoForm] = useState({
+        name: '', description: '', status: 'Ativo'
+    });
 
     const [showFornModal, setShowFornModal] = useState(false);
     const [editingForn, setEditingForn] = useState(null);
@@ -134,16 +154,33 @@ export default function SettingsHub() {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [usersData, prodsData, catsData, supsData] = await Promise.all([
+            const [usersData, prodsData, catsData, supsData, sectorsData] = await Promise.all([
                 loadUsers(),
                 DbService.getProducts(),
                 DbService.getCategories(),
-                DbService.getSuppliers()
+                DbService.getSuppliers(),
+                DbService.getSectors()
             ]);
             setColaboradores(usersData);
             setProdutos(prodsData);
             setCategorias(catsData);
             setFornecedores(supsData);
+            setSetores(sectorsData);
+
+            // Load cargos
+            const savedCargos = localStorage.getItem('corellux_cargos');
+            if (savedCargos) {
+                setCargos(JSON.parse(savedCargos));
+            } else {
+                const defaultCargos = [
+                    { id: 1, name: 'Administrador', description: 'Acesso total ao sistema', status: 'Ativo' },
+                    { id: 2, name: 'Gerente', description: 'Gestão operacional e aprovações', status: 'Ativo' },
+                    { id: 3, name: 'Estoquista', description: 'Controle de entrada e saída', status: 'Ativo' },
+                    { id: 4, name: 'Cozinha', description: 'Solicitação de insumos', status: 'Ativo' }
+                ];
+                setCargos(defaultCargos);
+                localStorage.setItem('corellux_cargos', JSON.stringify(defaultCargos));
+            }
         } catch (e) {
             console.error('[SettingsHub] Error loading database registries:', e);
         } finally {
@@ -711,6 +748,139 @@ export default function SettingsHub() {
     };
 
     // =============================================
+    // CRUD 3.5: SETORES (SECTORS)
+    // =============================================
+    const openSectorModalForEdit = (sec) => {
+        setEditingSector(sec);
+        setSectorForm({
+            id: sec.id,
+            name: sec.name || '',
+            icon: sec.icon || 'fa-folder',
+            color: sec.color || 'color-blue',
+            description: sec.description || '',
+            status: sec.status || 'Ativo'
+        });
+        setShowSectorModal(true);
+    };
+
+    const openSectorModalForCreate = () => {
+        setEditingSector(null);
+        setSectorForm({
+            name: '', icon: 'fa-folder', color: 'color-blue', description: '', status: 'Ativo'
+        });
+        setShowSectorModal(true);
+    };
+
+    const handleSaveSector = async (e) => {
+        e.preventDefault();
+        const payload = {
+            ...sectorForm,
+            name: sectorForm.name.toUpperCase().trim()
+        };
+
+        const result = await DbService.saveSector(payload);
+        if (result.success) {
+            showToast('Setor gravado com sucesso!', 'success');
+        } else {
+            showToast('[Aviso] Gravado em cache local offline.', 'warning');
+        }
+        setShowSectorModal(false);
+        loadData();
+    };
+
+    const handleDeleteSector = (sec) => {
+        setSectorToDelete(sec);
+    };
+
+    const confirmDeleteSector = async () => {
+        if (!sectorToDelete) return;
+        const sec = sectorToDelete;
+        setSectorToDelete(null);
+
+        const result = await DbService.deleteSector(sec.id);
+        if (result.success) {
+            showToast('Setor excluído com sucesso.', 'success');
+        } else {
+            showToast('[Aviso] Removido no cache local offline.', 'warning');
+        }
+        loadData();
+    };
+
+    const handleToggleSectorStatus = async (sec) => {
+        const newStatus = sec.status === 'Ativo' ? 'Inativo' : 'Ativo';
+        const updated = { ...sec, status: newStatus };
+        setSetores(prev => prev.map(s => String(s.id) === String(sec.id) ? updated : s));
+        await DbService.saveSector(updated);
+        loadData();
+    };
+
+    // =============================================
+    // CRUD 3.6: CARGOS (ROLES)
+    // =============================================
+    const openCargoModalForEdit = (car) => {
+        setEditingCargo(car);
+        setCargoForm({
+            id: car.id,
+            name: car.name || '',
+            description: car.description || '',
+            status: car.status || 'Ativo'
+        });
+        setShowCargoModal(true);
+    };
+
+    const openCargoModalForCreate = () => {
+        setEditingCargo(null);
+        setCargoForm({
+            name: '', description: '', status: 'Ativo'
+        });
+        setShowCargoModal(true);
+    };
+
+    const handleSaveCargo = (e) => {
+        e.preventDefault();
+        
+        let updatedCargos = [...cargos];
+        if (editingCargo) {
+            updatedCargos = cargos.map(c => String(c.id) === String(editingCargo.id) ? { ...c, ...cargoForm, name: cargoForm.name.trim() } : c);
+        } else {
+            const newCargo = {
+                ...cargoForm,
+                name: cargoForm.name.trim(),
+                id: Date.now()
+            };
+            updatedCargos.push(newCargo);
+        }
+
+        setCargos(updatedCargos);
+        localStorage.setItem('corellux_cargos', JSON.stringify(updatedCargos));
+        showToast('Cargo gravado com sucesso!', 'success');
+        setShowCargoModal(false);
+    };
+
+    // Confirm modals delete helpers
+    const confirmDeleteCargo = () => {
+        if (!cargoToDelete) return;
+        const car = cargoToDelete;
+        setCargoToDelete(null);
+
+        const updatedCargos = cargos.filter(c => String(c.id) !== String(car.id));
+        setCargos(updatedCargos);
+        localStorage.setItem('corellux_cargos', JSON.stringify(updatedCargos));
+        showToast('Cargo excluído com sucesso.', 'success');
+    };
+
+    const handleToggleCargoStatus = (car) => {
+        const newStatus = car.status === 'Ativo' ? 'Inativo' : 'Ativo';
+        const updatedCargos = cargos.map(c => String(c.id) === String(car.id) ? { ...c, status: newStatus } : c);
+        setCargos(updatedCargos);
+        localStorage.setItem('corellux_cargos', JSON.stringify(updatedCargos));
+    };
+
+    const handleDeleteCargo = (car) => {
+        setCargoToDelete(car);
+    };
+
+    // =============================================
     // CRUD 4: FORNECEDORES (SUPPLIERS)
     // =============================================
 
@@ -862,9 +1032,19 @@ export default function SettingsHub() {
     );
 
     const filteredForns = fornecedores.filter(f => 
-        f.razaoSocial.toLowerCase().includes(searchForn.toLowerCase()) ||
+        (f.razaoSocial || '').toLowerCase().includes(searchForn.toLowerCase()) ||
         (f.nomeFantasia && f.nomeFantasia.toLowerCase().includes(searchForn.toLowerCase())) ||
-        f.cnpj.includes(searchForn)
+        (f.cnpj || '').includes(searchForn)
+    );
+
+    const filteredSectors = setores.filter(s => 
+        s.name.toLowerCase().includes(searchSector.toLowerCase()) ||
+        (s.description && s.description.toLowerCase().includes(searchSector.toLowerCase()))
+    );
+
+    const filteredCargos = cargos.filter(c => 
+        c.name.toLowerCase().includes(searchCargo.toLowerCase()) ||
+        (c.description && c.description.toLowerCase().includes(searchCargo.toLowerCase()))
     );
 
     return (
@@ -938,6 +1118,30 @@ export default function SettingsHub() {
                                     <div className="card-content">
                                         <h3>FORNECEDORES</h3>
                                         <p>CGC, contatos comerciais, avaliações e prazos.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
+
+                                <button 
+                                    className="menu-card teal" 
+                                    onClick={() => setActiveTab('setores')}
+                                >
+                                    <div className="card-icon"><LayoutGrid size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>SETORES</h3>
+                                        <p>Criação e gestão de setores operacionais da empresa.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
+
+                                <button 
+                                    className="menu-card yellow" 
+                                    onClick={() => setActiveTab('cargos')}
+                                >
+                                    <div className="card-icon"><Briefcase size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>CARGOS</h3>
+                                        <p>Cargos, permissões padrão e funções organizacionais.</p>
                                     </div>
                                     <ChevronRight className="chevron" size={20} />
                                 </button>
@@ -1326,6 +1530,198 @@ export default function SettingsHub() {
                                                     </tr>
                                                 );
                                             })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* =============================================
+                            TAB 4.5: SETORES
+                        ============================================= */}
+                        {activeTab === 'setores' && (
+                            <div className="products-container">
+                                <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <LayoutGrid style={{ color: 'var(--accent-teal)' }} /> Cadastro de Setores
+                                    </h2>
+                                    
+                                    <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', flex: '1', justifyContent: 'flex-end', minWidth: '300px' }}>
+                                        <div className="search-box" style={{ margin: 0 }}>
+                                            <Search size={16} />
+                                            <input 
+                                                type="text" 
+                                                placeholder="Buscar setor..."
+                                                value={searchSector}
+                                                onChange={(e) => setSearchSector(e.target.value)}
+                                            />
+                                        </div>
+                                        {isAdminUser && (
+                                            <button className="btn-primary" onClick={openSectorModalForCreate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--accent-teal)', borderColor: 'var(--accent-teal)' }}>
+                                                <PlusCircle size={16} /> NOVO SETOR
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="table-responsive">
+                                    <table className="products-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Nome</th>
+                                                <th>Descrição</th>
+                                                <th style={{ width: '120px' }}>Status</th>
+                                                <th style={{ textAlign: 'center', width: '130px' }}>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredSectors.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                                                        Nenhum setor encontrado.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                filteredSectors.map(sec => (
+                                                    <tr key={sec.id}>
+                                                        <td>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                                <div className={`cat-icon-area ${sec.color || 'color-blue'}`} style={{ width: '35px', height: '35px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                    <LayoutGrid size={16} />
+                                                                </div>
+                                                                <strong style={{ fontSize: '1rem' }}>{sec.name}</strong>
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ color: 'var(--text-secondary)' }}>{sec.description || '-'}</td>
+                                                        <td style={{ width: '120px' }}>
+                                                            <span className={`status-badge ${sec.status === 'Ativo' ? 'badge-ativo' : 'badge-desligado'}`} style={{
+                                                                background: sec.status === 'Ativo' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                                color: sec.status === 'Ativo' ? 'var(--accent-green)' : 'var(--accent-red)',
+                                                                width: '95px',
+                                                                display: 'inline-block',
+                                                                textAlign: 'center'
+                                                            }}>
+                                                                {sec.status}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ textAlign: 'center', width: '130px' }}>
+                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                                                                 <button className="action-btn-sm edit" onClick={() => openSectorModalForEdit(sec)} title="Editar">
+                                                                     <Edit size={16} />
+                                                                 </button>
+                                                                 <button 
+                                                                     className={`switch-toggle-btn ${sec.status === 'Ativo' ? 'active' : ''}`}
+                                                                     onClick={() => handleToggleSectorStatus(sec)}
+                                                                     title={sec.status === 'Ativo' ? 'Inativar' : 'Ativar'}
+                                                                 >
+                                                                     <div className="switch-toggle-track">
+                                                                         <div className="switch-toggle-handle"></div>
+                                                                     </div>
+                                                                 </button>
+                                                                 <button className="action-btn-sm delete" onClick={() => handleDeleteSector(sec)} title="Excluir">
+                                                                     <Trash2 size={16} />
+                                                                 </button>
+                                                             </div>
+                                                         </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* =============================================
+                            TAB 4.6: CARGOS
+                        ============================================= */}
+                        {activeTab === 'cargos' && (
+                            <div className="products-container">
+                                <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Briefcase style={{ color: 'var(--accent-yellow)' }} /> Cadastro de Cargos
+                                    </h2>
+                                    
+                                    <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', flex: '1', justifyContent: 'flex-end', minWidth: '300px' }}>
+                                        <div className="search-box" style={{ margin: 0 }}>
+                                            <Search size={16} />
+                                            <input 
+                                                type="text" 
+                                                placeholder="Buscar cargo..."
+                                                value={searchCargo}
+                                                onChange={(e) => setSearchCargo(e.target.value)}
+                                            />
+                                        </div>
+                                        {isAdminUser && (
+                                            <button className="btn-primary" onClick={openCargoModalForCreate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--accent-yellow)', borderColor: 'var(--accent-yellow)' }}>
+                                                <PlusCircle size={16} /> NOVO CARGO
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="table-responsive">
+                                    <table className="products-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Nome</th>
+                                                <th>Descrição</th>
+                                                <th style={{ width: '120px' }}>Status</th>
+                                                <th style={{ textAlign: 'center', width: '130px' }}>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredCargos.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                                                        Nenhum cargo encontrado.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                filteredCargos.map(car => (
+                                                    <tr key={car.id}>
+                                                        <td>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                                <div className="cat-icon-area color-yellow" style={{ width: '35px', height: '35px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                    <Briefcase size={16} />
+                                                                </div>
+                                                                <strong style={{ fontSize: '1rem' }}>{car.name}</strong>
+                                                            </div>
+                                                        </td>
+                                                        <td style={{ color: 'var(--text-secondary)' }}>{car.description || '-'}</td>
+                                                        <td style={{ width: '120px' }}>
+                                                            <span className={`status-badge ${car.status === 'Ativo' ? 'badge-ativo' : 'badge-desligado'}`} style={{
+                                                                background: car.status === 'Ativo' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                                color: car.status === 'Ativo' ? 'var(--accent-green)' : 'var(--accent-red)',
+                                                                width: '95px',
+                                                                display: 'inline-block',
+                                                                textAlign: 'center'
+                                                            }}>
+                                                                {car.status}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ textAlign: 'center', width: '130px' }}>
+                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                                                                 <button className="action-btn-sm edit" onClick={() => openCargoModalForEdit(car)} title="Editar">
+                                                                     <Edit size={16} />
+                                                                 </button>
+                                                                 <button 
+                                                                     className={`switch-toggle-btn ${car.status === 'Ativo' ? 'active' : ''}`}
+                                                                     onClick={() => handleToggleCargoStatus(car)}
+                                                                     title={car.status === 'Ativo' ? 'Inativar' : 'Ativar'}
+                                                                 >
+                                                                     <div className="switch-toggle-track">
+                                                                         <div className="switch-toggle-handle"></div>
+                                                                     </div>
+                                                                 </button>
+                                                                 <button className="action-btn-sm delete" onClick={() => handleDeleteCargo(car)} title="Excluir">
+                                                                     <Trash2 size={16} />
+                                                                 </button>
+                                                             </div>
+                                                         </td>
+                                                    </tr>
+                                                ))
+                                            )}
                                         </tbody>
                                     </table>
                                 </div>
@@ -2722,6 +3118,247 @@ export default function SettingsHub() {
                                 type="button" 
                                 className="btn-clear-modal" 
                                 onClick={confirmDeleteForn}
+                                style={{ 
+                                    flex: 1, 
+                                    background: '#ef4444', 
+                                    border: '1.5px solid #000000', 
+                                    color: '#ffffff',
+                                    boxShadow: '0 4px 0px #000000',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                SIM, EXCLUIR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* =============================================
+                MODAL: CADASTRO/EDIÇÃO SETOR
+            ============================================= */}
+            {showSectorModal && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '500px', width: '90%' }}>
+                        <button className="btn-close-modal" onClick={() => setShowSectorModal(false)}><X size={18} /></button>
+                        
+                        <form onSubmit={handleSaveSector} style={{ padding: '1.5rem' }}>
+                            <h3 style={{ fontSize: '1.4rem', color: 'var(--accent-teal)', marginBottom: '1.5rem', textTransform: 'uppercase', fontWeight: '800' }}>
+                                {editingSector ? 'Editar Setor' : 'Novo Setor'}
+                            </h3>
+
+                            <div style={{ marginBottom: '1rem' }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Nome do Setor</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    maxLength="50"
+                                    placeholder="Ex: SALÃO"
+                                    value={sectorForm.name} 
+                                    onChange={(e) => setSectorForm(prev => ({ ...prev, name: e.target.value }))}
+                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: '1rem' }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Descrição</label>
+                                <input 
+                                    type="text" 
+                                    value={sectorForm.description} 
+                                    onChange={(e) => setSectorForm(prev => ({ ...prev, description: e.target.value }))}
+                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: '1.2rem' }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Tema (Cor Visual)</label>
+                                <select 
+                                    value={sectorForm.color}
+                                    onChange={(e) => setSectorForm(prev => ({ ...prev, color: e.target.value }))}
+                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                >
+                                    <option value="color-teal">Azul Turquesa</option>
+                                    <option value="color-blue">Azul Glacial</option>
+                                    <option value="color-red">Vermelho Alerta</option>
+                                    <option value="color-green">Verde Higiene</option>
+                                    <option value="color-yellow">Amarelo Produção</option>
+                                    <option value="color-orange">Laranja Corellux</option>
+                                    <option value="color-purple">Roxo Admin</option>
+                                    <option value="color-pink">Rosa Sobremesas</option>
+                                    <option value="color-indigo">Índigo Limpeza</option>
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                                <button type="button" className="btn-clear-modal" onClick={() => setShowSectorModal(false)}>CANCELAR</button>
+                                <button type="submit" className="btn-confirm-modal" style={{ backgroundColor: 'var(--accent-teal)', borderColor: 'var(--accent-teal)' }}>SALVAR SETOR</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* =============================================
+                MODAL: CADASTRO/EDIÇÃO CARGO
+            ============================================= */}
+            {showCargoModal && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '500px', width: '90%' }}>
+                        <button className="btn-close-modal" onClick={() => setShowCargoModal(false)}><X size={18} /></button>
+                        
+                        <form onSubmit={handleSaveCargo} style={{ padding: '1.5rem' }}>
+                            <h3 style={{ fontSize: '1.4rem', color: 'var(--accent-yellow)', marginBottom: '1.5rem', textTransform: 'uppercase', fontWeight: '800' }}>
+                                {editingCargo ? 'Editar Cargo' : 'Novo Cargo'}
+                            </h3>
+
+                            <div style={{ marginBottom: '1rem' }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Nome do Cargo</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    maxLength="50"
+                                    placeholder="Ex: Cozinheiro"
+                                    value={cargoForm.name} 
+                                    onChange={(e) => setCargoForm(prev => ({ ...prev, name: e.target.value }))}
+                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                />
+                            </div>
+
+                            <div style={{ marginBottom: '1rem' }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Descrição / Responsabilidades</label>
+                                <input 
+                                    type="text" 
+                                    value={cargoForm.description} 
+                                    onChange={(e) => setCargoForm(prev => ({ ...prev, description: e.target.value }))}
+                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                                <button type="button" className="btn-clear-modal" onClick={() => setShowCargoModal(false)}>CANCELAR</button>
+                                <button type="submit" className="btn-confirm-modal" style={{ backgroundColor: 'var(--accent-yellow)', borderColor: 'var(--accent-yellow)', color: '#000000' }}>SALVAR CARGO</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* MODAL: CONFIRMAR EXCLUSÃO DE SETOR */}
+            {sectorToDelete && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10010 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '450px', width: '90%', textAlign: 'center', padding: '2rem' }}>
+                        <div style={{
+                            width: '70px',
+                            height: '70px',
+                            borderRadius: '50%',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '2px solid #ef4444',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 1.5rem auto',
+                            boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)'
+                        }}>
+                            <Trash2 size={36} color="#ef4444" />
+                        </div>
+                        
+                        <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.8rem', fontWeight: '800' }}>
+                            Excluir Setor?
+                        </h3>
+                        
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '2rem' }}>
+                            Tem certeza que deseja excluir o setor <strong style={{ color: 'var(--text-primary)' }}>{sectorToDelete.name}</strong>?<br/>
+                            Isso removerá permanentemente o cadastro e não poderá ser desfeita.
+                        </p>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                            <button 
+                                type="button" 
+                                className="btn-confirm-modal" 
+                                onClick={() => setSectorToDelete(null)}
+                                style={{ 
+                                    flex: 1, 
+                                    background: 'rgba(255, 255, 255, 0.05)', 
+                                    border: '1.5px solid var(--border-color)', 
+                                    color: 'var(--text-primary)',
+                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                CANCELAR
+                            </button>
+                            <button 
+                                type="button" 
+                                className="btn-clear-modal" 
+                                onClick={confirmDeleteSector}
+                                style={{ 
+                                    flex: 1, 
+                                    background: '#ef4444', 
+                                    border: '1.5px solid #000000', 
+                                    color: '#ffffff',
+                                    boxShadow: '0 4px 0px #000000',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                SIM, EXCLUIR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* MODAL: CONFIRMAR EXCLUSÃO DE CARGO */}
+            {cargoToDelete && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10010 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '450px', width: '90%', textAlign: 'center', padding: '2rem' }}>
+                        <div style={{
+                            width: '70px',
+                            height: '70px',
+                            borderRadius: '50%',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '2px solid #ef4444',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 1.5rem auto',
+                            boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)'
+                        }}>
+                            <Trash2 size={36} color="#ef4444" />
+                        </div>
+                        
+                        <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.8rem', fontWeight: '800' }}>
+                            Excluir Cargo?
+                        </h3>
+                        
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '2rem' }}>
+                            Tem certeza que deseja excluir o cargo <strong style={{ color: 'var(--text-primary)' }}>{cargoToDelete.name}</strong>?<br/>
+                            Isso removerá permanentemente o cadastro e não poderá ser desfeita.
+                        </p>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                            <button 
+                                type="button" 
+                                className="btn-confirm-modal" 
+                                onClick={() => setCargoToDelete(null)}
+                                style={{ 
+                                    flex: 1, 
+                                    background: 'rgba(255, 255, 255, 0.05)', 
+                                    border: '1.5px solid var(--border-color)', 
+                                    color: 'var(--text-primary)',
+                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                CANCELAR
+                            </button>
+                            <button 
+                                type="button" 
+                                className="btn-clear-modal" 
+                                onClick={confirmDeleteCargo}
                                 style={{ 
                                     flex: 1, 
                                     background: '#ef4444', 

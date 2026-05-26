@@ -232,11 +232,116 @@ export const DbService = {
                 .order('name', { ascending: true });
 
             if (error) throw error;
-            if (!data || data.length === 0) return mockData.sectors || [];
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_sectors');
+                if (local) return JSON.parse(local);
+                localStorage.setItem('corellux_sectors', JSON.stringify(mockData.sectors || []));
+                return mockData.sectors || [];
+            }
             return toCamelCase(data);
         } catch (e) {
             console.error('[DbService] Erro ao buscar setores. Usando fallback local:', e.message || e);
+            const local = localStorage.getItem('corellux_sectors');
+            if (local) return JSON.parse(local);
+            localStorage.setItem('corellux_sectors', JSON.stringify(mockData.sectors || []));
             return mockData.sectors || [];
+        }
+    },
+
+    async saveSector(sector) {
+        try {
+            const snakeSector = toSnakeCase(sector);
+            let result;
+            if (sector.id) {
+                result = await supabase
+                    .from('sectors')
+                    .update(snakeSector)
+                    .eq('id', sector.id)
+                    .select();
+            } else {
+                delete snakeSector.id;
+                result = await supabase
+                    .from('sectors')
+                    .insert([snakeSector])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            const saved = toCamelCase(result.data[0]);
+
+            // Sync local on success
+            const local = localStorage.getItem('corellux_sectors');
+            let list = [];
+            if (local) {
+                try {
+                    list = JSON.parse(local);
+                } catch (err) {
+                    list = [...mockData.sectors];
+                }
+            } else {
+                list = [...mockData.sectors];
+            }
+            const idx = list.findIndex(s => String(s.id) === String(saved.id));
+            if (idx !== -1) {
+                list[idx] = saved;
+            } else {
+                list.push(saved);
+            }
+            localStorage.setItem('corellux_sectors', JSON.stringify(list));
+
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar setor no Supabase. Gravando localmente:', e.message || e);
+            const local = localStorage.getItem('corellux_sectors');
+            let list = [];
+            if (local) {
+                try {
+                    list = JSON.parse(local);
+                } catch (err) {
+                    list = [...mockData.sectors];
+                }
+            } else {
+                list = [...mockData.sectors];
+            }
+            const newSector = {
+                ...sector,
+                id: sector.id || Date.now() + Math.floor(Math.random() * 1000)
+            };
+            const idx = list.findIndex(s => String(s.id) === String(newSector.id));
+            if (idx !== -1) {
+                list[idx] = newSector;
+            } else {
+                list.push(newSector);
+            }
+            localStorage.setItem('corellux_sectors', JSON.stringify(list));
+            return { success: true, data: newSector };
+        }
+    },
+
+    async deleteSector(id) {
+        try {
+            const { error } = await supabase
+                .from('sectors')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
+
+            // Sync local
+            const local = localStorage.getItem('corellux_sectors');
+            if (local) {
+                const list = JSON.parse(local);
+                const updated = list.filter(s => String(s.id) !== String(id));
+                localStorage.setItem('corellux_sectors', JSON.stringify(updated));
+            }
+            return { success: true };
+        } catch (e) {
+            console.warn('[DbService] Erro ao excluir setor no Supabase. Atualizando localmente:', e.message || e);
+            const local = localStorage.getItem('corellux_sectors');
+            if (local) {
+                const list = JSON.parse(local);
+                const updated = list.filter(s => String(s.id) !== String(id));
+                localStorage.setItem('corellux_sectors', JSON.stringify(updated));
+            }
+            return { success: true };
         }
     },
 
