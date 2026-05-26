@@ -38,6 +38,13 @@ body {
     overflow: hidden;
 }
 
+/* Padronização Global: Ocultar todas as barras de rolagem (mantendo a funcionalidade de rolagem) */
+::-webkit-scrollbar {
+    width: 0px;
+    height: 0px;
+    background: transparent;
+}
+
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
     -webkit-appearance: none;
