@@ -154,9 +154,14 @@ export default function LogisticsHub() {
     const [showInfoModal, setShowInfoModal] = useState(false);
     const [infoModalRequest, setInfoModalRequest] = useState(null);
 
+    // Info Dialog States (for Loss Detail)
+    const [showLossInfoModal, setShowLossInfoModal] = useState(false);
+    const [infoModalLoss, setInfoModalLoss] = useState(null);
+
     // Requisition Sector States
     const [sectors, setSectors] = useState([]);
     const [selectedRequisitionSector, setSelectedRequisitionSector] = useState('');
+    const [showCartModal, setShowCartModal] = useState(false);
 
 
 
@@ -792,6 +797,14 @@ export default function LogisticsHub() {
         setCart(prev => prev.filter(c => c.sku !== sku));
     };
 
+    const handleUpdateCartQty = (sku, newQty) => {
+        if (newQty <= 0) {
+            handleRemoveFromCart(sku);
+            return;
+        }
+        setCart(prev => prev.map(item => item.sku === sku ? { ...item, quantity: newQty } : item));
+    };
+
     const handleSubmitRequests = () => {
         if (cart.length === 0) return;
         if (!selectedRequisitionSector) {
@@ -824,6 +837,7 @@ export default function LogisticsHub() {
             saveRequests(newRequests);
             setCart([]);
             setSelectedRequisitionSector('');
+            setShowCartModal(false);
             alert('Solicitação de insumos enviada com sucesso!');
             setActiveTab('estoque');
         }
@@ -968,10 +982,10 @@ export default function LogisticsHub() {
     };
 
     return (
-        <div className="screen active with-header" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        <div className="screen active with-header" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', padding: 0 }}>
             
             {/* Inner Dashboard View */}
-            <div className="tab-content" style={{ flex: 1, padding: activeTab === 'menu' ? '0' : '2rem', overflowY: 'auto', position: 'relative' }}>
+            <div className="tab-content" style={{ flex: 1, padding: activeTab === 'menu' ? '2rem' : '2rem 2rem 3.5rem 2rem', overflowY: 'auto', position: 'relative' }}>
                 
                 {loading ? (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '1rem', color: 'var(--text-secondary)' }}>
@@ -1365,25 +1379,48 @@ export default function LogisticsHub() {
                         {((activeTab === 'movimentar' && flowType) || activeTab === 'solicitacao') && (
                             <div className="flow-container" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                 
-                                {/* Flow Selector Header */}
-                                {activeTab === 'solicitacao' && (
-                                    <div className="products-header" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 2rem' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-orange)' }}>
-                                            <ShoppingCart size={18} />
-                                            <span style={{ fontWeight: '700' }}>SOLICITAR INSUMOS PARA PREPARAÇÃO (CRIAR LISTA)</span>
-                                        </div>
-                                    </div>
-                                )}
-
                                 {/* FLOW STEP 1: CATEGORY SELECTION */}
                                 {flowStep === 'category' && (
-                                    <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                                        {activeTab !== 'movimentar' && (
-                                            <h3 style={{ margin: '0 0 1.5rem 0', color: 'var(--text-secondary)', fontSize: '1rem', letterSpacing: '0.05em' }}>
-                                                PASSO 1: SELECIONE A CATEGORIA
-                                            </h3>
+                                    <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                                        {activeTab === 'solicitacao' && (
+                                            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1rem' }}>
+                                                <button
+                                                    onClick={() => setShowCartModal(true)}
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        gap: '0.5rem',
+                                                        background: 'rgba(255, 90, 0, 0.15)',
+                                                        border: '1.5px solid var(--accent-orange)',
+                                                        color: 'var(--accent-orange)',
+                                                        padding: '0.5rem 1.2rem',
+                                                        borderRadius: '8px',
+                                                        fontWeight: '700',
+                                                        fontSize: '0.85rem',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s',
+                                                        boxShadow: '0 4px 6px rgba(0,0,0,0.15)'
+                                                    }}
+                                                >
+                                                    <ShoppingCart size={16} />
+                                                    <span>MINHAS COMPRAS</span>
+                                                    {cart.length > 0 && (
+                                                        <span style={{
+                                                            background: 'var(--accent-orange)',
+                                                            color: '#ffffff',
+                                                            borderRadius: '50%',
+                                                            padding: '0.1rem 0.4rem',
+                                                            fontSize: '0.75rem',
+                                                            fontWeight: '800',
+                                                            marginLeft: '0.3rem'
+                                                        }}>
+                                                            {cart.length}
+                                                        </span>
+                                                    )}
+                                                </button>
+                                            </div>
                                         )}
-                                        <div id="categories-grid" className="categories-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+                                        <div id="categories-grid" className="categories-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem', margin: '0 auto' }}>
                                             {categories.map(cat => (
                                                 <button 
                                                     key={cat.id} 
@@ -1411,16 +1448,55 @@ export default function LogisticsHub() {
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                         {/* Back to Category breadcrumb */}
                                         {activeTab !== 'movimentar' && (
-                                            <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                <button 
-                                                    onClick={() => { setFlowStep('category'); setCurrentCategory(null); }}
-                                                    className="btn-back"
-                                                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                                                >
-                                                    <ArrowLeft size={14} /> CATEGORIAS
-                                                </button>
-                                                <span style={{ margin: '0 0.8rem', color: 'var(--text-secondary)' }}>/</span>
-                                                <span style={{ fontWeight: '700', color: 'var(--accent-orange)' }}>{currentCategory.name}</span>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                    <button 
+                                                        onClick={() => { setFlowStep('category'); setCurrentCategory(null); }}
+                                                        className="btn-back"
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                                    >
+                                                        <ArrowLeft size={14} /> CATEGORIAS
+                                                    </button>
+                                                    <span style={{ margin: '0 0.8rem', color: 'var(--text-secondary)' }}>/</span>
+                                                    <span style={{ fontWeight: '700', color: 'var(--accent-orange)' }}>{currentCategory.name.toUpperCase()}</span>
+                                                </div>
+                                                
+                                                {activeTab === 'solicitacao' && (
+                                                    <button
+                                                        onClick={() => setShowCartModal(true)}
+                                                        style={{
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.5rem',
+                                                            background: 'rgba(255, 90, 0, 0.15)',
+                                                            border: '1.5px solid var(--accent-orange)',
+                                                            color: 'var(--accent-orange)',
+                                                            padding: '0.5rem 1.2rem',
+                                                            borderRadius: '8px',
+                                                            fontWeight: '700',
+                                                            fontSize: '0.85rem',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            boxShadow: '0 4px 6px rgba(0,0,0,0.15)'
+                                                        }}
+                                                    >
+                                                        <ShoppingCart size={16} />
+                                                        <span>MINHAS COMPRAS</span>
+                                                        {cart.length > 0 && (
+                                                            <span style={{
+                                                                background: 'var(--accent-orange)',
+                                                                color: '#ffffff',
+                                                                borderRadius: '50%',
+                                                                padding: '0.1rem 0.4rem',
+                                                                fontSize: '0.75rem',
+                                                                fontWeight: '800',
+                                                                marginLeft: '0.3rem'
+                                                            }}>
+                                                                {cart.length}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
 
@@ -1704,7 +1780,7 @@ export default function LogisticsHub() {
                                                                     )
                                                                 ) : (
                                                                     <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                                        Liberação por: {req.approvedBy}
+                                                                        {req.status === 'Recusado' ? 'Recusado por:' : 'Liberação por:'} {req.approvedBy}
                                                                     </span>
                                                                 )}
                                                             </td>
@@ -1785,7 +1861,8 @@ export default function LogisticsHub() {
                                                                         gap: '0.3rem'
                                                                     }}
                                                                     onClick={() => {
-                                                                        alert(`Motivo Detalhado (Outros):\n${rec.customReason || 'Não informado'}`);
+                                                                        setInfoModalLoss(rec);
+                                                                        setShowLossInfoModal(true);
                                                                     }}
                                                                     title={rec.customReason ? `Motivo: ${rec.customReason} (Clique para detalhes)` : 'Clique para ver o motivo'}
                                                                 >
@@ -2444,6 +2521,264 @@ export default function LogisticsHub() {
                                 >
                                     FECHAR
                                 </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>, document.body)}
+
+            {/* =============================================
+                MODAL: LOSS DETAILS DIALOG
+            ============================================= */}
+            {showLossInfoModal && infoModalLoss && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '450px', padding: '2rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Info size={24} style={{ color: 'var(--accent-yellow)' }} />
+                                <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Detalhes do Descarte</h3>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Insumo:</span>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{infoModalLoss.productName}</strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>SKU:</span>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{infoModalLoss.sku}</strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Quantidade:</span>
+                                    <strong style={{ color: 'var(--accent-red)', fontWeight: '800' }}>-{infoModalLoss.quantity} {infoModalLoss.unit}</strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Registrado por:</span>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{infoModalLoss.registeredBy}</strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Data / Hora:</span>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{infoModalLoss.registeredAt}</strong>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)' }}>Motivo Detalhado:</span>
+                                <div style={{ 
+                                    padding: '1rem', 
+                                    background: 'rgba(234, 179, 8, 0.05)', 
+                                    border: '1px solid rgba(234, 179, 8, 0.15)', 
+                                    borderRadius: '8px', 
+                                    color: 'var(--text-primary)',
+                                    fontSize: '0.9rem',
+                                    lineHeight: '1.4',
+                                    whiteSpace: 'pre-wrap',
+                                    minHeight: '60px'
+                                }}>
+                                    {infoModalLoss.customReason || infoModalLoss.reason || 'Nenhum motivo detalhado informado.'}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                                <button 
+                                    className="btn-confirm-modal" 
+                                    style={{ width: '100%', padding: '0.8rem', backgroundColor: 'var(--accent-yellow)', color: '#422006' }} 
+                                    onClick={() => {
+                                        setShowLossInfoModal(false);
+                                        setInfoModalLoss(null);
+                                    }}
+                                >
+                                    FECHAR
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            , document.body)}
+            {/* =============================================
+                MODAL: SHOPPING CART DIALOG
+            ============================================= */}
+            {showCartModal && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '600px', width: '90%', padding: '2rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.8rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-orange)' }}>
+                                    <ShoppingCart size={24} />
+                                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800' }}>Minhas Compras</h3>
+                                </div>
+                                <button 
+                                    className="btn-close-modal" 
+                                    onClick={() => setShowCartModal(false)} 
+                                    title="Fechar"
+                                    style={{ position: 'static', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            {cart.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
+                                    <ShoppingCart size={48} style={{ color: 'var(--border-color)', marginBottom: '1rem', opacity: 0.5 }} />
+                                    <p style={{ margin: 0, fontSize: '0.95rem' }}>Seu carrinho está vazio.</p>
+                                </div>
+                            ) : (
+                                <>
+                                    <div style={{ maxHeight: '280px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.8rem', paddingRight: '0.4rem' }}>
+                                        {cart.map((item) => (
+                                            <div 
+                                                key={item.sku} 
+                                                style={{ 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    justifyContent: 'space-between', 
+                                                    background: 'rgba(255, 255, 255, 0.02)', 
+                                                    padding: '0.8rem 1rem', 
+                                                    borderRadius: '8px', 
+                                                    border: '1px solid var(--border-color)',
+                                                    gap: '1rem'
+                                                }}
+                                            >
+                                                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
+                                                    <span style={{ fontWeight: '700', color: 'var(--text-primary)', textTransform: 'uppercase', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                        {item.name}
+                                                    </span>
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                                                        SKU: {item.sku}
+                                                    </span>
+                                                </div>
+
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                    <button 
+                                                        onClick={() => handleUpdateCartQty(item.sku, item.quantity - 1)}
+                                                        style={{ 
+                                                            background: 'rgba(255, 255, 255, 0.05)', 
+                                                            border: '1px solid var(--border-color)', 
+                                                            color: 'var(--text-primary)', 
+                                                            width: '28px', 
+                                                            height: '28px', 
+                                                            borderRadius: '6px', 
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            fontWeight: 'bold'
+                                                        }}
+                                                    >
+                                                        -
+                                                    </button>
+                                                    <input 
+                                                        type="number"
+                                                        value={item.quantity}
+                                                        onChange={(e) => {
+                                                            const val = parseInt(e.target.value);
+                                                            handleUpdateCartQty(item.sku, isNaN(val) ? 0 : val);
+                                                        }}
+                                                        style={{ 
+                                                            width: '50px', 
+                                                            textAlign: 'center', 
+                                                            background: 'none', 
+                                                            border: 'none', 
+                                                            borderBottom: '1px solid var(--border-color)',
+                                                            color: 'var(--text-primary)', 
+                                                            fontSize: '0.9rem',
+                                                            fontWeight: '700',
+                                                            outline: 'none',
+                                                            padding: '0.2rem 0'
+                                                        }}
+                                                    />
+                                                    <button 
+                                                        onClick={() => handleUpdateCartQty(item.sku, item.quantity + 1)}
+                                                        style={{ 
+                                                            background: 'rgba(255, 255, 255, 0.05)', 
+                                                            border: '1px solid var(--border-color)', 
+                                                            color: 'var(--text-primary)', 
+                                                            width: '28px', 
+                                                            height: '28px', 
+                                                            borderRadius: '6px', 
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            fontWeight: 'bold'
+                                                        }}
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+
+                                                <button 
+                                                    onClick={() => handleRemoveFromCart(item.sku)}
+                                                    style={{ 
+                                                        background: 'none', 
+                                                        border: 'none', 
+                                                        color: 'var(--accent-red)', 
+                                                        cursor: 'pointer',
+                                                        padding: '0.4rem',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center'
+                                                    }}
+                                                    title="Excluir item"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Sector Selection inside Cart Popup */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', borderTop: '1px solid var(--border-color)', paddingTop: '1rem' }}>
+                                        <label style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-secondary)' }}>
+                                            SELECIONE O SETOR OPERACIONAL DA REQUISIÇÃO:
+                                        </label>
+                                        <select
+                                            value={selectedRequisitionSector}
+                                            onChange={(e) => setSelectedRequisitionSector(e.target.value)}
+                                            style={{
+                                                width: '100%',
+                                                background: '#111827',
+                                                border: '1.5px solid var(--accent-orange)',
+                                                color: 'var(--text-primary)',
+                                                borderRadius: '8px',
+                                                padding: '0.6rem 1rem',
+                                                fontSize: '0.9rem',
+                                                fontWeight: '700',
+                                                outline: 'none',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <option value="">Selecione o Setor...</option>
+                                            {sectors.length > 0 ? (
+                                                sectors.map(s => (
+                                                    <option key={s.id} value={s.name}>{s.name.toUpperCase()}</option>
+                                                ))
+                                            ) : (
+                                                ['Cozinha', 'Salão', 'Bar', 'Logística', 'Administração'].map(s => (
+                                                    <option key={s} value={s}>{s.toUpperCase()}</option>
+                                                ))
+                                            )}
+                                        </select>
+                                    </div>
+                                </>
+                            )}
+
+                            <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '0.5rem' }}>
+                                <button 
+                                    className="btn-clear-modal" 
+                                    style={{ flex: 1 }} 
+                                    onClick={() => setShowCartModal(false)}
+                                >
+                                    FECHAR
+                                </button>
+                                {cart.length > 0 && (
+                                    <button 
+                                        className="btn-confirm-modal" 
+                                        style={{ flex: 1, backgroundColor: 'var(--accent-orange)', color: '#ffffff' }} 
+                                        onClick={handleSubmitRequests}
+                                    >
+                                        CONFIRMAR COMPRAS
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
