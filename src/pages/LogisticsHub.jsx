@@ -1454,25 +1454,25 @@ export default function LogisticsHub() {
             ============================================= */}
             {showNumpad && numpadProduct && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
-                    <div className="pin-modal-card" style={{ maxWidth: '400px', width: '90%', border: '1px solid #10b981', backgroundColor: '#111827', borderRadius: '16px', padding: 0, overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.2rem 1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#ffffff', fontWeight: '800', textTransform: 'uppercase' }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '380px', width: '90%', border: '1px solid #10b981', backgroundColor: '#111827', borderRadius: '16px', padding: 0, overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.2rem', borderBottom: '1px solid rgba(255,255,255,0.05)', position: 'relative' }}>
+                            <h3 style={{ margin: 0, fontSize: '1rem', color: '#ffffff', fontWeight: '800', textTransform: 'uppercase' }}>
                                 {flowType === 'entrada' ? 'ADICIONAR QUANTIDADE' : 'REMOVER QUANTIDADE'}
                             </h3>
-                            <button onClick={() => setShowNumpad(false)} style={{ backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: '3px', boxShadow: '0 4px 0px #b91c1c', transition: 'transform 0.1s, box-shadow 0.1s' }} onMouseDown={(e) => { e.currentTarget.style.transform = 'translateY(3px)'; e.currentTarget.style.boxShadow = '0 1px 0px #b91c1c'; }} onMouseUp={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 0px #b91c1c'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 0px #b91c1c'; }}>
-                                <X size={20} strokeWidth={3} />
+                            <button className="btn-close-modal" onClick={() => setShowNumpad(false)} title="Fechar">
+                                <X size={18} strokeWidth={2.5} />
                             </button>
                         </div>
 
-                        <div className="pin-container" style={{ padding: '1.5rem' }}>
-                            <div style={{ marginBottom: '1.5rem' }}>
-                                <h4 style={{ margin: '0 0 0.4rem 0', color: '#ffffff', fontSize: '1.2rem', fontWeight: '500' }}>
+                        <div className="pin-container" style={{ padding: '1rem 1.2rem' }}>
+                            <div style={{ marginBottom: '0.8rem' }}>
+                                <h4 style={{ margin: '0 0 0.3rem 0', color: '#ffffff', fontSize: '1.1rem', fontWeight: '500' }}>
                                     {numpadProduct.name}
                                 </h4>
-                                <div style={{ fontSize: '0.85rem', color: '#10b981', fontWeight: '600', marginBottom: '1rem' }}>
+                                <div style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: '600', marginBottom: '0.6rem' }}>
                                     Unidade: {numpadProduct.unit} | Estoque: {numpadProduct.stock}
                                 </div>
-                                <div style={{ fontSize: '0.9rem', color: '#94a3b8', marginBottom: '0.4rem' }}>Quantidade</div>
+                                <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.3rem' }}>Quantidade</div>
                                 <input 
                                     type="text" 
                                     value={numpadValue || ''} 
@@ -1483,9 +1483,9 @@ export default function LogisticsHub() {
                                         border: '1px solid #10b981',
                                         color: '#ffffff',
                                         textAlign: 'left',
-                                        fontSize: '1.8rem',
+                                        fontSize: '1.5rem',
                                         fontWeight: '700',
-                                        padding: '0.8rem 1rem',
+                                        padding: '0.5rem 0.8rem',
                                         borderRadius: '8px',
                                         outline: 'none',
                                         boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)'
@@ -1494,34 +1494,34 @@ export default function LogisticsHub() {
                             </div>
 
                             <div className="pin-entry-area" style={{ width: '100%' }}>
-                                <div className="numpad" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.8rem', marginBottom: '1.8rem', width: '100%' }}>
-                                    {[{l:'7',v:'7'},{l:'8',v:'8'},{l:'9',v:'9'},{l:<Delete size={20} />,v:'del'}].map((k, i) => (
-                                        <button key={'r1'+i} className="num-key" onClick={() => handleNumpadKey(k.v)} style={{ width: '100%', height: '65px', fontSize: '1.4rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }}>
+                                <div className="numpad" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem', marginBottom: '1rem', width: '100%' }}>
+                                    {[{l:'7',v:'7'},{l:'8',v:'8'},{l:'9',v:'9'},{l:<Delete size={18} />,v:'del'}].map((k, i) => (
+                                        <button key={'r1'+i} className="num-key" onClick={() => handleNumpadKey(k.v)} style={{ width: '100%', height: '48px', fontSize: '1.2rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }}>
                                             {k.l}
                                         </button>
                                     ))}
                                     {[{l:'4',v:'4'},{l:'5',v:'5'},{l:'6',v:'6'},{l:'x',v:'*'}].map((k, i) => (
-                                        <button key={'r2'+i} className="num-key" onClick={() => handleNumpadKey(k.v)} style={{ width: '100%', height: '65px', fontSize: '1.4rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }}>
+                                        <button key={'r2'+i} className="num-key" onClick={() => handleNumpadKey(k.v)} style={{ width: '100%', height: '48px', fontSize: '1.2rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }}>
                                             {k.l}
                                         </button>
                                     ))}
                                     {[{l:'1',v:'1'},{l:'2',v:'2'},{l:'3',v:'3'},{l:'-',v:'-'}].map((k, i) => (
-                                        <button key={'r3'+i} className="num-key" onClick={() => handleNumpadKey(k.v)} style={{ width: '100%', height: '65px', fontSize: '1.4rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }}>
+                                        <button key={'r3'+i} className="num-key" onClick={() => handleNumpadKey(k.v)} style={{ width: '100%', height: '48px', fontSize: '1.2rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }}>
                                             {k.l}
                                         </button>
                                     ))}
                                     {[{l:'0',v:'0'},{l:',',v:','},{l:'+',v:'+'},{l:'=',v:'=', g:true}].map((k, i) => (
-                                        <button key={'r4'+i} className="num-key" onClick={() => handleNumpadKey(k.v)} style={{ width: '100%', height: '65px', fontSize: '1.5rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: k.g ? '#10b981' : '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }}>
+                                        <button key={'r4'+i} className="num-key" onClick={() => handleNumpadKey(k.v)} style={{ width: '100%', height: '48px', fontSize: '1.2rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: k.g ? '#10b981' : '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }}>
                                             {k.l}
                                         </button>
                                     ))}
                                 </div>
 
                                 <div style={{ display: 'flex', gap: '1rem' }}>
-                                    <button className="btn-confirm-modal" onClick={confirmNumpad} style={{ flex: 1, padding: '1rem', fontSize: '1rem', borderRadius: '8px' }}>
+                                    <button className="btn-confirm-modal" onClick={confirmNumpad} style={{ flex: 1, padding: '0.8rem', fontSize: '1rem', borderRadius: '8px' }}>
                                         Confirmar
                                     </button>
-                                    <button className="btn-clear-modal" onClick={() => handleNumpadKey('C')} style={{ flex: 1, padding: '1rem', fontSize: '1rem', borderRadius: '8px' }}>
+                                    <button className="btn-clear-modal" onClick={() => handleNumpadKey('C')} style={{ flex: 1, padding: '0.8rem', fontSize: '1rem', borderRadius: '8px' }}>
                                         Limpar
                                     </button>
                                 </div>
