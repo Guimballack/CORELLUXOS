@@ -35,7 +35,9 @@ import {
     MapPin,
     AlertCircle,
     UserCheck,
-    CheckCircle2
+    CheckCircle2,
+    ChevronRight,
+    Lock
 } from 'lucide-react';
 
 export default function CentralHub() {
@@ -51,7 +53,7 @@ export default function CentralHub() {
     ]);
 
     // Local UI States (Avisos e Geral)
-    const [activeTab, setActiveTab] = useState('feed'); // 'feed', 'compose', 'checklist'
+    const [activeTab, setActiveTab] = useState('menu'); // 'menu', 'feed', 'compose', 'checklist'
     const [recipientSubTab, setRecipientSubTab] = useState('users'); // 'users', 'sectors', 'areas'
     const [searchQuery, setSearchQuery] = useState('');
     const [feedFilter, setFeedFilter] = useState('todos'); // 'todos', 'unread', 'sent', 'sistema'
@@ -1017,7 +1019,17 @@ export default function CentralHub() {
             {/* HEADER DA TELA */}
             <div className="central-header-bar">
                 <div className="category-title-area">
-                    <button className="btn-back" onClick={() => setKey('currentScreen', 'dashboard')} style={{ background: 'rgba(255,255,255,0.04)', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', marginRight: '0.5rem', display: 'flex', alignItems: 'center', color: '#fff', fontSize: '0.8rem', fontWeight: 600 }}>
+                    <button 
+                        className="btn-back" 
+                        onClick={() => {
+                            if (activeTab === 'menu') {
+                                setKey('currentScreen', 'dashboard');
+                            } else {
+                                setActiveTab('menu');
+                            }
+                        }} 
+                        style={{ background: 'rgba(255,255,255,0.04)', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', marginRight: '0.5rem', display: 'flex', alignItems: 'center', color: '#fff', fontSize: '0.8rem', fontWeight: 600 }}
+                    >
                         <ArrowLeft size={14} style={{ marginRight: '0.4rem' }} /> VOLTAR
                     </button>
                     <div className="cat-icon-area" style={{ background: activeTab === 'checklist' ? 'rgba(20, 184, 166, 0.15)' : 'rgba(243, 107, 29, 0.15)', color: activeTab === 'checklist' ? '#2dd4bf' : 'var(--accent-orange)', borderColor: activeTab === 'checklist' ? 'rgba(20, 184, 166, 0.25)' : 'rgba(243, 107, 29, 0.25)' }}>
@@ -1025,36 +1037,43 @@ export default function CentralHub() {
                     </div>
                     <div className="category-title-text">
                         <h2>GESTÃO OPERACIONAL</h2>
-                        <p>{activeTab === 'checklist' ? 'Checklists operacionais, vistorias e auditorias de conformidade' : 'Gestão e acompanhamento da comunicação interna'}</p>
+                        <p>
+                            {activeTab === 'menu' && 'Comunicação interna, avisos e checklists operacionais'}
+                            {activeTab === 'feed' && 'Meus avisos, comunicados e informativos recebidos'}
+                            {activeTab === 'compose' && 'Gestão e envio de novos avisos e comunicados'}
+                            {activeTab === 'checklist' && 'Checklists operacionais, vistorias e auditorias de conformidade'}
+                        </p>
                     </div>
                 </div>
 
-                <div className="central-tabs-nav">
-                    <button 
-                        className={`tab-btn ${activeTab === 'feed' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('feed')}
-                    >
-                        <Bell size={15} /> MEUS AVISOS
-                    </button>
-                    {currentUser.permissions.sendNotif && (
+                {activeTab !== 'menu' && (
+                    <div className="central-tabs-nav">
                         <button 
-                            className={`tab-btn ${activeTab === 'compose' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('compose')}
+                            className={`tab-btn ${activeTab === 'feed' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('feed')}
                         >
-                            <Send size={15} /> ENVIAR AVISO
+                            <Bell size={15} /> MEUS AVISOS
                         </button>
-                    )}
-                    <button 
-                        className={`tab-btn ${activeTab === 'checklist' ? 'active' : ''}`}
-                        onClick={() => {
-                            setActiveTab('checklist');
-                            setChecklistSubTab('dashboard');
-                        }}
-                        style={{ activeTab: 'checklist' ? { background: '#14b8a6', boxShadow: '0 4px 12px rgba(20, 184, 166, 0.3)' } : {} }}
-                    >
-                        <CheckSquare size={15} /> CHECKLISTS
-                    </button>
-                </div>
+                        {currentUser.permissions.sendNotif && (
+                            <button 
+                                className={`tab-btn ${activeTab === 'compose' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('compose')}
+                            >
+                                <Send size={15} /> ENVIAR AVISO
+                            </button>
+                        )}
+                        <button 
+                            className={`tab-btn ${activeTab === 'checklist' ? 'active' : ''}`}
+                            onClick={() => {
+                                setActiveTab('checklist');
+                                setChecklistSubTab('dashboard');
+                            }}
+                            style={{ activeTab: 'checklist' ? { background: '#14b8a6', boxShadow: '0 4px 12px rgba(20, 184, 166, 0.3)' } : {} }}
+                        >
+                            <CheckSquare size={15} /> CHECKLISTS
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* SUB-NAV SE FOR CHECKLIST */}
@@ -1110,6 +1129,63 @@ export default function CentralHub() {
 
             {/* CONTEÚDO PRINCIPAL */}
             <div className="central-content-container">
+                {activeTab === 'menu' && (
+                    <div className="dashboard-menu">
+                        <button 
+                            className="menu-card dark-blue" 
+                            onClick={() => setActiveTab('feed')}
+                        >
+                            <div className="card-icon"><Bell size={24} /></div>
+                            <div className="card-content">
+                                <h3>MEUS AVISOS</h3>
+                                <p>Ver comunicados, notificações do sistema e avisos importantes.</p>
+                            </div>
+                            <ChevronRight className="chevron" size={20} />
+                        </button>
+
+                        {!currentUser.permissions.sendNotif ? (
+                            <div 
+                                className="menu-card blue" 
+                                style={{ opacity: 0.65, cursor: 'not-allowed' }}
+                            >
+                                <div className="card-icon"><Send size={24} /></div>
+                                <div className="card-content">
+                                    <h3>ENVIAR AVISOS</h3>
+                                    <p>Disparar novos avisos, criar comunicados e definir destinatários.</p>
+                                </div>
+                                <Lock size={16} style={{ opacity: 0.5, marginRight: '1rem' }} />
+                            </div>
+                        ) : (
+                            <button 
+                                className="menu-card blue" 
+                                onClick={() => setActiveTab('compose')}
+                            >
+                                <div className="card-icon"><Send size={24} /></div>
+                                <div className="card-content">
+                                    <h3>ENVIAR AVISOS</h3>
+                                    <p>Disparar novos avisos, criar comunicados e definir destinatários.</p>
+                                </div>
+                                <ChevronRight className="chevron" size={20} />
+                            </button>
+                        )}
+
+                        <button 
+                            className="menu-card teal" 
+                            onClick={() => {
+                                setActiveTab('checklist');
+                                setChecklistSubTab('dashboard');
+                            }}
+                        >
+                            <div className="card-icon"><CheckSquare size={24} /></div>
+                            <div className="card-content">
+                                <h3>CHECK-LIST</h3>
+                                <p>Executar vistorias, checklists operacionais e auditorias de conformidade.</p>
+                            </div>
+                            <ChevronRight className="chevron" size={20} />
+                        </button>
+                    </div>
+                )}
+
                 {activeTab === 'feed' && (
                     /* ABA FEED DE AVISOS */
                     <>
