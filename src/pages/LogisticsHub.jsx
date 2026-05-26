@@ -890,7 +890,12 @@ export default function LogisticsHub() {
                                     <table className="products-table">
                                         <thead>
                                             <tr>
-                                                <th style={{ width: '50px' }}></th>
+                                                <th style={{ width: '70px', textAlign: 'center' }}>
+                                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', justifyContent: 'center' }}>
+                                                        <Boxes size={12} style={{ color: '#c084fc' }} />
+                                                        <span style={{ color: '#c084fc', fontSize: '0.8rem', fontWeight: 'bold' }}>WMS</span>
+                                                    </div>
+                                                </th>
                                                 <th onClick={() => handleSort('sku')} style={{ cursor: 'pointer', minWidth: '100px' }} className={sortField === 'sku' ? 'active-sort' : ''}>
                                                     SKU {sortField === 'sku' && (sortOrder === 'asc' ? '▲' : '▼')}
                                                 </th>
@@ -1040,22 +1045,6 @@ export default function LogisticsHub() {
                                                                     <div className="product-desc" style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                                             <span style={{ fontWeight: '700' }}>{p.name}</span>
-                                                                            <span style={{ 
-                                                                                background: 'rgba(168, 85, 247, 0.15)', 
-                                                                                color: '#c084fc', 
-                                                                                border: '1px solid rgba(168, 85, 247, 0.3)', 
-                                                                                fontSize: '0.65rem', 
-                                                                                fontWeight: '700', 
-                                                                                padding: '0.1rem 0.35rem', 
-                                                                                borderRadius: '4px',
-                                                                                display: 'inline-flex',
-                                                                                alignItems: 'center',
-                                                                                gap: '0.2rem',
-                                                                                textTransform: 'uppercase',
-                                                                                letterSpacing: '0.5px'
-                                                                            }}>
-                                                                                <Boxes size={10} /> WMS
-                                                                            </span>
                                                                         </div>
                                                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{p.desc || 'Nenhuma descrição fornecida.'}</span>
                                                                     </div>
