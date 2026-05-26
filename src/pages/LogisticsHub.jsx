@@ -914,7 +914,7 @@ export default function LogisticsHub() {
                                                 >
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
-                                                            Categoria
+                                                            Categoria <ChevronDown size={14} style={{ transform: isCategoryDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease', opacity: 0.8 }} />
                                                         </span>
                                                     </div>
                                                     
@@ -1083,7 +1083,7 @@ export default function LogisticsHub() {
                                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                                                                 <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                                                                    <Boxes size={14} style={{ color: 'var(--accent-orange)' }} /> LOTES — {p.name.toUpperCase()}
+                                                                                    <Boxes size={14} style={{ color: 'var(--accent-orange)' }} /> LOTES — {limitChars(p.name.toUpperCase(), 30)}
                                                                                 </span>
                                                                                 <span style={{
                                                                                     background: 'rgba(243, 107, 29, 0.15)',
@@ -1496,7 +1496,7 @@ export default function LogisticsHub() {
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#ffffff', fontWeight: '800', textTransform: 'uppercase' }}>
                                 {flowType === 'entrada' ? 'ADICIONAR QUANTIDADE' : 'REMOVER QUANTIDADE'}
                             </h3>
-                            <button onClick={() => setShowNumpad(false)} style={{ backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 0px #b91c1c', transition: 'transform 0.1s, box-shadow 0.1s' }} onMouseDown={(e) => { e.currentTarget.style.transform = 'translateY(3px)'; e.currentTarget.style.boxShadow = '0 1px 0px #b91c1c'; }} onMouseUp={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 0px #b91c1c'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 0px #b91c1c'; }}>
+                            <button onClick={() => setShowNumpad(false)} style={{ backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', paddingBottom: '3px', boxShadow: '0 4px 0px #b91c1c', transition: 'transform 0.1s, box-shadow 0.1s' }} onMouseDown={(e) => { e.currentTarget.style.transform = 'translateY(3px)'; e.currentTarget.style.boxShadow = '0 1px 0px #b91c1c'; }} onMouseUp={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 0px #b91c1c'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 0px #b91c1c'; }}>
                                 <X size={20} strokeWidth={3} />
                             </button>
                         </div>
@@ -1728,8 +1728,8 @@ export default function LogisticsHub() {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', marginBottom: '1.5rem', background: 'rgba(0,0,0,0.15)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
                             <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-secondary)' }}>PRODUTO</span>
-                            <span style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)' }}>{batchProduct.name}</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>SKU: {batchProduct.sku}</span>
+                            <span style={{ fontSize: '0.95rem', fontWeight: '700', color: 'var(--text-primary)' }}>{limitChars(batchProduct.name, 35)}</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>SKU: {limitChars(batchProduct.sku, 15)}</span>
                         </div>
 
                         <form onSubmit={handleSaveBatch} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -1800,6 +1800,7 @@ export default function LogisticsHub() {
                                         placeholder="Ex: Nestlé"
                                         value={batchBrand}
                                         onChange={(e) => setBatchBrand(e.target.value)}
+                                        maxLength="15"
                                         style={{
                                             padding: '0.6rem',
                                             borderRadius: '6px',

@@ -2100,8 +2100,8 @@ main {
 
 .btn-close-modal {
     position: absolute;
-    top: 2.2rem !important;
-    right: 1.8rem !important;
+    top: 1.2rem !important;
+    right: 1.2rem !important;
     width: 38px !important;
     height: 38px !important;
     min-width: 38px !important;
@@ -2114,6 +2114,7 @@ main {
     display: flex;
     align-items: center;
     justify-content: center;
+    padding-bottom: 3px !important; /* Visual centering adjustment for bottom shadow */
     cursor: pointer !important;
     transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.2s ease !important;
     flex-shrink: 0;

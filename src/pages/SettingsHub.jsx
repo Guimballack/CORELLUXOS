@@ -339,7 +339,7 @@ export default function SettingsHub() {
         loadData();
     };
 
-    const handleDeleteColab = (user) => {
+    const handleDeleteColab = async (user) => {
         if (user.accessLevel === 'Administrador') {
             const adminCount = colaboradores.filter(c => c.accessLevel === 'Administrador').length;
             if (adminCount <= 1) {
@@ -347,29 +347,23 @@ export default function SettingsHub() {
                 return;
             }
         }
-        setColabToDelete(user);
-    };
+        if (window.confirm(`Tem certeza que deseja excluir o funcionário ${user.displayName || user.name}?\nEsta ação removerá permanentemente o cadastro e não poderá ser desfeita.`)) {
+            // Optimistic local update
+            setColaboradores(prev => prev.filter(c => String(c.id) !== String(user.id)));
 
-    const confirmDeleteColab = async () => {
-        if (!colabToDelete) return;
-        const user = colabToDelete;
-        setColabToDelete(null);
+            // Optimistic global update
+            const currentAppUsers = get('appUsers') || [];
+            const updatedAppUsers = currentAppUsers.filter(c => String(c.id) !== String(user.id));
+            set('appUsers', updatedAppUsers);
 
-        // Optimistic local update
-        setColaboradores(prev => prev.filter(c => String(c.id) !== String(user.id)));
-
-        // Optimistic global update
-        const currentAppUsers = get('appUsers') || [];
-        const updatedAppUsers = currentAppUsers.filter(c => String(c.id) !== String(user.id));
-        set('appUsers', updatedAppUsers);
-
-        const result = await DbService.deleteUser(user.id);
-        if (result.success) {
-            showToast('Funcionário removido com sucesso.', 'success');
-        } else {
-            showToast('[Aviso] Excluído no cache local offline.', 'warning');
+            const result = await DbService.deleteUser(user.id);
+            if (result.success) {
+                showToast('Funcionário removido com sucesso.', 'success');
+            } else {
+                showToast('[Aviso] Excluído no cache local offline.', 'warning');
+            }
+            loadData();
         }
-        loadData();
     };
 
     const handleToggleColabStatus = async (user) => {
@@ -604,22 +598,16 @@ export default function SettingsHub() {
         loadData();
     };
 
-    const handleDeleteProd = (prod) => {
-        setProdToDelete(prod);
-    };
-
-    const confirmDeleteProd = async () => {
-        if (!prodToDelete) return;
-        const prod = prodToDelete;
-        setProdToDelete(null);
-
-        const result = await DbService.deleteProduct(prod.sku);
-        if (result.success) {
-            showToast('Produto excluído com sucesso.', 'success');
-        } else {
-            showToast('[Aviso] Removido no cache local offline.', 'warning');
+    const handleDeleteProd = async (prod) => {
+        if (window.confirm(`Tem certeza que deseja excluir o produto ${prod.name} (${prod.sku})?\nEsta ação removerá permanentemente o cadastro e não poderá ser desfeita.`)) {
+            const result = await DbService.deleteProduct(prod.sku);
+            if (result.success) {
+                showToast('Produto excluído com sucesso.', 'success');
+            } else {
+                showToast('[Aviso] Removido no cache local offline.', 'warning');
+            }
+            loadData();
         }
-        loadData();
     };
 
     const handleToggleProdStatus = async (prod) => {
@@ -681,22 +669,16 @@ export default function SettingsHub() {
         loadData();
     };
 
-    const handleDeleteCat = (cat) => {
-        setCatToDelete(cat);
-    };
-
-    const confirmDeleteCat = async () => {
-        if (!catToDelete) return;
-        const cat = catToDelete;
-        setCatToDelete(null);
-
-        const result = await DbService.deleteCategory(cat.id);
-        if (result.success) {
-            showToast('Categoria excluída com sucesso.', 'success');
-        } else {
-            showToast('[Aviso] Removida no cache local offline.', 'warning');
+    const handleDeleteCat = async (cat) => {
+        if (window.confirm(`Tem certeza que deseja excluir a categoria ${cat.name}?\nIsso não apagará os produtos dela, mas removerá o vínculo. Esta ação não poderá ser desfeita.`)) {
+            const result = await DbService.deleteCategory(cat.id);
+            if (result.success) {
+                showToast('Categoria excluída com sucesso.', 'success');
+            } else {
+                showToast('[Aviso] Removida no cache local offline.', 'warning');
+            }
+            loadData();
         }
-        loadData();
     };
 
     const handleToggleCatStatus = async (cat) => {
@@ -791,22 +773,16 @@ export default function SettingsHub() {
         loadData();
     };
 
-    const handleDeleteForn = (sup) => {
-        setFornToDelete(sup);
-    };
-
-    const confirmDeleteForn = async () => {
-        if (!fornToDelete) return;
-        const sup = fornToDelete;
-        setFornToDelete(null);
-
-        const result = await DbService.deleteSupplier(sup.id);
-        if (result.success) {
-            showToast('Fornecedor removido com sucesso.', 'success');
-        } else {
-            showToast('[Aviso] Removido no cache local offline.', 'warning');
+    const handleDeleteForn = async (sup) => {
+        if (window.confirm(`Tem certeza que deseja excluir o fornecedor ${sup.nomeFantasia || sup.razaoSocial}?\nEsta ação removerá permanentemente o cadastro e não poderá ser desfeita.`)) {
+            const result = await DbService.deleteSupplier(sup.id);
+            if (result.success) {
+                showToast('Fornecedor removido com sucesso.', 'success');
+            } else {
+                showToast('[Aviso] Removido no cache local offline.', 'warning');
+            }
+            loadData();
         }
-        loadData();
     };
 
     const handleToggleFornStatus = async (sup) => {
@@ -1862,7 +1838,7 @@ export default function SettingsHub() {
                                     <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Marca / Fabricante</label>
                                     <input 
                                         type="text" 
-                                        maxLength="20"
+                                        maxLength="15"
                                         value={prodForm.brand} 
                                         onChange={(e) => setProdForm(prev => ({ ...prev, brand: e.target.value }))}
                                         style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
@@ -1986,7 +1962,7 @@ export default function SettingsHub() {
                                 <input 
                                     type="text" 
                                     required 
-                                    maxLength="22"
+                                    maxLength="20"
                                     placeholder="Ex: PROTEÍNAS"
                                     value={catForm.name} 
                                     onChange={(e) => setCatForm(prev => ({ ...prev, name: e.target.value }))}
@@ -2430,71 +2406,7 @@ export default function SettingsHub() {
                 }
             `}</style>
 
-            {/* MODAL: CONFIRMAR EXCLUSÃO DE COLABORADOR */}
-            {colabToDelete && createPortal(
-                <div className="pin-modal-overlay active" style={{ zIndex: 10010 }}>
-                    <div className="pin-modal-card" style={{ maxWidth: '450px', width: '90%', textAlign: 'center', padding: '2rem' }}>
-                        <div style={{
-                            width: '70px',
-                            height: '70px',
-                            borderRadius: '50%',
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            border: '2px solid #ef4444',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            margin: '0 auto 1.5rem auto',
-                            boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)'
-                        }}>
-                            <Trash2 size={36} color="#ef4444" />
-                        </div>
-                        
-                        <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.8rem', fontWeight: '800' }}>
-                            Excluir Funcionário?
-                        </h3>
-                        
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '2rem' }}>
-                            Tem certeza que deseja excluir o funcionário <strong style={{ color: 'var(--text-primary)' }}>{colabToDelete.displayName || colabToDelete.name}</strong>?<br/>
-                            Esta ação removerá permanentemente o cadastro e não poderá ser desfeita.
-                        </p>
-                        
-                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                            <button 
-                                type="button" 
-                                className="btn-confirm-modal" 
-                                onClick={() => setColabToDelete(null)}
-                                style={{ 
-                                    flex: 1, 
-                                    background: 'rgba(255, 255, 255, 0.05)', 
-                                    border: '1.5px solid var(--border-color)', 
-                                    color: 'var(--text-primary)',
-                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
-                                    height: '42px',
-                                    padding: '0 1rem'
-                                }}
-                            >
-                                CANCELAR
-                            </button>
-                            <button 
-                                type="button" 
-                                className="btn-clear-modal" 
-                                onClick={confirmDeleteColab}
-                                style={{ 
-                                    flex: 1, 
-                                    background: '#ef4444', 
-                                    border: '1.5px solid #000000', 
-                                    color: '#ffffff',
-                                    boxShadow: '0 4px 0px #000000',
-                                    height: '42px',
-                                    padding: '0 1rem'
-                                }}
-                            >
-                                SIM, EXCLUIR
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            , document.body)}
+
 
             {/* TOAST NOTIFICATION SYSTEM */}
             {toast && createPortal(
@@ -2541,203 +2453,7 @@ export default function SettingsHub() {
                 </div>
             , document.body)}
 
-            {/* MODAL: CONFIRMAR EXCLUSÃO DE PRODUTO */}
-            {prodToDelete && createPortal(
-                <div className="pin-modal-overlay active" style={{ zIndex: 10010 }}>
-                    <div className="pin-modal-card" style={{ maxWidth: '450px', width: '90%', textAlign: 'center', padding: '2rem' }}>
-                        <div style={{
-                            width: '70px',
-                            height: '70px',
-                            borderRadius: '50%',
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            border: '2px solid #ef4444',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            margin: '0 auto 1.5rem auto',
-                            boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)'
-                        }}>
-                            <Trash2 size={36} color="#ef4444" />
-                        </div>
-                        
-                        <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.8rem', fontWeight: '800' }}>
-                            Excluir Produto?
-                        </h3>
-                        
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '2rem' }}>
-                            Tem certeza que deseja excluir o produto <strong style={{ color: 'var(--text-primary)' }}>{prodToDelete.name}</strong> ({prodToDelete.sku})?<br/>
-                            Esta ação removerá permanentemente o cadastro e não poderá ser desfeita.
-                        </p>
-                        
-                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                            <button 
-                                type="button" 
-                                className="btn-confirm-modal" 
-                                onClick={() => setProdToDelete(null)}
-                                style={{ 
-                                    flex: 1, 
-                                    background: 'rgba(255, 255, 255, 0.05)', 
-                                    border: '1.5px solid var(--border-color)', 
-                                    color: 'var(--text-primary)',
-                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
-                                    height: '42px',
-                                    padding: '0 1rem'
-                                }}
-                            >
-                                CANCELAR
-                            </button>
-                            <button 
-                                type="button" 
-                                className="btn-clear-modal" 
-                                onClick={confirmDeleteProd}
-                                style={{ 
-                                    flex: 1, 
-                                    background: '#ef4444', 
-                                    border: '1.5px solid #000000', 
-                                    color: '#ffffff',
-                                    boxShadow: '0 4px 0px #000000',
-                                    height: '42px',
-                                    padding: '0 1rem'
-                                }}
-                            >
-                                SIM, EXCLUIR
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            , document.body)}
 
-            {/* MODAL: CONFIRMAR EXCLUSÃO DE CATEGORIA */}
-            {catToDelete && createPortal(
-                <div className="pin-modal-overlay active" style={{ zIndex: 10010 }}>
-                    <div className="pin-modal-card" style={{ maxWidth: '450px', width: '90%', textAlign: 'center', padding: '2rem' }}>
-                        <div style={{
-                            width: '70px',
-                            height: '70px',
-                            borderRadius: '50%',
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            border: '2px solid #ef4444',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            margin: '0 auto 1.5rem auto',
-                            boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)'
-                        }}>
-                            <Trash2 size={36} color="#ef4444" />
-                        </div>
-                        
-                        <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.8rem', fontWeight: '800' }}>
-                            Excluir Categoria?
-                        </h3>
-                        
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '2rem' }}>
-                            Tem certeza que deseja excluir a categoria <strong style={{ color: 'var(--text-primary)' }}>{catToDelete.name}</strong>?<br/>
-                            Isso não apagará os produtos dela, mas removerá o vínculo. Esta ação não poderá ser desfeita.
-                        </p>
-                        
-                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                            <button 
-                                type="button" 
-                                className="btn-confirm-modal" 
-                                onClick={() => setCatToDelete(null)}
-                                style={{ 
-                                    flex: 1, 
-                                    background: 'rgba(255, 255, 255, 0.05)', 
-                                    border: '1.5px solid var(--border-color)', 
-                                    color: 'var(--text-primary)',
-                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
-                                    height: '42px',
-                                    padding: '0 1rem'
-                                }}
-                            >
-                                CANCELAR
-                            </button>
-                            <button 
-                                type="button" 
-                                className="btn-clear-modal" 
-                                onClick={confirmDeleteCat}
-                                style={{ 
-                                    flex: 1, 
-                                    background: '#ef4444', 
-                                    border: '1.5px solid #000000', 
-                                    color: '#ffffff',
-                                    boxShadow: '0 4px 0px #000000',
-                                    height: '42px',
-                                    padding: '0 1rem'
-                                }}
-                            >
-                                SIM, EXCLUIR
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            , document.body)}
-
-            {/* MODAL: CONFIRMAR EXCLUSÃO DE FORNECEDOR */}
-            {fornToDelete && createPortal(
-                <div className="pin-modal-overlay active" style={{ zIndex: 10010 }}>
-                    <div className="pin-modal-card" style={{ maxWidth: '450px', width: '90%', textAlign: 'center', padding: '2rem' }}>
-                        <div style={{
-                            width: '70px',
-                            height: '70px',
-                            borderRadius: '50%',
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            border: '2px solid #ef4444',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            margin: '0 auto 1.5rem auto',
-                            boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)'
-                        }}>
-                            <Trash2 size={36} color="#ef4444" />
-                        </div>
-                        
-                        <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.8rem', fontWeight: '800' }}>
-                            Excluir Fornecedor?
-                        </h3>
-                        
-                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '2rem' }}>
-                            Tem certeza que deseja excluir o fornecedor <strong style={{ color: 'var(--text-primary)' }}>{fornToDelete.nomeFantasia || fornToDelete.razaoSocial}</strong>?<br/>
-                            Esta ação removerá permanentemente o cadastro e não poderá ser desfeita.
-                        </p>
-                        
-                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                            <button 
-                                type="button" 
-                                className="btn-confirm-modal" 
-                                onClick={() => setFornToDelete(null)}
-                                style={{ 
-                                    flex: 1, 
-                                    background: 'rgba(255, 255, 255, 0.05)', 
-                                    border: '1.5px solid var(--border-color)', 
-                                    color: 'var(--text-primary)',
-                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
-                                    height: '42px',
-                                    padding: '0 1rem'
-                                }}
-                            >
-                                CANCELAR
-                            </button>
-                            <button 
-                                type="button" 
-                                className="btn-clear-modal" 
-                                onClick={confirmDeleteForn}
-                                style={{ 
-                                    flex: 1, 
-                                    background: '#ef4444', 
-                                    border: '1.5px solid #000000', 
-                                    color: '#ffffff',
-                                    boxShadow: '0 4px 0px #000000',
-                                    height: '42px',
-                                    padding: '0 1rem'
-                                }}
-                            >
-                                SIM, EXCLUIR
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            , document.body)}
         </div>
     );
 }
