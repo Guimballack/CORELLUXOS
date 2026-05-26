@@ -14,7 +14,8 @@ export default function Header() {
         'workstationAuthenticated', 
         'currentScreen',
         'settingsActiveTab',
-        'centralActiveTab'
+        'centralActiveTab',
+        'logisticsActiveTab'
     ]);
     const [time, setTime] = useState('');
     const [date, setDate] = useState('');
@@ -58,6 +59,12 @@ export default function Header() {
                 setKey('currentScreen', 'dashboard');
             } else {
                 setKey('centralActiveTab', 'menu');
+            }
+        } else if (state.currentScreen === 'logistics-hub') {
+            if (state.logisticsActiveTab === 'menu') {
+                setKey('currentScreen', 'dashboard');
+            } else {
+                setKey('logisticsActiveTab', 'menu');
             }
         } else if (state.currentScreen !== 'dashboard') {
             setKey('currentScreen', 'dashboard');

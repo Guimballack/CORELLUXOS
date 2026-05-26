@@ -35,7 +35,7 @@ import {
 const indirectEval = eval;
 
 export default function LogisticsHub() {
-    const [state, setKey] = useCorelluxState(['currentUser']);
+    const [state, setKey] = useCorelluxState(['currentUser', 'logisticsActiveTab']);
     
     // Core Data States
     const [products, setProducts] = useState([]);
@@ -72,8 +72,9 @@ export default function LogisticsHub() {
         });
     };
 
-    // Tab Navigation
-    const [activeTab, setActiveTab] = useState('estoque'); // 'estoque', 'movimentar', 'solicitacao', 'aprovacoes'
+    // Tab Navigation (bound to global state)
+    const activeTab = state.logisticsActiveTab || 'menu';
+    const setActiveTab = (tab) => setKey('logisticsActiveTab', tab);
     
     // Flow state for Movements/Requests
     const [flowType, setFlowType] = useState('entrada'); // 'entrada', 'saida', 'perdas', 'solicitacao'
@@ -104,8 +105,9 @@ export default function LogisticsHub() {
     // Cart for requests
     const [cart, setCart] = useState([]);
 
-    // Load Data
+    // Load Data & Reset Active Tab
     useEffect(() => {
+        setKey('logisticsActiveTab', 'menu');
         const loadAllData = async () => {
             setLoading(true);
             try {
@@ -806,127 +808,8 @@ export default function LogisticsHub() {
     return (
         <div className="screen active with-header" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
             
-            {/* Header / Sub-nav tab indicators */}
-            <div className="tab-navigation-bar" style={{
-                display: 'flex',
-                background: 'var(--bg-card)',
-                borderBottom: '1px solid var(--border-color)',
-                padding: '0 2rem',
-                gap: '2rem'
-            }}>
-                <button 
-                    className={`tab-nav-btn ${activeTab === 'estoque' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('estoque')}
-                    style={{
-                        padding: '1.2rem 0',
-                        background: 'transparent',
-                        border: 'none',
-                        borderBottom: activeTab === 'estoque' ? '2px solid var(--accent-orange)' : '2px solid transparent',
-                        color: activeTab === 'estoque' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        fontWeight: '700',
-                        fontSize: '0.9rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        transition: 'all 0.2s ease'
-                    }}
-                >
-                    <Boxes size={16} /> VISÃO GERAL DO ESTOQUE
-                </button>
-
-                <button 
-                    className={`tab-nav-btn ${activeTab === 'movimentar' ? 'active' : ''}`}
-                    onClick={() => {
-                        setActiveTab('movimentar');
-                        setFlowType('entrada');
-                        setFlowStep('category');
-                        setCurrentCategory(null);
-                    }}
-                    style={{
-                        padding: '1.2rem 0',
-                        background: 'transparent',
-                        border: 'none',
-                        borderBottom: activeTab === 'movimentar' ? '2px solid var(--accent-orange)' : '2px solid transparent',
-                        color: activeTab === 'movimentar' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        fontWeight: '700',
-                        fontSize: '0.9rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        transition: 'all 0.2s ease'
-                    }}
-                >
-                    <History size={16} /> MOVIMENTAR ESTOQUE
-                </button>
-
-                <button 
-                    className={`tab-nav-btn ${activeTab === 'solicitacao' ? 'active' : ''}`}
-                    onClick={() => {
-                        setActiveTab('solicitacao');
-                        setFlowType('solicitacao');
-                        setFlowStep('category');
-                        setCurrentCategory(null);
-                    }}
-                    style={{
-                        padding: '1.2rem 0',
-                        background: 'transparent',
-                        border: 'none',
-                        borderBottom: activeTab === 'solicitacao' ? '2px solid var(--accent-orange)' : '2px solid transparent',
-                        color: activeTab === 'solicitacao' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        fontWeight: '700',
-                        fontSize: '0.9rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        transition: 'all 0.2s ease'
-                    }}
-                >
-                    <ShoppingCart size={16} /> SOLICITAÇÃO DE INSUMOS
-                </button>
-
-                <button 
-                    className={`tab-nav-btn ${activeTab === 'aprovacoes' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('aprovacoes')}
-                    style={{
-                        padding: '1.2rem 0',
-                        background: 'transparent',
-                        border: 'none',
-                        borderBottom: activeTab === 'aprovacoes' ? '2px solid var(--accent-orange)' : '2px solid transparent',
-                        color: activeTab === 'aprovacoes' ? 'var(--text-primary)' : 'var(--text-secondary)',
-                        fontWeight: '700',
-                        fontSize: '0.9rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        transition: 'all 0.2s ease'
-                    }}
-                >
-                    <ShieldCheck size={16} /> CONTROLE DE PENDÊNCIAS
-                    {requests.filter(r => r.status === 'Pendente').length > 0 && (
-                        <span style={{
-                            background: 'var(--accent-red)',
-                            color: 'white',
-                            borderRadius: '50%',
-                            width: '18px',
-                            height: '18px',
-                            fontSize: '0.7rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            marginLeft: '0.2rem'
-                        }}>
-                            {requests.filter(r => r.status === 'Pendente').length}
-                        </span>
-                    )}
-                </button>
-            </div>
-
             {/* Inner Dashboard View */}
-            <div className="tab-content" style={{ flex: 1, padding: '2rem', overflowY: 'auto', position: 'relative' }}>
+            <div className="tab-content" style={{ flex: 1, padding: activeTab === 'menu' ? '0' : '2rem', overflowY: 'auto', position: 'relative' }}>
                 
                 {loading ? (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '1rem', color: 'var(--text-secondary)' }}>
@@ -942,6 +825,75 @@ export default function LogisticsHub() {
                     </div>
                 ) : (
                     <>
+                        {/* CARD MENU FOR LOGISTICS HUB */}
+                        {activeTab === 'menu' && (
+                            <div className="dashboard-menu">
+                                <button 
+                                    className="menu-card blue" 
+                                    onClick={() => setActiveTab('estoque')}
+                                >
+                                    <div className="card-icon"><Boxes size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>VISÃO GERAL DO ESTOQUE</h3>
+                                        <p>Registro geral de itens, consulta de SKU, saldo atual e controle de validades por lote (FEFO).</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
+
+                                <button 
+                                    className="menu-card orange" 
+                                    onClick={() => {
+                                        setActiveTab('movimentar');
+                                        setFlowType('entrada');
+                                        setFlowStep('category');
+                                        setCurrentCategory(null);
+                                    }}
+                                >
+                                    <div className="card-icon"><History size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>MOVIMENTAR ESTOQUE</h3>
+                                        <p>Registrar entradas, saídas operacionais e descarte de produtos por perdas.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
+
+                                <button 
+                                    className="menu-card yellow" 
+                                    onClick={() => {
+                                        setActiveTab('solicitacao');
+                                        setFlowType('solicitacao');
+                                        setFlowStep('category');
+                                        setCurrentCategory(null);
+                                    }}
+                                >
+                                    <div className="card-icon"><ShoppingCart size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>SOLICITAÇÃO DE INSUMOS</h3>
+                                        <p>Criar solicitações e pedidos de insumos para cozinha ou outros setores operacionais.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
+
+                                <button 
+                                    className="menu-card green" 
+                                    onClick={() => setActiveTab('aprovacoes')}
+                                >
+                                    <div className="card-icon">
+                                        <ShieldCheck size={24} />
+                                        {requests.filter(r => r.status === 'Pendente').length > 0 && (
+                                            <span className="notification-badge" style={{ backgroundColor: 'var(--accent-red)' }}>
+                                                {requests.filter(r => r.status === 'Pendente').length}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="card-content">
+                                        <h3>CONTROLE DE PENDÊNCIAS</h3>
+                                        <p>Visualizar e autorizar solicitações de retirada de insumos (acesso restrito).</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
+                            </div>
+                        )}
                         {/* TAB 1: VISÃO GERAL DO ESTOQUE */}
                         {activeTab === 'estoque' && (
                             <div className="products-container">

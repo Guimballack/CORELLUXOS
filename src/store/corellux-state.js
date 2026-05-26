@@ -32,6 +32,7 @@ const DEFAULTS = {
     estoqueViewSortOrder: 'asc',
     settingsActiveTab: 'menu',
     centralActiveTab: 'menu',
+    logisticsActiveTab: 'menu',
 
     // Checklist
     checklistModels: [],
