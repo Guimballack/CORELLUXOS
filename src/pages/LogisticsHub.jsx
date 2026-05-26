@@ -799,7 +799,7 @@ export default function LogisticsHub() {
                                     className="menu-card orange" 
                                     onClick={() => {
                                         setActiveTab('movimentar');
-                                        setFlowType('entrada');
+                                        setFlowType(null);
                                         setFlowStep('category');
                                         setCurrentCategory(null);
                                     }}
@@ -1082,8 +1082,61 @@ export default function LogisticsHub() {
                             </div>
                         )}
 
+                        {/* CARD MENU FOR STOCK FLOW SUB-ACTIONS */}
+                        {activeTab === 'movimentar' && !flowType && (
+                            <div className="dashboard-menu">
+                                <button 
+                                    className="menu-card green" 
+                                    onClick={() => {
+                                        setFlowType('entrada');
+                                        setFlowStep('category');
+                                        setCurrentCategory(null);
+                                    }}
+                                >
+                                    <div className="card-icon"><ArrowUp size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>ENTRADA</h3>
+                                        <p>Registrar entrada de insumos, materiais e novos lotes no estoque.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
+
+                                <button 
+                                    className="menu-card red" 
+                                    onClick={() => {
+                                        setFlowType('saida');
+                                        setFlowStep('category');
+                                        setCurrentCategory(null);
+                                    }}
+                                >
+                                    <div className="card-icon"><ArrowDown size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>SAIDA</h3>
+                                        <p>Registrar saída operacional de insumos e consumo interno.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
+
+                                <button 
+                                    className="menu-card yellow" 
+                                    onClick={() => {
+                                        setFlowType('perdas');
+                                        setFlowStep('category');
+                                        setCurrentCategory(null);
+                                    }}
+                                >
+                                    <div className="card-icon"><Trash2 size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>PERDAS</h3>
+                                        <p>Registrar descarte, perdas de validade, avarias ou prejuízos no estoque.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
+                            </div>
+                        )}
+
                         {/* TAB 2 & TAB 3: MOVIMENTAR ESTOQUE & SOLICITAÇÕES */}
-                        {(activeTab === 'movimentar' || activeTab === 'solicitacao') && (
+                        {((activeTab === 'movimentar' && flowType) || activeTab === 'solicitacao') && (
                             <div className="flow-container" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                 
                                 {/* Flow Selector Header */}
@@ -1107,7 +1160,7 @@ export default function LogisticsHub() {
                                                     gap: '0.4rem'
                                                 }}
                                             >
-                                                <ArrowUp size={16} /> ENTRADA DE ITENS
+                                                <ArrowUp size={16} /> ENTRADA
                                             </button>
                                             
                                             <button 
@@ -1127,7 +1180,7 @@ export default function LogisticsHub() {
                                                     gap: '0.4rem'
                                                 }}
                                             >
-                                                <ArrowDown size={16} /> SAÍDA OPERACIONAL
+                                                <ArrowDown size={16} /> SAIDA
                                             </button>
 
                                             <button 
@@ -1147,7 +1200,7 @@ export default function LogisticsHub() {
                                                     gap: '0.4rem'
                                                 }}
                                             >
-                                                <Trash2 size={16} /> DESCARTE E PERDAS
+                                                <Trash2 size={16} /> PERDAS
                                             </button>
                                         </div>
                                     ) : (
