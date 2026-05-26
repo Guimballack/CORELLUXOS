@@ -10,6 +10,7 @@ import DbService from '../services/db-service';
 import { getUserAvatar } from '../utils/initial-data';
 import { 
     Boxes, 
+    Home,
     Calendar,
     ArrowUp, 
     ArrowDown, 
@@ -860,7 +861,7 @@ export default function LogisticsHub() {
                                             <tr>
                                                 <th style={{ width: '48px', textAlign: 'center' }}>
                                                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', justifyContent: 'center' }}>
-                                                        <Boxes size={18} style={{ color: '#c084fc' }} />
+                                                        <Home size={18} style={{ color: '#c084fc' }} />
                                                     </div>
                                                 </th>
                                                 <th onClick={() => handleSort('sku')} style={{ cursor: 'pointer', minWidth: '85px' }} className={sortField === 'sku' ? 'active-sort' : ''}>
