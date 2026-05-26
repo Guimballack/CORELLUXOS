@@ -1518,7 +1518,7 @@ export default function LogisticsHub() {
             ============================================= */}
             {showNumpad && numpadProduct && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
-                    <div className="pin-modal-card" style={{ maxWidth: '380px', width: '90%', border: '1px solid #10b981', backgroundColor: '#111827', borderRadius: '16px', padding: 0, overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '380px', width: '90%', border: '1px solid #4b5563', backgroundColor: '#111827', borderRadius: '16px', padding: 0, overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.2rem', borderBottom: '1px solid rgba(255,255,255,0.05)', position: 'relative' }}>
                             <h3 style={{ margin: 0, fontSize: '1rem', color: '#ffffff', fontWeight: '800', textTransform: 'uppercase' }}>
                                 {flowType === 'entrada' ? 'ADICIONAR QUANTIDADE' : 'REMOVER QUANTIDADE'}
@@ -1533,7 +1533,7 @@ export default function LogisticsHub() {
                                 <h4 style={{ margin: '0 0 0.3rem 0', color: '#ffffff', fontSize: '1.1rem', fontWeight: '500' }}>
                                     {numpadProduct.name}
                                 </h4>
-                                <div style={{ fontSize: '0.8rem', color: '#10b981', fontWeight: '600', marginBottom: '0.6rem' }}>
+                                <div style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: '600', marginBottom: '0.6rem' }}>
                                     Unidade: {numpadProduct.unit} | Estoque: {numpadProduct.stock}
                                 </div>
                                 <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginBottom: '0.3rem' }}>Quantidade</div>
@@ -1544,7 +1544,7 @@ export default function LogisticsHub() {
                                     style={{
                                         width: '100%',
                                         backgroundColor: '#0a0d14',
-                                        border: '1px solid #10b981',
+                                        border: '1px solid #4b5563',
                                         color: '#ffffff',
                                         textAlign: 'left',
                                         fontSize: '1.5rem',
@@ -1575,7 +1575,7 @@ export default function LogisticsHub() {
                                         </button>
                                     ))}
                                     {[{l:'0',v:'0'},{l:',',v:','},{l:'+',v:'+'},{l:'=',v:'=', g:true}].map((k, i) => (
-                                        <button key={'r4'+i} className="num-key" onClick={() => handleNumpadKey(k.v)} style={{ width: '100%', height: '48px', fontSize: '1.2rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: k.g ? '#10b981' : '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }}>
+                                        <button key={'r4'+i} className="num-key" onClick={() => handleNumpadKey(k.v)} style={{ width: '100%', height: '48px', fontSize: '1.2rem', backgroundColor: '#1f2937', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', color: k.g ? '#6b7280' : '#ffffff', fontWeight: '700', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.1s ease' }}>
                                             {k.l}
                                         </button>
                                     ))}
