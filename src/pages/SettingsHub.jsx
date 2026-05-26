@@ -36,7 +36,8 @@ import {
     Paperclip,
     Camera,
     Eye,
-    Download
+    Download,
+    ChevronRight
 } from 'lucide-react';
 
 const PERSONAL_DOCS_ITEMS = [
@@ -907,160 +908,54 @@ export default function SettingsHub() {
                                     </p>
                                 </div>
 
-                                <div style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-                                    gap: '1.5rem',
-                                    width: '100%',
-                                    maxWidth: '1000px'
-                                }}>
-                                    {/* Card 1: Colaboradores */}
-                                    <div 
+                                <div className="dashboard-menu">
+                                    <button 
+                                        className="menu-card orange" 
                                         onClick={() => setActiveTab('colaboradores')}
-                                        className="dashboard-registry-card"
-                                        style={{
-                                            background: 'var(--bg-card)',
-                                            border: '1px solid var(--border-color)',
-                                            borderRadius: '16px',
-                                            padding: '2.5rem 2rem',
-                                            textAlign: 'center',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '1rem',
-                                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
-                                        }}
                                     >
-                                        <div style={{
-                                            width: '64px',
-                                            height: '64px',
-                                            borderRadius: '12px',
-                                            background: 'rgba(255, 90, 0, 0.1)',
-                                            border: '1px solid rgba(255, 90, 0, 0.3)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            color: 'var(--accent-orange)'
-                                        }}>
-                                            <Users size={32} />
+                                        <div className="card-icon"><Users size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>COLABORADORES</h3>
+                                            <p>Funcionários, cargos, salários, horários e checklists.</p>
                                         </div>
-                                        <div>
-                                            <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>COLABORADORES</h3>
-                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>Funcionários, cargos, salários, horários e checklists.</p>
-                                        </div>
-                                    </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
 
-                                    {/* Card 2: Produtos */}
-                                    <div 
+                                    <button 
+                                        className="menu-card blue" 
                                         onClick={() => setActiveTab('produtos')}
-                                        className="dashboard-registry-card"
-                                        style={{
-                                            background: 'var(--bg-card)',
-                                            border: '1px solid var(--border-color)',
-                                            borderRadius: '16px',
-                                            padding: '2.5rem 2rem',
-                                            textAlign: 'center',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '1rem',
-                                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
-                                        }}
                                     >
-                                        <div style={{
-                                            width: '64px',
-                                            height: '64px',
-                                            borderRadius: '12px',
-                                            background: 'rgba(59, 130, 246, 0.1)',
-                                            border: '1px solid rgba(59, 130, 246, 0.3)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            color: '#3b82f6'
-                                        }}>
-                                            <Boxes size={32} />
+                                        <div className="card-icon"><Boxes size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>PRODUTOS</h3>
+                                            <p>Insumos, controle de estoque, unidades e SKUs.</p>
                                         </div>
-                                        <div>
-                                            <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>PRODUTOS</h3>
-                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>Insumos, controle de estoque, unidades e SKUs.</p>
-                                        </div>
-                                    </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
 
-                                    {/* Card 3: Categorias */}
-                                    <div 
+                                    <button 
+                                        className="menu-card green" 
                                         onClick={() => setActiveTab('categorias')}
-                                        className="dashboard-registry-card"
-                                        style={{
-                                            background: 'var(--bg-card)',
-                                            border: '1px solid var(--border-color)',
-                                            borderRadius: '16px',
-                                            padding: '2.5rem 2rem',
-                                            textAlign: 'center',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '1rem',
-                                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
-                                        }}
                                     >
-                                        <div style={{
-                                            width: '64px',
-                                            height: '64px',
-                                            borderRadius: '12px',
-                                            background: 'rgba(16, 185, 129, 0.1)',
-                                            border: '1px solid rgba(16, 185, 129, 0.3)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            color: 'var(--accent-green)'
-                                        }}>
-                                            <Tag size={32} />
+                                        <div className="card-icon"><Tag size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>CATEGORIAS</h3>
+                                            <p>Organização de insumos e vinculações de cores.</p>
                                         </div>
-                                        <div>
-                                            <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>CATEGORIAS</h3>
-                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>Organização de insumos e vinculações de cores.</p>
-                                        </div>
-                                    </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
 
-                                    {/* Card 4: Fornecedores */}
-                                    <div 
+                                    <button 
+                                        className="menu-card purple" 
                                         onClick={() => setActiveTab('fornecedores')}
-                                        className="dashboard-registry-card"
-                                        style={{
-                                            background: 'var(--bg-card)',
-                                            border: '1px solid var(--border-color)',
-                                            borderRadius: '16px',
-                                            padding: '2.5rem 2rem',
-                                            textAlign: 'center',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '1rem',
-                                            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.2)'
-                                        }}
                                     >
-                                        <div style={{
-                                            width: '64px',
-                                            height: '64px',
-                                            borderRadius: '12px',
-                                            background: 'rgba(139, 92, 246, 0.1)',
-                                            border: '1px solid rgba(139, 92, 246, 0.3)',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            color: '#8b5cf6'
-                                        }}>
-                                            <Truck size={32} />
+                                        <div className="card-icon"><Truck size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>FORNECEDORES</h3>
+                                            <p>CGC, contatos comerciais, avaliações e prazos.</p>
                                         </div>
-                                        <div>
-                                            <h3 style={{ fontSize: '1.25rem', fontWeight: '800', margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>FORNECEDORES</h3>
-                                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>CGC, contatos comerciais, avaliações e prazos.</p>
-                                        </div>
-                                    </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
                                 </div>
                             </div>
                         )}
