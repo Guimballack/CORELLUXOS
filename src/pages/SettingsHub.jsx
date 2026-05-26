@@ -1836,6 +1836,7 @@ export default function SettingsHub() {
                                     <input 
                                         type="text" 
                                         required 
+                                        maxLength="12"
                                         disabled={!!editingProd} // SKU cannot be changed after creation
                                         placeholder="Ex: INS-001"
                                         value={prodForm.sku} 
@@ -1848,6 +1849,7 @@ export default function SettingsHub() {
                                     <input 
                                         type="text" 
                                         required 
+                                        maxLength="35"
                                         value={prodForm.name} 
                                         onChange={(e) => setProdForm(prev => ({ ...prev, name: e.target.value }))}
                                         style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
@@ -1860,6 +1862,7 @@ export default function SettingsHub() {
                                     <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Marca / Fabricante</label>
                                     <input 
                                         type="text" 
+                                        maxLength="20"
                                         value={prodForm.brand} 
                                         onChange={(e) => setProdForm(prev => ({ ...prev, brand: e.target.value }))}
                                         style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
@@ -1983,6 +1986,7 @@ export default function SettingsHub() {
                                 <input 
                                     type="text" 
                                     required 
+                                    maxLength="22"
                                     placeholder="Ex: PROTEÍNAS"
                                     value={catForm.name} 
                                     onChange={(e) => setCatForm(prev => ({ ...prev, name: e.target.value }))}

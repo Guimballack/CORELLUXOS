@@ -4400,6 +4400,8 @@ main {
     border-radius: 4px;
     letter-spacing: 0.02em;
     border: 1px solid rgba(255, 255, 255, 0.08);
+    white-space: nowrap;
+    display: inline-block;
 }
 
 /* Category Badge Tags */
@@ -4408,13 +4410,16 @@ main {
     border-radius: 20px;
     font-size: 0.75rem;
     font-weight: 600;
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     text-align: center;
     letter-spacing: 0.03em;
     background: rgba(255, 255, 255, 0.04) !important;
     color: #cbd5e1 !important;
     border: 1px solid rgba(255, 255, 255, 0.08) !important;
     text-transform: uppercase;
+    white-space: nowrap;
 }
 
 /* Stock Health Level Badges */
@@ -4428,6 +4433,7 @@ main {
     justify-content: center;
     gap: 0.25rem;
     letter-spacing: 0.02em;
+    white-space: nowrap;
 }
 
 .stock-badge.stock-out {

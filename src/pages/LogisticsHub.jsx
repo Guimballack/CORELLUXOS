@@ -906,17 +906,17 @@ export default function LogisticsHub() {
                                         <thead>
                                             <tr>
                                                 <th style={{ width: '50px' }}></th>
-                                                <th onClick={() => handleSort('sku')} style={{ cursor: 'pointer' }} className={sortField === 'sku' ? 'active-sort' : ''}>
+                                                <th onClick={() => handleSort('sku')} style={{ cursor: 'pointer', minWidth: '100px' }} className={sortField === 'sku' ? 'active-sort' : ''}>
                                                     SKU {sortField === 'sku' && (sortOrder === 'asc' ? '▲' : '▼')}
                                                 </th>
-                                                <th onClick={() => handleSort('name')} style={{ cursor: 'pointer' }} className={sortField === 'name' ? 'active-sort' : ''}>
+                                                <th onClick={() => handleSort('name')} style={{ cursor: 'pointer', minWidth: '220px' }} className={sortField === 'name' ? 'active-sort' : ''}>
                                                     Produto {sortField === 'name' && (sortOrder === 'asc' ? '▲' : '▼')}
                                                 </th>
-                                                <th onClick={() => handleSort('brand')} style={{ cursor: 'pointer' }} className={sortField === 'brand' ? 'active-sort' : ''}>
+                                                <th onClick={() => handleSort('brand')} style={{ cursor: 'pointer', minWidth: '120px' }} className={sortField === 'brand' ? 'active-sort' : ''}>
                                                     Marca {sortField === 'brand' && (sortOrder === 'asc' ? '▲' : '▼')}
                                                 </th>
-                                                <th>Unidade</th>
-                                                <th style={{ position: 'relative' }}>
+                                                <th style={{ minWidth: '90px' }}>Unidade</th>
+                                                <th style={{ position: 'relative', minWidth: '170px' }}>
                                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem', flexWrap: 'nowrap' }}>
                                                         <span 
                                                             onClick={() => handleSort('category')} 
@@ -1032,7 +1032,7 @@ export default function LogisticsHub() {
                                                 <th style={{ textAlign: 'center' }}>Mínimo</th>
                                                 <th style={{ textAlign: 'center' }}>Médio</th>
                                                 <th style={{ textAlign: 'center' }}>Máximo</th>
-                                                <th onClick={() => handleSort('stock')} style={{ cursor: 'pointer', textAlign: 'center' }} className={sortField === 'stock' ? 'active-sort' : ''}>
+                                                <th onClick={() => handleSort('stock')} style={{ cursor: 'pointer', textAlign: 'center', minWidth: '190px' }} className={sortField === 'stock' ? 'active-sort' : ''}>
                                                     Estoque Atual {sortField === 'stock' && (sortOrder === 'asc' ? '▲' : '▼')}
                                                 </th>
                                             </tr>
@@ -1125,7 +1125,7 @@ export default function LogisticsHub() {
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{p.avgStock || 0}</td>
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{p.maxStock || 0}</td>
                                                                 <td style={{ textAlign: 'center' }}>
-                                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', flexWrap: 'nowrap' }}>
                                                                         {isOut ? (
                                                                             <span className="stock-badge stock-out"><X size={12} /> ZERADO</span>
                                                                         ) : isLow ? (
@@ -1812,6 +1812,7 @@ export default function LogisticsHub() {
                                         value={batchLot}
                                         onChange={(e) => setBatchLot(e.target.value.toUpperCase())}
                                         required
+                                        maxLength="12"
                                         style={{
                                             padding: '0.6rem',
                                             borderRadius: '6px',
@@ -1851,6 +1852,7 @@ export default function LogisticsHub() {
                                         placeholder="Ex: A-12-3"
                                         value={batchAddress}
                                         onChange={(e) => setBatchAddress(e.target.value.toUpperCase())}
+                                        maxLength="15"
                                         style={{
                                             padding: '0.6rem',
                                             borderRadius: '6px',
