@@ -42,6 +42,33 @@ const limitChars = (str, limit) => {
     return str.length > limit ? str.substring(0, limit) + '.' : str;
 };
 
+const flowConfig = {
+    entrada: {
+        color: 'var(--accent-green)',
+        bg: 'rgba(34, 197, 94, 0.1)',
+        hoverBg: 'rgba(34, 197, 94, 0.2)',
+        icon: ArrowUp
+    },
+    saida: {
+        color: 'var(--accent-red)',
+        bg: 'rgba(239, 68, 68, 0.1)',
+        hoverBg: 'rgba(239, 68, 68, 0.2)',
+        icon: ArrowDown
+    },
+    perdas: {
+        color: 'var(--accent-yellow)',
+        bg: 'rgba(234, 179, 8, 0.1)',
+        hoverBg: 'rgba(234, 179, 8, 0.2)',
+        icon: Trash2
+    },
+    solicitacao: {
+        color: 'var(--accent-orange)',
+        bg: 'rgba(243, 107, 29, 0.1)',
+        hoverBg: 'rgba(243, 107, 29, 0.2)',
+        icon: ShoppingCart
+    }
+};
+
 export default function LogisticsHub() {
     const [state, setKey] = useCorelluxState(['currentUser', 'logisticsActiveTab', 'inventorySearch', 'logisticsFlowType', 'logisticsFlowStep']);
     
@@ -803,6 +830,51 @@ export default function LogisticsHub() {
         state.currentUser.accessLevel === 'Administrador'
     );
 
+    const renderActionButton = (prod, displayVal) => {
+        const config = flowConfig[flowType] || flowConfig['solicitacao'];
+        const IconComponent = config.icon;
+        
+        return (
+            <button
+                type="button"
+                className="qty-action-btn"
+                onClick={() => openNumpad(prod)}
+                style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.4rem',
+                    height: '38px',
+                    minWidth: '60px',
+                    padding: '0 0.8rem',
+                    borderRadius: '8px',
+                    border: `1px solid ${config.color}`,
+                    backgroundColor: config.bg,
+                    color: config.color,
+                    cursor: 'pointer',
+                    fontWeight: '700',
+                    fontSize: '0.9rem',
+                    transition: 'all 0.2s ease',
+                    outline: 'none',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.05)'
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = config.hoverBg;
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = `0 4px 8px rgba(0, 0, 0, 0.1), 0 0 0 1px ${config.color}`;
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = config.bg;
+                    e.currentTarget.style.transform = 'none';
+                    e.currentTarget.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.05)';
+                }}
+            >
+                <IconComponent size={16} />
+                {displayVal && <span>{displayVal}</span>}
+            </button>
+        );
+    };
+
     return (
         <div className="screen active with-header" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
             
@@ -1293,15 +1365,7 @@ export default function LogisticsHub() {
                                                                     <td>{prod.unit}</td>
                                                                     <td>{prod.stock}</td>
                                                                     <td style={{ textAlign: 'center' }}>
-                                                                        <input 
-                                                                            type="text" 
-                                                                            className="qty-input"
-                                                                            placeholder="--"
-                                                                            value={displayVal}
-                                                                            readOnly
-                                                                            onClick={() => openNumpad(prod)}
-                                                                            style={{ cursor: 'pointer', caretColor: 'transparent' }}
-                                                                        />
+                                                                        {renderActionButton(prod, displayVal)}
                                                                     </td>
                                                                 </tr>
                                                             );
