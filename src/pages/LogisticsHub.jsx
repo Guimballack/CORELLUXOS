@@ -898,12 +898,7 @@ export default function LogisticsHub() {
                         {/* TAB 1: VISÃO GERAL DO ESTOQUE */}
                         {activeTab === 'estoque' && (
                             <div className="products-container">
-                                {/* Search and Filter Area */}
-                                <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                                    <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <Boxes style={{ color: 'var(--accent-orange)' }} /> Registro Geral de Itens
-                                    </h2>
-                                </div>
+
 
                                 {/* Table */}
                                 <div className="table-responsive">
@@ -1455,11 +1450,7 @@ export default function LogisticsHub() {
                         {/* TAB 4: CONTROLE DE PENDÊNCIAS (SUPERVISOR PANEL) */}
                         {activeTab === 'aprovacoes' && (
                             <div className="products-container">
-                                <div className="products-header" style={{ marginBottom: '1.5rem' }}>
-                                    <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <ShieldCheck style={{ color: 'var(--accent-orange)' }} /> Painel de Liberações e Pendências
-                                    </h2>
-                                </div>
+
 
                                 <div className="table-responsive">
                                     <table className="products-table">
