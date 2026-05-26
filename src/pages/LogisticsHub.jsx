@@ -1038,10 +1038,6 @@ export default function LogisticsHub() {
                                                     // Expiration checks for FEFO warning tags
                                                     const productBatches = stockBatches.filter(b => b.itemSku === p.sku);
                                                     const hasExpired = productBatches.some(b => getBatchExpiryStatus(b.expirationDate).label === 'VENCIDO');
-                                                    const hasExpiringSoon = productBatches.some(b => {
-                                                        const status = getBatchExpiryStatus(b.expirationDate);
-                                                        return status.label !== 'VENCIDO' && status.label.startsWith('Vence em');
-                                                    });
 
                                                     return (
                                                         <React.Fragment key={p.sku}>
@@ -1120,11 +1116,6 @@ export default function LogisticsHub() {
                                                                         {hasExpired && (
                                                                             <span className="stock-badge stock-out" style={{ minWidth: 'auto', padding: '0.3rem 0.6rem', fontSize: '0.7rem' }} title="Lote Vencido!">
                                                                                 <AlertTriangle size={11} /> LOTE VENCIDO
-                                                                            </span>
-                                                                        )}
-                                                                        {hasExpiringSoon && !hasExpired && (
-                                                                            <span className="stock-badge stock-low" style={{ minWidth: 'auto', padding: '0.3rem 0.6rem', fontSize: '0.7rem' }} title="Lote próximo do vencimento">
-                                                                                <Clock size={11} /> VENC. PRÓXIMO
                                                                             </span>
                                                                         )}
                                                                     </div>
