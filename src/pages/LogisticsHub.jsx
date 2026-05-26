@@ -35,6 +35,11 @@ import {
 
 const indirectEval = eval;
 
+const limitChars = (str, limit) => {
+    if (!str) return '';
+    return str.length > limit ? str.substring(0, limit) + '.' : str;
+};
+
 export default function LogisticsHub() {
     const [state, setKey] = useCorelluxState(['currentUser', 'logisticsActiveTab', 'inventorySearch']);
     
@@ -148,7 +153,7 @@ export default function LogisticsHub() {
     // =============================================
 
     const getBatchExpiryStatus = (expDateStr) => {
-        if (!expDateStr) return { label: 'Sem Validade', className: 'expiry-ok', days: 999 };
+        if (!expDateStr) return { label: 'OK', className: 'expiry-ok', days: 999 };
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const expDate = new Date(expDateStr);
@@ -157,12 +162,10 @@ export default function LogisticsHub() {
         const diffTime = expDate.getTime() - today.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
-        if (diffDays < 0) {
-            return { label: 'VENCIDO', className: 'expiry-danger', days: diffDays };
-        } else if (diffDays <= 30) {
-            return { label: `Vence em ${diffDays}d`, className: 'expiry-danger', days: diffDays };
+        if (diffDays <= 30) {
+            return { label: 'VENCE', className: 'expiry-danger', days: diffDays };
         } else if (diffDays <= 60) {
-            return { label: `Atenção (${diffDays}d)`, className: 'expiry-warning', days: diffDays };
+            return { label: 'ATENÇÃO', className: 'expiry-warning', days: diffDays };
         } else {
             return { label: 'OK', className: 'expiry-ok', days: diffDays };
         }
@@ -429,7 +432,7 @@ export default function LogisticsHub() {
                                         </div>
                                     </td>
                                     <td style={{ padding: '0.6rem 1rem', textAlign: 'center', fontFamily: 'monospace', fontWeight: 'bold', color: 'var(--accent-teal)' }}>
-                                        {b.address || 'N/A'}
+                                        {b.address ? limitChars(b.address, 15) : 'N/A'}
                                     </td>
                                     <td style={{ padding: '0.6rem 1rem' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -438,7 +441,7 @@ export default function LogisticsHub() {
                                         </div>
                                     </td>
                                     <td style={{ padding: '0.6rem 1rem', textAlign: 'center' }}>
-                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
                                             <button
                                                 type="button"
                                                 className="action-btn-sm edit"
@@ -892,8 +895,7 @@ export default function LogisticsHub() {
                                             <tr>
                                                 <th style={{ width: '70px', textAlign: 'center' }}>
                                                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.2rem', justifyContent: 'center' }}>
-                                                        <Boxes size={12} style={{ color: '#c084fc' }} />
-                                                        <span style={{ color: '#c084fc', fontSize: '0.8rem', fontWeight: 'bold' }}>WMS</span>
+                                                        <Boxes size={18} style={{ color: '#c084fc' }} />
                                                     </div>
                                                 </th>
                                                 <th onClick={() => handleSort('sku')} style={{ cursor: 'pointer', minWidth: '100px' }} className={sortField === 'sku' ? 'active-sort' : ''}>
@@ -913,7 +915,6 @@ export default function LogisticsHub() {
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                                                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                                                             Categoria
-                                                            <ChevronDown size={14} style={{ transform: isCategoryDropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.3s ease', opacity: 0.8 }} />
                                                         </span>
                                                     </div>
                                                     
@@ -983,7 +984,6 @@ export default function LogisticsHub() {
                                                                     }}
                                                                 >
                                                                     <span>{c.name}</span>
-                                                                    {inventoryCategory === c.name && <Check size={11} color="var(--accent-orange)" />}
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -1040,11 +1040,11 @@ export default function LogisticsHub() {
                                                                         {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                                                                     </button>
                                                                 </td>
-                                                                <td><strong>{p.sku}</strong></td>
+                                                                <td><strong>{limitChars(p.sku, 15)}</strong></td>
                                                                 <td>
                                                                     <div className="product-desc" style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                                                            <span style={{ fontWeight: '700' }}>{p.name}</span>
+                                                                            <span style={{ fontWeight: '700' }}>{limitChars(p.name, 35)}</span>
                                                                         </div>
                                                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{p.desc || 'Nenhuma descrição fornecida.'}</span>
                                                                     </div>
@@ -1056,11 +1056,11 @@ export default function LogisticsHub() {
                                                                         fontSize: '0.75rem',
                                                                         textTransform: 'uppercase'
                                                                     }}>
-                                                                        {p.brand || 'Sem Marca'}
+                                                                        {limitChars(p.brand || 'Sem Marca', 15)}
                                                                     </span>
                                                                 </td>
                                                                 <td style={{ color: 'var(--text-secondary)' }}>{p.unit}</td>
-                                                                <td><span className="category-tag">{p.category}</span></td>
+                                                                <td><span className="category-tag">{limitChars(p.category, 20)}</span></td>
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{minVal}</td>
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{p.avgStock || 0}</td>
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{p.maxStock || 0}</td>
@@ -1072,11 +1072,6 @@ export default function LogisticsHub() {
                                                                             <span className="stock-badge stock-low"><AlertTriangle size={12} /> {p.stock} {p.unit}</span>
                                                                         ) : (
                                                                             <span className="stock-badge stock-ok"><Check size={12} /> {p.stock} {p.unit}</span>
-                                                                        )}
-                                                                        {hasExpired && (
-                                                                            <span className="stock-badge stock-out" style={{ minWidth: 'auto', padding: '0.3rem 0.6rem', fontSize: '0.7rem' }} title="Lote Vencido!">
-                                                                                <AlertTriangle size={11} /> LOTE VENCIDO
-                                                                            </span>
                                                                         )}
                                                                     </div>
                                                                 </td>
@@ -1501,7 +1496,7 @@ export default function LogisticsHub() {
                             <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#ffffff', fontWeight: '800', textTransform: 'uppercase' }}>
                                 {flowType === 'entrada' ? 'ADICIONAR QUANTIDADE' : 'REMOVER QUANTIDADE'}
                             </h3>
-                            <button onClick={() => setShowNumpad(false)} style={{ backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', padding: '0.4rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 0px #b91c1c', transition: 'transform 0.1s, box-shadow 0.1s' }} onMouseDown={(e) => { e.currentTarget.style.transform = 'translateY(3px)'; e.currentTarget.style.boxShadow = '0 1px 0px #b91c1c'; }} onMouseUp={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 0px #b91c1c'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 0px #b91c1c'; }}>
+                            <button onClick={() => setShowNumpad(false)} style={{ backgroundColor: '#ef4444', color: '#fff', border: 'none', borderRadius: '8px', width: '36px', height: '36px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 0px #b91c1c', transition: 'transform 0.1s, box-shadow 0.1s' }} onMouseDown={(e) => { e.currentTarget.style.transform = 'translateY(3px)'; e.currentTarget.style.boxShadow = '0 1px 0px #b91c1c'; }} onMouseUp={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 0px #b91c1c'; }} onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 0px #b91c1c'; }}>
                                 <X size={20} strokeWidth={3} />
                             </button>
                         </div>
