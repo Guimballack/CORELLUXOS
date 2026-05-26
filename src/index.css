@@ -445,6 +445,14 @@ main {
     height: 100%;
 }
 
+/* 
+   PADRÃO DE DESIGN PARA TELAS (SCREENS):
+   - Todas as telas devem usar className="screen active with-header" ou similar.
+   - O padding da tela é gerenciado globalmente por var(--screen-padding) [2rem].
+   - Telas de menu principal (dashboard-menu) não devem conter sub-headers (títulos ou botões voltar locais).
+   - O botão voltar global no Header.jsx gerencia a navegação entre camadas automaticamente.
+   - Menus devem usar a classe "dashboard-menu" diretamente sob a tela ou tab-content.
+*/
 .screen {
     position: absolute;
     top: 0;

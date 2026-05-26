@@ -1020,37 +1020,9 @@ export default function CentralHub() {
             `}} />
 
             {/* HEADER DA TELA */}
-            <div className="central-header-bar">
-                <div className="category-title-area">
-                    <button 
-                        className="btn-back" 
-                        onClick={() => {
-                            if (activeTab === 'menu') {
-                                setKey('currentScreen', 'dashboard');
-                            } else {
-                                setActiveTab('menu');
-                            }
-                        }} 
-                        style={{ background: 'rgba(255,255,255,0.04)', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', cursor: 'pointer', marginRight: '0.5rem', display: 'flex', alignItems: 'center', color: '#fff', fontSize: '0.8rem', fontWeight: 600 }}
-                    >
-                        <ArrowLeft size={14} style={{ marginRight: '0.4rem' }} /> VOLTAR
-                    </button>
-                    <div className="cat-icon-area" style={{ background: activeTab === 'checklist' ? 'rgba(20, 184, 166, 0.15)' : 'rgba(243, 107, 29, 0.15)', color: activeTab === 'checklist' ? '#2dd4bf' : 'var(--accent-orange)', borderColor: activeTab === 'checklist' ? 'rgba(20, 184, 166, 0.25)' : 'rgba(243, 107, 29, 0.25)' }}>
-                        <Bell size={20} />
-                    </div>
-                    <div className="category-title-text">
-                        <h2>GESTÃO OPERACIONAL</h2>
-                        <p>
-                            {activeTab === 'menu' && 'Comunicação interna, avisos e checklists operacionais'}
-                            {activeTab === 'feed' && 'Meus avisos, comunicados e informativos recebidos'}
-                            {activeTab === 'compose' && 'Gestão e envio de novos avisos e comunicados'}
-                            {activeTab === 'checklist' && 'Checklists operacionais, vistorias e auditorias de conformidade'}
-                        </p>
-                    </div>
-                </div>
-
-                {activeTab !== 'menu' && (
-                    <div className="central-tabs-nav">
+            {activeTab !== 'menu' && (
+                <div className="central-header-bar" style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '1.5rem' }}>
+                    <div className="central-tabs-nav" style={{ marginLeft: 0 }}>
                         <button 
                             className={`tab-btn ${activeTab === 'feed' ? 'active' : ''}`}
                             onClick={() => setActiveTab('feed')}
@@ -1076,8 +1048,8 @@ export default function CentralHub() {
                             <CheckSquare size={15} /> CHECKLISTS
                         </button>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
 
             {/* SUB-NAV SE FOR CHECKLIST */}
             {activeTab === 'checklist' && (

@@ -20,11 +20,6 @@ function PlaceholderModule({ name, description }) {
 
     return (
         <div className="screen active with-header" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            <div className="screen-header-bar">
-                <button className="btn-back" onClick={() => setKey('currentScreen', 'dashboard')}>
-                    <ArrowLeft size={16} style={{ marginRight: '0.4rem' }} /> VOLTAR
-                </button>
-            </div>
             
             <div style={{ 
                 flex: 1, 

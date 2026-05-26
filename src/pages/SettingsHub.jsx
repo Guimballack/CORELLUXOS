@@ -950,9 +950,6 @@ export default function SettingsHub() {
                         {activeTab === 'colaboradores' && (
                             <div className="products-container">
                                 <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                                    <button className="btn-back" onClick={() => setActiveTab('menu')} style={{ cursor: 'pointer' }}>
-                                        ← VOLTAR
-                                    </button>
                                     <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <Users style={{ color: 'var(--accent-orange)' }} /> Cadastro de Funcionários
                                     </h2>
@@ -1054,9 +1051,6 @@ export default function SettingsHub() {
                         {activeTab === 'produtos' && (
                             <div className="products-container">
                                 <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                                    <button className="btn-back" onClick={() => setActiveTab('menu')} style={{ cursor: 'pointer' }}>
-                                        ← VOLTAR
-                                    </button>
                                     <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <Boxes style={{ color: 'var(--accent-orange)' }} /> Cadastro de Insumos / Produtos
                                     </h2>
@@ -1151,9 +1145,6 @@ export default function SettingsHub() {
                         {activeTab === 'categorias' && (
                             <div className="products-container">
                                 <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                                    <button className="btn-back" onClick={() => setActiveTab('menu')} style={{ cursor: 'pointer' }}>
-                                        ← VOLTAR
-                                    </button>
                                     <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <Tag style={{ color: 'var(--accent-orange)' }} /> Cadastro de Categorias
                                     </h2>
@@ -1242,9 +1233,6 @@ export default function SettingsHub() {
                         {activeTab === 'fornecedores' && (
                             <div className="products-container">
                                 <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                                    <button className="btn-back" onClick={() => setActiveTab('menu')} style={{ cursor: 'pointer' }}>
-                                        ← VOLTAR
-                                    </button>
                                     <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                                         <Truck style={{ color: 'var(--accent-orange)' }} /> Cadastro de Fornecedores
                                     </h2>
