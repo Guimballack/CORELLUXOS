@@ -1173,9 +1173,11 @@ export default function LogisticsHub() {
                                 {/* FLOW STEP 1: CATEGORY SELECTION */}
                                 {flowStep === 'category' && (
                                     <div style={{ background: 'var(--bg-card)', padding: '2rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                                        <h3 style={{ margin: '0 0 1.5rem 0', color: 'var(--text-secondary)', fontSize: '1rem', letterSpacing: '0.05em' }}>
-                                            PASSO 1: SELECIONE A CATEGORIA
-                                        </h3>
+                                        {activeTab !== 'movimentar' && (
+                                            <h3 style={{ margin: '0 0 1.5rem 0', color: 'var(--text-secondary)', fontSize: '1rem', letterSpacing: '0.05em' }}>
+                                                PASSO 1: SELECIONE A CATEGORIA
+                                            </h3>
+                                        )}
                                         <div id="categories-grid" className="categories-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
                                             {categories.map(cat => (
                                                 <button 
