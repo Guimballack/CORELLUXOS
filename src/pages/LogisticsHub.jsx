@@ -29,7 +29,8 @@ import {
     ShieldCheck,
     FileText,
     History,
-    Delete
+    Delete,
+    Edit
 } from 'lucide-react';
 
 const indirectEval = eval;
@@ -440,35 +441,19 @@ export default function LogisticsHub() {
                                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                                             <button
                                                 type="button"
+                                                className="action-btn-sm edit"
                                                 onClick={() => handleOpenEditBatch(product, b)}
-                                                style={{
-                                                    background: 'rgba(59, 130, 246, 0.15)',
-                                                    border: '1px solid rgba(59, 130, 246, 0.3)',
-                                                    color: '#60a5fa',
-                                                    padding: '0.25rem 0.6rem',
-                                                    borderRadius: '4px',
-                                                    fontSize: '0.75rem',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s'
-                                                }}
+                                                title="Editar"
                                             >
-                                                Editar
+                                                <Edit size={16} />
                                             </button>
                                             <button
                                                 type="button"
+                                                className="action-btn-sm delete"
                                                 onClick={() => handleDeleteBatch(b.id)}
-                                                style={{
-                                                    background: 'rgba(239, 68, 68, 0.15)',
-                                                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                                                    color: '#f87171',
-                                                    padding: '0.25rem 0.6rem',
-                                                    borderRadius: '4px',
-                                                    fontSize: '0.75rem',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s'
-                                                }}
+                                                title="Excluir"
                                             >
-                                                Excluir
+                                                <Trash2 size={16} />
                                             </button>
                                         </div>
                                     </td>
