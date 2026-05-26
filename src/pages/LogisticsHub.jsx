@@ -275,16 +275,21 @@ export default function LogisticsHub() {
         setShowBatchModal(true);
     };
 
-    const handleDeleteBatch = async (batchId) => {
-        if (window.confirm('Tem certeza que deseja remover este lote permanentemente?')) {
-            const result = await DbService.deleteStockBatch(batchId);
-            if (result.success) {
-                setStockBatches(prev => prev.filter(b => b.id !== batchId));
-                await recalculateProductStockFromBatches();
-                alert('Lote removido com sucesso!');
-            } else {
-                alert('Falha ao remover o lote.');
-            }
+    const [batchToDelete, setBatchToDelete] = useState(null);
+
+    const handleDeleteBatch = (batch) => {
+        setBatchToDelete(batch);
+    };
+
+    const confirmDeleteBatch = async (batchId) => {
+        setBatchToDelete(null);
+        const result = await DbService.deleteStockBatch(batchId);
+        if (result.success) {
+            setStockBatches(prev => prev.filter(b => b.id !== batchId));
+            await recalculateProductStockFromBatches();
+            alert('Lote removido com sucesso!');
+        } else {
+            alert('Falha ao remover o lote.');
         }
     };
 
@@ -437,7 +442,7 @@ export default function LogisticsHub() {
                                     <td style={{ padding: '0.6rem 1rem' }}>
                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                                             <span style={{ fontWeight: '500' }}>{b.brand || product.brand || 'Sem Marca'}</span>
-                                            <small style={{ color: 'var(--text-secondary)' }}>{b.supplier || 'N/A'}</small>
+                                            <small style={{ color: 'var(--text-secondary)' }}>{b.supplier ? limitChars(b.supplier, 15) : 'N/A'}</small>
                                         </div>
                                     </td>
                                     <td style={{ padding: '0.6rem 1rem', textAlign: 'center' }}>
@@ -453,7 +458,7 @@ export default function LogisticsHub() {
                                             <button
                                                 type="button"
                                                 className="action-btn-sm delete"
-                                                onClick={() => handleDeleteBatch(b.id)}
+                                                onClick={() => handleDeleteBatch(b)}
                                                 title="Excluir"
                                             >
                                                 <Trash2 size={16} />
@@ -1820,6 +1825,7 @@ export default function LogisticsHub() {
                                     placeholder="Nome do fornecedor ou distribuidora"
                                     value={batchSupplier}
                                     onChange={(e) => setBatchSupplier(e.target.value)}
+                                    maxLength="15"
                                     style={{
                                         padding: '0.6rem',
                                         borderRadius: '6px',
@@ -1881,6 +1887,75 @@ export default function LogisticsHub() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* MODAL: CONFIRMAR EXCLUSÃO DE LOTE */}
+            {batchToDelete && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10010 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '450px', width: '90%', textAlign: 'center', padding: '2rem' }}>
+                        <button className="btn-close-modal" onClick={() => setBatchToDelete(null)} title="Fechar">
+                            <X size={18} />
+                        </button>
+                        <div style={{
+                            width: '70px',
+                            height: '70px',
+                            borderRadius: '50%',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '2px solid #ef4444',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 1.5rem auto',
+                            boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)'
+                        }}>
+                            <Trash2 size={36} color="#ef4444" />
+                        </div>
+                        
+                        <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.8rem', fontWeight: '800' }}>
+                            Excluir Lote?
+                        </h3>
+                        
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '2rem' }}>
+                            Tem certeza que deseja remover o lote <strong style={{ color: 'var(--text-primary)' }}>{batchToDelete.lot}</strong> permanentemente?<br/>
+                            Esta ação não poderá ser desfeita.
+                        </p>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                            <button 
+                                type="button" 
+                                className="btn-confirm-modal" 
+                                onClick={() => setBatchToDelete(null)}
+                                style={{ 
+                                    flex: 1, 
+                                    background: 'rgba(255, 255, 255, 0.05)', 
+                                    border: '1.5px solid var(--border-color)', 
+                                    color: 'var(--text-primary)',
+                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                CANCELAR
+                            </button>
+                            <button 
+                                type="button" 
+                                className="btn-clear-modal" 
+                                onClick={() => confirmDeleteBatch(batchToDelete.id)}
+                                style={{ 
+                                    flex: 1, 
+                                    background: '#ef4444', 
+                                    border: '1.5px solid #000000', 
+                                    color: '#ffffff',
+                                    boxShadow: '0 4px 0px #000000',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                SIM, EXCLUIR
+                            </button>
+                        </div>
                     </div>
                 </div>
             , document.body)}
