@@ -43,7 +43,7 @@ const limitChars = (str, limit) => {
 };
 
 export default function LogisticsHub() {
-    const [state, setKey] = useCorelluxState(['currentUser', 'logisticsActiveTab', 'inventorySearch']);
+    const [state, setKey] = useCorelluxState(['currentUser', 'logisticsActiveTab', 'inventorySearch', 'logisticsFlowType']);
     
     // Core Data States
     const [products, setProducts] = useState([]);
@@ -142,6 +142,27 @@ export default function LogisticsHub() {
             }
         };
         loadAllData();
+    }, []);
+
+    // Sync flowType with global store
+    useEffect(() => {
+        setKey('logisticsFlowType', flowType);
+    }, [flowType]);
+
+    // Reset flowType when returning to menu
+    useEffect(() => {
+        if (activeTab === 'menu') {
+            setFlowType(null);
+        }
+    }, [activeTab]);
+
+    // Listen to custom XML import event from header
+    useEffect(() => {
+        const handleImport = () => {
+            handleXmlImport();
+        };
+        window.addEventListener('corellux-import-xml', handleImport);
+        return () => window.removeEventListener('corellux-import-xml', handleImport);
     }, []);
 
     // Save requests to LocalStorage when changed
@@ -1140,97 +1161,14 @@ export default function LogisticsHub() {
                             <div className="flow-container" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                 
                                 {/* Flow Selector Header */}
-                                <div className="products-header" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 2rem' }}>
-                                    {activeTab === 'movimentar' ? (
-                                        <div style={{ display: 'flex', gap: '1rem' }}>
-                                            <button 
-                                                onClick={() => { setFlowType('entrada'); setFlowStep('category'); setCurrentCategory(null); }}
-                                                className={`btn-action-selector ${flowType === 'entrada' ? 'active green' : ''}`}
-                                                style={{
-                                                    padding: '0.6rem 1.2rem',
-                                                    borderRadius: '8px',
-                                                    border: '1px solid var(--border-color)',
-                                                    background: flowType === 'entrada' ? 'rgba(34, 197, 94, 0.15)' : 'var(--bg-card-hover)',
-                                                    color: flowType === 'entrada' ? 'var(--accent-green)' : 'var(--text-secondary)',
-                                                    borderColor: flowType === 'entrada' ? 'var(--accent-green)' : 'var(--border-color)',
-                                                    fontWeight: '700',
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '0.4rem'
-                                                }}
-                                            >
-                                                <ArrowUp size={16} /> ENTRADA
-                                            </button>
-                                            
-                                            <button 
-                                                onClick={() => { setFlowType('saida'); setFlowStep('category'); setCurrentCategory(null); }}
-                                                className={`btn-action-selector ${flowType === 'saida' ? 'active red' : ''}`}
-                                                style={{
-                                                    padding: '0.6rem 1.2rem',
-                                                    borderRadius: '8px',
-                                                    border: '1px solid var(--border-color)',
-                                                    background: flowType === 'saida' ? 'rgba(239, 68, 68, 0.15)' : 'var(--bg-card-hover)',
-                                                    color: flowType === 'saida' ? 'var(--accent-red)' : 'var(--text-secondary)',
-                                                    borderColor: flowType === 'saida' ? 'var(--accent-red)' : 'var(--border-color)',
-                                                    fontWeight: '700',
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '0.4rem'
-                                                }}
-                                            >
-                                                <ArrowDown size={16} /> SAIDA
-                                            </button>
-
-                                            <button 
-                                                onClick={() => { setFlowType('perdas'); setFlowStep('category'); setCurrentCategory(null); }}
-                                                className={`btn-action-selector ${flowType === 'perdas' ? 'active yellow' : ''}`}
-                                                style={{
-                                                    padding: '0.6rem 1.2rem',
-                                                    borderRadius: '8px',
-                                                    border: '1px solid var(--border-color)',
-                                                    background: flowType === 'perdas' ? 'rgba(245, 158, 11, 0.15)' : 'var(--bg-card-hover)',
-                                                    color: flowType === 'perdas' ? 'var(--accent-yellow)' : 'var(--text-secondary)',
-                                                    borderColor: flowType === 'perdas' ? 'var(--accent-yellow)' : 'var(--border-color)',
-                                                    fontWeight: '700',
-                                                    cursor: 'pointer',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '0.4rem'
-                                                }}
-                                            >
-                                                <Trash2 size={16} /> PERDAS
-                                            </button>
-                                        </div>
-                                    ) : (
+                                {activeTab === 'solicitacao' && (
+                                    <div className="products-header" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem 2rem' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-orange)' }}>
                                             <ShoppingCart size={18} />
                                             <span style={{ fontWeight: '700' }}>SOLICITAR INSUMOS PARA PREPARAÇÃO (CRIAR LISTA)</span>
                                         </div>
-                                    )}
-
-                                    {/* XML Import in Entrada */}
-                                    {flowType === 'entrada' && activeTab === 'movimentar' && (
-                                        <button 
-                                            onClick={handleXmlImport} 
-                                            className="btn-primary" 
-                                            style={{
-                                                marginLeft: 'auto',
-                                                padding: '0.5rem 1rem',
-                                                fontSize: '0.85rem',
-                                                background: 'rgba(255, 90, 0, 0.1)',
-                                                border: '1px solid var(--accent-orange)',
-                                                color: 'var(--accent-orange)',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.4rem'
-                                            }}
-                                        >
-                                            <FileText size={16} /> IMPORTAR XML NF-E
-                                        </button>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
 
                                 {/* FLOW STEP 1: CATEGORY SELECTION */}
                                 {flowStep === 'category' && (

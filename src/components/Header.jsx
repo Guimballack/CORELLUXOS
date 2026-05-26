@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCorelluxState, isAuthenticated } from '../store/corellux-state';
 import { getUserAvatar } from '../utils/initial-data';
-import { Home, Bell, UserCheck, LogOut, ShieldAlert, ArrowLeft, Search } from 'lucide-react';
+import { Home, Bell, UserCheck, LogOut, ShieldAlert, ArrowLeft, Search, FileText } from 'lucide-react';
 
 export default function Header() {
     const [state, setKey, updatePartial] = useCorelluxState([
@@ -16,6 +16,7 @@ export default function Header() {
         'settingsActiveTab',
         'centralActiveTab',
         'logisticsActiveTab',
+        'logisticsFlowType',
         'inventorySearch'
     ]);
     const [time, setTime] = useState('');
@@ -139,6 +140,29 @@ export default function Header() {
             </div>
 
             <div className="header-actions" id="header-actions">
+                {state.currentScreen === 'logistics-hub' && state.logisticsActiveTab === 'movimentar' && state.logisticsFlowType === 'entrada' && (
+                    <button 
+                        onClick={() => window.dispatchEvent(new CustomEvent('corellux-import-xml'))}
+                        className="btn-primary" 
+                        style={{
+                            padding: '0.4rem 0.8rem',
+                            fontSize: '0.8rem',
+                            background: 'rgba(255, 90, 0, 0.1)',
+                            border: '1px solid var(--accent-orange)',
+                            color: 'var(--accent-orange)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.3rem',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontWeight: '700',
+                            marginRight: '0.8rem',
+                            height: '34px'
+                        }}
+                    >
+                        <FileText size={14} /> IMPORTAR XML
+                    </button>
+                )}
                 {state.currentScreen === 'logistics-hub' && state.logisticsActiveTab === 'estoque' && (
                     <div className="search-box" style={{ margin: '0 1rem 0 0', width: '250px' }}>
                         <Search size={16} />
