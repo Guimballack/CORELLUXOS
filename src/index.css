@@ -704,7 +704,7 @@ main {
     display: flex;
     align-items: center;
     padding: 1.5rem 2rem;
-    min-height: 130px;
+    height: 140px;
     border-radius: 16px;
     text-align: left;
     color: white;
