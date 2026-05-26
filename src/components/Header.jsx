@@ -6,10 +6,16 @@
 import React, { useState, useEffect } from 'react';
 import { useCorelluxState, isAuthenticated } from '../store/corellux-state';
 import { getUserAvatar } from '../utils/initial-data';
-import { Home, Bell, UserCheck, LogOut, ShieldAlert } from 'lucide-react';
+import { Home, Bell, UserCheck, LogOut, ShieldAlert, ArrowLeft } from 'lucide-react';
 
 export default function Header() {
-    const [state, setKey, updatePartial] = useCorelluxState(['currentUser', 'workstationAuthenticated', 'currentScreen']);
+    const [state, setKey, updatePartial] = useCorelluxState([
+        'currentUser', 
+        'workstationAuthenticated', 
+        'currentScreen',
+        'settingsActiveTab',
+        'centralActiveTab'
+    ]);
     const [time, setTime] = useState('');
     const [date, setDate] = useState('');
 
@@ -40,6 +46,24 @@ export default function Header() {
         setKey('currentScreen', 'dashboard');
     };
 
+    const handleBackClick = () => {
+        if (state.currentScreen === 'settings') {
+            if (state.settingsActiveTab === 'menu') {
+                setKey('currentScreen', 'dashboard');
+            } else {
+                setKey('settingsActiveTab', 'menu');
+            }
+        } else if (state.currentScreen === 'central-hub') {
+            if (state.centralActiveTab === 'menu') {
+                setKey('currentScreen', 'dashboard');
+            } else {
+                setKey('centralActiveTab', 'menu');
+            }
+        } else if (state.currentScreen !== 'dashboard') {
+            setKey('currentScreen', 'dashboard');
+        }
+    };
+
     const handleLogout = () => {
         updatePartial({
             currentUser: null,
@@ -64,6 +88,11 @@ export default function Header() {
     return (
         <header id="global-header">
             <div className="logo-area">
+                {state.currentScreen !== 'dashboard' && (
+                    <button className="btn-home-header" onClick={handleBackClick} title="Voltar" style={{ marginRight: '0.5rem' }}>
+                        <ArrowLeft size={20} />
+                    </button>
+                )}
                 <button className="btn-home-header" onClick={handleHomeClick} title="Início">
                     <Home size={20} />
                 </button>

@@ -49,11 +49,13 @@ export default function CentralHub() {
         'pendingAttachment',
         'checklistModels',
         'checklistExecutions',
-        'builderItems'
+        'builderItems',
+        'centralActiveTab'
     ]);
 
     // Local UI States (Avisos e Geral)
-    const [activeTab, setActiveTab] = useState('menu'); // 'menu', 'feed', 'compose', 'checklist'
+    const activeTab = state.centralActiveTab;
+    const setActiveTab = (tabName) => setKey('centralActiveTab', tabName);
     const [recipientSubTab, setRecipientSubTab] = useState('users'); // 'users', 'sectors', 'areas'
     const [searchQuery, setSearchQuery] = useState('');
     const [feedFilter, setFeedFilter] = useState('todos'); // 'todos', 'unread', 'sent', 'sistema'
@@ -111,6 +113,7 @@ export default function CentralHub() {
         DbService.getChecklistExecutions().then(data => {
             setKey('checklistExecutions', data);
         });
+        setKey('centralActiveTab', 'menu');
     }, []);
 
     const currentUser = state.currentUser || { name: 'Sistema', id: 0, role: 'Gerente', permissions: {} };

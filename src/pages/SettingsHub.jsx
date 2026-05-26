@@ -63,7 +63,7 @@ const HEALTH_SAFETY_ITEMS = [
 ];
 
 export default function SettingsHub() {
-    const [globalState] = useCorelluxState(['currentUser']);
+    const [globalState, setGlobalKey] = useCorelluxState(['currentUser', 'settingsActiveTab']);
     
     // Core data lists
     const [colaboradores, setColaboradores] = useState([]);
@@ -73,7 +73,8 @@ export default function SettingsHub() {
     const [loading, setLoading] = useState(true);
 
     // Tab control
-    const [activeTab, setActiveTab] = useState('menu'); // menu, colaboradores, produtos, categorias, fornecedores
+    const activeTab = globalState.settingsActiveTab;
+    const setActiveTab = (tabName) => setGlobalKey('settingsActiveTab', tabName);
 
     // Search filters
     const [searchColab, setSearchColab] = useState('');
@@ -152,6 +153,7 @@ export default function SettingsHub() {
 
     useEffect(() => {
         loadData();
+        setGlobalKey('settingsActiveTab', 'menu');
     }, []);
 
     useEffect(() => {

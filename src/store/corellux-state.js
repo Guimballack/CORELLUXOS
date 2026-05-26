@@ -30,6 +30,8 @@ const DEFAULTS = {
     notifications: [],
     estoqueViewSortField: 'name',
     estoqueViewSortOrder: 'asc',
+    settingsActiveTab: 'menu',
+    centralActiveTab: 'menu',
 
     // Checklist
     checklistModels: [],
