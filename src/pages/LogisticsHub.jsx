@@ -1478,7 +1478,7 @@ export default function LogisticsHub() {
                                         <thead>
                                             <tr>
                                                 <th>Produto</th>
-                                                <th>Endereçamento</th>
+                                                <th>Sugestão de Retirada (FEFO)</th>
                                                 <th>Quantidade</th>
                                                 <th>Solicitado Por</th>
                                                 <th>Setor / Função</th>
@@ -1501,17 +1501,8 @@ export default function LogisticsHub() {
                                                     if (req.status === 'Pendente') badgeClass = 'badge-pendente';
                                                     if (req.status === 'Recusado') badgeClass = 'badge-recusado';
 
-                                                    const productBatchesForReq = stockBatches.filter(
-                                                        b => b.itemSku === req.itemSku && b.address
-                                                    );
-                                                    const activeBatches = productBatchesForReq.filter(b => b.quantity > 0);
-                                                    const batchesToUse = activeBatches.length > 0 ? activeBatches : productBatchesForReq;
-                                                    const uniqueAddresses = [
-                                                        ...new Set(batchesToUse.map(b => b.address))
-                                                    ];
-                                                    const addressDisplay = uniqueAddresses.length > 0 
-                                                        ? uniqueAddresses.join(', ') 
-                                                        : 'Sem endereço';
+                                                    const product = products.find(p => p.sku === req.itemSku);
+                                                    const fefo = calculateFefoPlan(req.itemSku, req.quantity);
 
                                                     return (
                                                         <tr key={req.id}>
@@ -1521,18 +1512,51 @@ export default function LogisticsHub() {
                                                                 <small style={{ color: 'var(--text-secondary)' }}>{req.itemSku}</small>
                                                             </td>
                                                             <td>
-                                                                <span style={{ 
-                                                                    background: 'rgba(192, 132, 252, 0.1)', 
-                                                                    border: '1px solid rgba(192, 132, 252, 0.3)',
-                                                                    color: '#c084fc', 
-                                                                    padding: '0.2rem 0.5rem', 
-                                                                    borderRadius: '4px',
-                                                                    fontSize: '0.8rem',
-                                                                    fontWeight: '700',
-                                                                    fontFamily: 'monospace'
-                                                                }}>
-                                                                    {addressDisplay}
-                                                                </span>
+                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                                    {fefo.plan.length === 0 && fefo.remainingUnallocated === 0 && (
+                                                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                                                            Sem lotes cadastrados
+                                                                        </span>
+                                                                    )}
+                                                                    {fefo.plan.map((item, idx) => (
+                                                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                                                            <span style={{ 
+                                                                                background: 'rgba(192, 132, 252, 0.1)', 
+                                                                                border: '1px solid rgba(192, 132, 252, 0.3)',
+                                                                                color: '#c084fc', 
+                                                                                padding: '0.1rem 0.4rem', 
+                                                                                borderRadius: '4px',
+                                                                                fontSize: '0.75rem',
+                                                                                fontWeight: '700',
+                                                                                fontFamily: 'monospace'
+                                                                            }}>
+                                                                                {item.batch.address || 'Sem end.'}
+                                                                            </span>
+                                                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                                                                Lote: <strong style={{ color: 'var(--text-primary)' }}>{item.batch.lot}</strong> (-{item.quantityToTake} {product?.unit || ''})
+                                                                            </span>
+                                                                        </div>
+                                                                    ))}
+                                                                    {fefo.remainingUnallocated > 0 && (
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                                                            <span style={{ 
+                                                                                background: 'rgba(239, 68, 68, 0.1)', 
+                                                                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                                                                color: 'var(--accent-red)', 
+                                                                                padding: '0.1rem 0.4rem', 
+                                                                                borderRadius: '4px',
+                                                                                fontSize: '0.75rem',
+                                                                                fontWeight: '700',
+                                                                                fontFamily: 'monospace'
+                                                                            }}>
+                                                                                Estoque Geral
+                                                                            </span>
+                                                                            <span style={{ fontSize: '0.75rem', color: 'var(--accent-red)', fontWeight: '600' }}>
+                                                                                (-{fefo.remainingUnallocated} {product?.unit || ''})
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </td>
                                                             <td><span style={{ fontWeight: '700' }}>{req.quantity}</span></td>
                                                             <td>{req.requestedBy}</td>
