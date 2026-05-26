@@ -147,7 +147,7 @@ export default function LogisticsHub() {
     // =============================================
 
     const getBatchExpiryStatus = (expDateStr) => {
-        if (!expDateStr) return { label: 'Sem Validade', className: 'stock-ok', days: 999 };
+        if (!expDateStr) return { label: 'Sem Validade', className: 'expiry-ok', days: 999 };
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const expDate = new Date(expDateStr);
@@ -157,13 +157,13 @@ export default function LogisticsHub() {
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
         if (diffDays < 0) {
-            return { label: 'VENCIDO', className: 'stock-out', days: diffDays };
+            return { label: 'VENCIDO', className: 'expiry-danger', days: diffDays };
         } else if (diffDays <= 30) {
-            return { label: `Vence em ${diffDays}d`, className: 'stock-low', days: diffDays };
+            return { label: `Vence em ${diffDays}d`, className: 'expiry-danger', days: diffDays };
         } else if (diffDays <= 60) {
-            return { label: `Atenção (${diffDays}d)`, className: 'stock-low', days: diffDays }; // Usar cores existentes
+            return { label: `Atenção (${diffDays}d)`, className: 'expiry-warning', days: diffDays };
         } else {
-            return { label: 'OK', className: 'stock-ok', days: diffDays };
+            return { label: 'OK', className: 'expiry-ok', days: diffDays };
         }
     };
 
