@@ -789,7 +789,7 @@ export default function LogisticsHub() {
                                 >
                                     <div className="card-icon"><Boxes size={24} /></div>
                                     <div className="card-content">
-                                        <h3>Stock View</h3>
+                                        <h3>STOCK VIEW</h3>
                                         <p>Registro geral de itens, consulta de SKU, saldo atual e controle de validades por lote (FEFO).</p>
                                     </div>
                                     <ChevronRight className="chevron" size={20} />
@@ -806,7 +806,7 @@ export default function LogisticsHub() {
                                 >
                                     <div className="card-icon"><History size={24} /></div>
                                     <div className="card-content">
-                                        <h3>MOVIMENTAR ESTOQUE</h3>
+                                        <h3>STOCK FLOW</h3>
                                         <p>Registrar entradas, saídas operacionais e descarte de produtos por perdas.</p>
                                     </div>
                                     <ChevronRight className="chevron" size={20} />
