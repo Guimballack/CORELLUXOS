@@ -34,6 +34,7 @@ const DEFAULTS = {
     centralActiveTab: 'menu',
     logisticsActiveTab: 'menu',
     logisticsFlowType: null,
+    logisticsFlowStep: null,
     inventorySearch: '',
 
     // Checklist

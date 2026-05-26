@@ -17,6 +17,7 @@ export default function Header() {
         'centralActiveTab',
         'logisticsActiveTab',
         'logisticsFlowType',
+        'logisticsFlowStep',
         'inventorySearch'
     ]);
     const [time, setTime] = useState('');
@@ -65,6 +66,14 @@ export default function Header() {
         } else if (state.currentScreen === 'logistics-hub') {
             if (state.logisticsActiveTab === 'menu') {
                 setKey('currentScreen', 'dashboard');
+            } else if (state.logisticsActiveTab === 'movimentar' || state.logisticsActiveTab === 'solicitacao') {
+                if (state.logisticsFlowStep === 'product') {
+                    window.dispatchEvent(new CustomEvent('corellux-back-step'));
+                } else if (state.logisticsActiveTab === 'movimentar' && state.logisticsFlowType !== null) {
+                    window.dispatchEvent(new CustomEvent('corellux-back-flow'));
+                } else {
+                    setKey('logisticsActiveTab', 'menu');
+                }
             } else {
                 setKey('logisticsActiveTab', 'menu');
             }

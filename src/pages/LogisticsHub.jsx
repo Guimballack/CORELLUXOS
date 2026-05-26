@@ -43,7 +43,7 @@ const limitChars = (str, limit) => {
 };
 
 export default function LogisticsHub() {
-    const [state, setKey] = useCorelluxState(['currentUser', 'logisticsActiveTab', 'inventorySearch', 'logisticsFlowType']);
+    const [state, setKey] = useCorelluxState(['currentUser', 'logisticsActiveTab', 'inventorySearch', 'logisticsFlowType', 'logisticsFlowStep']);
     
     // Core Data States
     const [products, setProducts] = useState([]);
@@ -149,6 +149,11 @@ export default function LogisticsHub() {
         setKey('logisticsFlowType', flowType);
     }, [flowType]);
 
+    // Sync flowStep with global store
+    useEffect(() => {
+        setKey('logisticsFlowStep', flowStep);
+    }, [flowStep]);
+
     // Reset flowType when returning to menu
     useEffect(() => {
         if (activeTab === 'menu') {
@@ -163,6 +168,23 @@ export default function LogisticsHub() {
         };
         window.addEventListener('corellux-import-xml', handleImport);
         return () => window.removeEventListener('corellux-import-xml', handleImport);
+    }, []);
+
+    // Listen to custom navigation back events from header
+    useEffect(() => {
+        const handleBackStep = () => {
+            setFlowStep('category');
+            setCurrentCategory(null);
+        };
+        const handleBackFlow = () => {
+            setFlowType(null);
+        };
+        window.addEventListener('corellux-back-step', handleBackStep);
+        window.addEventListener('corellux-back-flow', handleBackFlow);
+        return () => {
+            window.removeEventListener('corellux-back-step', handleBackStep);
+            window.removeEventListener('corellux-back-flow', handleBackFlow);
+        };
     }, []);
 
     // Save requests to LocalStorage when changed
@@ -1205,17 +1227,19 @@ export default function LogisticsHub() {
                                 {flowStep === 'product' && currentCategory && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                         {/* Back to Category breadcrumb */}
-                                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                                            <button 
-                                                onClick={() => { setFlowStep('category'); setCurrentCategory(null); }}
-                                                className="btn-back"
-                                                style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                                            >
-                                                <ArrowLeft size={14} /> CATEGORIAS
-                                            </button>
-                                            <span style={{ margin: '0 0.8rem', color: 'var(--text-secondary)' }}>/</span>
-                                            <span style={{ fontWeight: '700', color: 'var(--accent-orange)' }}>{currentCategory.name}</span>
-                                        </div>
+                                        {activeTab !== 'movimentar' && (
+                                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                                                <button 
+                                                    onClick={() => { setFlowStep('category'); setCurrentCategory(null); }}
+                                                    className="btn-back"
+                                                    style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                                >
+                                                    <ArrowLeft size={14} /> CATEGORIAS
+                                                </button>
+                                                <span style={{ margin: '0 0.8rem', color: 'var(--text-secondary)' }}>/</span>
+                                                <span style={{ fontWeight: '700', color: 'var(--accent-orange)' }}>{currentCategory.name}</span>
+                                            </div>
+                                        )}
 
                                         {/* Products Table inside Category */}
                                         <div className="table-responsive">
