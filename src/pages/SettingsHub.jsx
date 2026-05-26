@@ -871,7 +871,7 @@ export default function SettingsHub() {
             {/* Navegação orientada exclusivamente a Cards e Botões de Voltar */}
 
             {/* Inner Content Area */}
-            <div className="tab-content" style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
+            <div className="tab-content" style={{ flex: 1, padding: activeTab === 'menu' ? '0' : '2rem', overflowY: 'auto' }}>
                 
                 {loading ? (
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '300px', gap: '1rem', color: 'var(--text-secondary)' }}>
