@@ -899,13 +899,7 @@ export default function SettingsHub() {
                                 minHeight: '80%',
                                 padding: '2rem 1rem'
                             }}>
-                                <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-                                    <h2 style={{ fontSize: '2.2rem', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                        Central de Cadastros
-                                    </h2>
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', maxWidth: '500px', margin: '0 auto' }}>
-                                        Selecione o módulo de cadastro que deseja gerenciar, visualizar ou editar.
-                                    </p>
+                                <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
                                 </div>
 
                                 <div className="dashboard-menu">
