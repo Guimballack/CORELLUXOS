@@ -867,19 +867,12 @@ main {
 }
 
 /* Modificações específicas de cards */
-.menu-card.teal {
-    background-color: #042f2e;
-    border: 1px solid #0f766e;
-    color: white;
-}
+
 
 .menu-card.teal .card-icon {
     background-color: #0f766e;
 }
 
-.menu-card.teal:hover {
-    background-color: rgba(20, 184, 166, 0.05);
-}
 
 .menu-card.purple {
     border-left-color: var(--accent-purple);
@@ -890,15 +883,8 @@ main {
     color: var(--accent-purple);
 }
 
-.menu-card.purple:hover {
-    background-color: rgba(168, 85, 247, 0.05);
-}
 
-.menu-card.dark-blue {
-    background-color: #0f172a;
-    border: 1px solid #1e293b;
-    color: white;
-}
+
 
 .menu-card.dark-blue .card-icon {
     background-color: #334155;
