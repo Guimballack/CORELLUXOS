@@ -106,11 +106,11 @@ export default function Header() {
                     <Bell size={18} />
                     <span className="notification-badge" id="header-notif-count">0</span>
                 </div>
-                <button className="btn-logout-header" onClick={handleLogout} id="btn-logout">
-                    <UserCheck size={16} /> LOCK
+                <button className="btn-logout-header orange-lock" onClick={handleLogout} id="btn-logout">
+                    <UserCheck size={16} /> Logout
                 </button>
                 <button className="btn-logout-header exit" onClick={handleExit} id="btn-exit">
-                    <LogOut size={16} /> LOGOUT
+                    <LogOut size={16} /> Exit
                 </button>
             </div>
         </header>

@@ -403,6 +403,17 @@ header.hidden {
     border-color: var(--text-secondary);
 }
 
+.btn-logout-header.orange-lock {
+    border-color: rgba(243, 107, 29, 0.3);
+    color: var(--accent-orange);
+}
+
+.btn-logout-header.orange-lock:hover {
+    background-color: rgba(243, 107, 29, 0.1);
+    border-color: var(--accent-orange);
+    box-shadow: 0 0 8px rgba(243, 107, 29, 0.4);
+}
+
 .btn-logout-header.exit {
     border-color: rgba(239, 68, 68, 0.3);
     color: #f87171;
