@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import { useCorelluxState, isAuthenticated } from '../store/corellux-state';
 import { getUserAvatar } from '../utils/initial-data';
-import { Home, Bell, UserCheck, LogOut, ShieldAlert, ArrowLeft } from 'lucide-react';
+import { Home, Bell, UserCheck, LogOut, ShieldAlert, ArrowLeft, Search } from 'lucide-react';
 
 export default function Header() {
     const [state, setKey, updatePartial] = useCorelluxState([
@@ -15,7 +15,8 @@ export default function Header() {
         'currentScreen',
         'settingsActiveTab',
         'centralActiveTab',
-        'logisticsActiveTab'
+        'logisticsActiveTab',
+        'inventorySearch'
     ]);
     const [time, setTime] = useState('');
     const [date, setDate] = useState('');
@@ -138,6 +139,17 @@ export default function Header() {
             </div>
 
             <div className="header-actions" id="header-actions">
+                {state.currentScreen === 'logistics-hub' && state.logisticsActiveTab === 'estoque' && (
+                    <div className="search-box" style={{ margin: '0 1rem 0 0', width: '250px' }}>
+                        <Search size={16} />
+                        <input 
+                            type="text" 
+                            placeholder="Buscar SKU, nome ou marca..."
+                            value={state.inventorySearch || ''}
+                            onChange={(e) => setKey('inventorySearch', e.target.value)}
+                        />
+                    </div>
+                )}
                 <div className="header-notification-bell" onClick={handleNotificationClick}>
                     <Bell size={18} />
                     <span className="notification-badge" id="header-notif-count">0</span>
