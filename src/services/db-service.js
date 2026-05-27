@@ -55,13 +55,38 @@ function toSnakeCase(obj) {
 // SERVIÇOS DE BANCO DE DADOS
 // =============================================
 
-// Migração automática de local storage para o novo conjunto de dados v2
+// Migração automática de local storage para o novo conjunto de dados v3 (incluindo logs realistas)
 try {
-    const dbVersion = localStorage.getItem('corellux_db_version_v2');
-    if (!dbVersion) {
+    const dbVersion = localStorage.getItem('corellux_db_version_v3');
+    if (dbVersion !== 'true') {
         localStorage.removeItem('corellux_products');
         localStorage.removeItem('corellux_categories');
         localStorage.removeItem('corellux_suppliers');
+        localStorage.removeItem('corellux_movement_logs');
+        
+        // Generate realistic historical movement logs
+        const productsList = mockData.products || [];
+        const initialLogs = [];
+        const today = new Date();
+        for (let dayOffset = 15; dayOffset >= 1; dayOffset--) {
+            const logDate = new Date(today.getTime() - dayOffset * 24 * 60 * 60 * 1000);
+            const dateStr = logDate.toISOString().split('T')[0];
+            const dow = logDate.getDay();
+
+            productsList.forEach(p => {
+                const baseAvg = Math.max(0.5, (p.avgStock || 10) / 8);
+                const qty = parseFloat((baseAvg * (0.75 + Math.random() * 0.5)).toFixed(2));
+                initialLogs.push({
+                    id: 'mov_init_' + dayOffset + '_' + p.sku,
+                    sku: p.sku,
+                    date: dateStr,
+                    qty: qty,
+                    dayOfWeek: dow
+                });
+            });
+        }
+        localStorage.setItem('corellux_movement_logs', JSON.stringify(initialLogs));
+        localStorage.setItem('corellux_db_version_v3', 'true');
         localStorage.setItem('corellux_db_version_v2', 'true');
     }
 } catch (e) {
