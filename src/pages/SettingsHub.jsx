@@ -3460,9 +3460,23 @@ export default function SettingsHub() {
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Pedido Mínimo (R$)</label>
                                             <input 
-                                                type="number" 
-                                                value={fornForm.logistica.pedidoMinimo} 
-                                                onChange={(e) => setFornForm(prev => ({ ...prev, logistica: { ...prev.logistica, pedidoMinimo: parseFloat(e.target.value) || 0 } }))}
+                                                type="text" 
+                                                value={formatCurrencyValue(fornForm.logistica.pedidoMinimo)} 
+                                                onChange={(e) => {
+                                                    let val = e.target.value.replace(/\D/g, '');
+                                                    if (!val) {
+                                                        setFornForm(prev => ({ 
+                                                            ...prev, 
+                                                            logistica: { ...prev.logistica, pedidoMinimo: 0 } 
+                                                        }));
+                                                        return;
+                                                    }
+                                                    const floatVal = parseFloat(val) / 100;
+                                                    setFornForm(prev => ({ 
+                                                        ...prev, 
+                                                        logistica: { ...prev.logistica, pedidoMinimo: floatVal } 
+                                                    }));
+                                                }}
                                                 style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
                                             />
                                         </div>
