@@ -182,6 +182,7 @@ export default function LogisticsHub() {
     const [selectedReason, setSelectedReason] = useState('');
     const [customReasonText, setCustomReasonText] = useState('');
     const [selectedLossSector, setSelectedLossSector] = useState('');
+    const [lossMaterialType, setLossMaterialType] = useState('estoque'); // 'estoque' ou 'processo'
 
     // Inventory Filtering & Sorting
     const [inventoryCategory, setInventoryCategory] = useState('ALL');
@@ -802,7 +803,7 @@ export default function LogisticsHub() {
         const currentStock = pendingProduct.stock;
         let newStock = currentStock;
 
-        // PERDAS: does NOT change stock — only saves a loss record
+        // PERDAS: only saves a loss record. If it is 'estoque', also deducts stock.
         if (flowType === 'perdas') {
             const lossEntry = {
                 id: Date.now(),
@@ -813,11 +814,32 @@ export default function LogisticsHub() {
                 reason: reason || 'Não informado',
                 customReason: reason === 'Outros' ? (customReasonText.trim() || 'Não especificado') : '',
                 sector: selectedLossSector || 'Não informado',
+                materialType: lossMaterialType,
                 registeredBy: state.currentUser ? state.currentUser.name : 'Operador',
                 registeredAt: new Date().toLocaleString('pt-BR')
             };
             saveLossRecord(lossEntry);
-            showSystemAlert(`Perda registrada: ${pendingQty} ${pendingProduct.unit} de "${pendingProduct.name}" (${reason === 'Outros' && customReasonText ? customReasonText : reason}). Estoque não foi alterado.`, 'Descarte Registrado');
+
+            if (lossMaterialType === 'estoque') {
+                const productBatches = stockBatches.filter(b => b.itemSku === sku);
+                if (productBatches.length > 0) {
+                    await deductStockFromBatchesFefo(sku, pendingQty);
+                    showSystemAlert(`Perda registrada: ${pendingQty} ${pendingProduct.unit} de "${pendingProduct.name}" (Material de Estoque). Estoque atualizado via FEFO.`, 'Sucesso');
+                } else {
+                    newStock -= pendingQty;
+                    if (newStock < 0) newStock = 0;
+                    const result = await DbService.updateProductStock(sku, newStock);
+                    if (result.success) {
+                        setProducts(prev => prev.map(p => p.sku === sku ? { ...p, stock: newStock } : p));
+                        showSystemAlert(`Perda registrada: ${pendingQty} ${pendingProduct.unit} de "${pendingProduct.name}" (Material de Estoque). Estoque atualizado. Novo estoque: ${newStock} ${pendingProduct.unit}`, 'Sucesso');
+                    } else {
+                        setProducts(prev => prev.map(p => p.sku === sku ? { ...p, stock: newStock } : p));
+                        showSystemAlert(`[Aviso] Salvo localmente: estoque de ${pendingProduct.name} reduzido para ${newStock} por perda de estoque.`, 'Salvo Localmente');
+                    }
+                }
+            } else {
+                showSystemAlert(`Perda registrada: ${pendingQty} ${pendingProduct.unit} de "${pendingProduct.name}" (${reason === 'Outros' && customReasonText ? customReasonText : reason}). Estoque não foi alterado (Material em Processo).`, 'Descarte Registrado');
+            }
 
             // Reset flow
             setFlowStep('category');
@@ -827,6 +849,7 @@ export default function LogisticsHub() {
             setSelectedReason('');
             setCustomReasonText('');
             setSelectedLossSector('');
+            setLossMaterialType('estoque');
             return;
         }
 
@@ -1976,6 +1999,7 @@ export default function LogisticsHub() {
                                                 <th>SKU</th>
                                                 <th>Qtd</th>
                                                 <th>Unidade</th>
+                                                <th>Origem</th>
                                                 <th>Setor</th>
                                                 <th>Motivo</th>
                                                 <th>Registrado Por</th>
@@ -1984,7 +2008,7 @@ export default function LogisticsHub() {
                                         <tbody>
                                             {lossRecords.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                                    <td colSpan="9" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                                                         <AlertTriangle size={32} style={{ color: 'var(--accent-yellow)', marginBottom: '0.5rem' }} />
                                                         <br />Nenhum registro de perda encontrado.
                                                     </td>
@@ -2005,6 +2029,29 @@ export default function LogisticsHub() {
                                                             </span>
                                                         </td>
                                                         <td style={{ color: 'var(--text-secondary)' }}>{rec.unit}</td>
+                                                        <td>
+                                                            {rec.materialType === 'processo' ? (
+                                                                <span style={{
+                                                                    background: 'rgba(168, 85, 247, 0.12)',
+                                                                    border: '1px solid rgba(168, 85, 247, 0.35)',
+                                                                    color: '#c084fc',
+                                                                    padding: '0.2rem 0.6rem',
+                                                                    borderRadius: '4px',
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: '700'
+                                                                }}>Processo</span>
+                                                            ) : (
+                                                                <span style={{
+                                                                    background: 'rgba(243, 107, 29, 0.12)',
+                                                                    border: '1px solid rgba(243, 107, 29, 0.35)',
+                                                                    color: 'var(--accent-orange)',
+                                                                    padding: '0.2rem 0.6rem',
+                                                                    borderRadius: '4px',
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: '700'
+                                                                }}>Estoque</span>
+                                                            )}
+                                                        </td>
                                                         <td>
                                                             <span style={{
                                                                 background: 'rgba(99,102,241,0.12)',
@@ -2650,6 +2697,57 @@ export default function LogisticsHub() {
                                 </select>
                             </div>
 
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Origem do Insumo</label>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setLossMaterialType('estoque')}
+                                        style={{
+                                            flex: 1,
+                                            padding: '0.65rem 0.5rem',
+                                            fontSize: '0.8rem',
+                                            fontWeight: '700',
+                                            background: lossMaterialType === 'estoque' ? 'rgba(243, 107, 29, 0.15)' : 'var(--bg-card-hover)',
+                                            border: '1px solid',
+                                            borderColor: lossMaterialType === 'estoque' ? 'var(--accent-orange)' : 'var(--border-color)',
+                                            color: lossMaterialType === 'estoque' ? 'var(--accent-orange)' : 'var(--text-primary)',
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            textAlign: 'center'
+                                        }}
+                                    >
+                                        Material de Estoque
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setLossMaterialType('processo')}
+                                        style={{
+                                            flex: 1,
+                                            padding: '0.65rem 0.5rem',
+                                            fontSize: '0.8rem',
+                                            fontWeight: '700',
+                                            background: lossMaterialType === 'processo' ? 'rgba(168, 85, 247, 0.15)' : 'var(--bg-card-hover)',
+                                            border: '1px solid',
+                                            borderColor: lossMaterialType === 'processo' ? 'rgba(168, 85, 247, 0.5)' : 'var(--border-color)',
+                                            color: lossMaterialType === 'processo' ? '#c084fc' : 'var(--text-primary)',
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            textAlign: 'center'
+                                        }}
+                                    >
+                                        Material em Processo
+                                    </button>
+                                </div>
+                                <small style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.1rem' }}>
+                                    {lossMaterialType === 'estoque' 
+                                        ? '✓ Decrementa o estoque atual deste produto.' 
+                                        : 'ℹ Estoque não será alterado (insumo já saiu anteriormente).'}
+                                </small>
+                            </div>
+
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                                 {[
                                     'Validade Vencida',
@@ -2707,7 +2805,7 @@ export default function LogisticsHub() {
                             )}
 
                             <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '1.2rem' }}>
-                                <button className="btn-clear-modal" style={{ flex: 1 }} onClick={() => { setShowReason(false); setPendingProduct(null); }}>
+                                <button className="btn-clear-modal" style={{ flex: 1 }} onClick={() => { setShowReason(false); setPendingProduct(null); setLossMaterialType('estoque'); }}>
                                     CANCELAR
                                 </button>
                                 <button 
