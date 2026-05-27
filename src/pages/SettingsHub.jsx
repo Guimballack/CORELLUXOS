@@ -2724,9 +2724,23 @@ export default function SettingsHub() {
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Limite de Crédito (R$)</label>
                                             <input 
-                                                type="number" 
-                                                value={fornForm.financeiro.limiteCredito} 
-                                                onChange={(e) => setFornForm(prev => ({ ...prev, financeiro: { ...prev.financeiro, limiteCredito: parseFloat(e.target.value) || 0 } }))}
+                                                type="text" 
+                                                value={formatCurrencyValue(fornForm.financeiro.limiteCredito)} 
+                                                onChange={(e) => {
+                                                    let val = e.target.value.replace(/\D/g, '');
+                                                    if (!val) {
+                                                        setFornForm(prev => ({ 
+                                                            ...prev, 
+                                                            financeiro: { ...prev.financeiro, limiteCredito: 0 } 
+                                                        }));
+                                                        return;
+                                                    }
+                                                    const floatVal = parseFloat(val) / 100;
+                                                    setFornForm(prev => ({ 
+                                                        ...prev, 
+                                                        financeiro: { ...prev.financeiro, limiteCredito: floatVal } 
+                                                    }));
+                                                }}
                                                 style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
                                             />
                                         </div>
