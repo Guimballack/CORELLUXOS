@@ -3681,7 +3681,7 @@ export const suppliers = [
         "id": 7,
         "razaoSocial": "CIA INDUSTRIAL DO CAFÉ E CHÁ S/A",
         "nomeFantasia": "CIA DO CAFÉ",
-        "cnpj": "45.678.901/0001-23",
+        "cnpj": "76.543.210/0001-09",
         "ie": "456.789.012.333",
         "im": "45678901",
         "tipoFornecedor": "Indústria",
