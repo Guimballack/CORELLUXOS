@@ -33,7 +33,8 @@ import {
     History,
     Delete,
     Edit,
-    Info
+    Info,
+    Warehouse
 } from 'lucide-react';
 
 
@@ -1114,6 +1115,18 @@ export default function LogisticsHub() {
                                     </div>
                                     <ChevronRight className="chevron" size={20} />
                                 </button>
+
+                                <button 
+                                    className="menu-card purple"
+                                    onClick={() => setActiveTab('wms')}
+                                >
+                                    <div className="card-icon"><Warehouse size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>WMS</h3>
+                                        <p>Gerenciamento de armazém, endereçamento e movimentação de paletes.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
                             </div>
                         )}
                         {/* TAB 1: VISÃO GERAL DO ESTOQUE */}
@@ -1922,6 +1935,44 @@ export default function LogisticsHub() {
                                             )}
                                         </tbody>
                                     </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: WMS */}
+                        {activeTab === 'wms' && (
+                            <div className="products-container">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                    <div>
+                                        <h2 style={{ margin: 0, color: 'var(--accent-purple)', fontSize: '1.3rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Warehouse size={20} /> WMS — Warehouse Management System
+                                        </h2>
+                                        <p style={{ margin: '0.3rem 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                            Módulo em desenvolvimento. Funcionalidades serão adicionadas em breve.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    minHeight: '300px',
+                                    gap: '1rem',
+                                    color: 'var(--text-secondary)',
+                                    background: 'rgba(168, 85, 247, 0.04)',
+                                    border: '1px dashed rgba(168, 85, 247, 0.3)',
+                                    borderRadius: '16px',
+                                    padding: '3rem'
+                                }}>
+                                    <Warehouse size={48} style={{ color: 'rgba(168, 85, 247, 0.4)' }} />
+                                    <p style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-secondary)', margin: 0 }}>
+                                        Nenhum conteúdo disponível ainda.
+                                    </p>
+                                    <p style={{ fontSize: '0.85rem', margin: 0 }}>
+                                        Este módulo está reservado para o sistema de gerenciamento de armazém.
+                                    </p>
                                 </div>
                             </div>
                         )}
