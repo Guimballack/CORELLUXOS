@@ -905,7 +905,7 @@ export default function SettingsHub() {
         razaoSocial: '', nomeFantasia: '', cnpj: '', ie: '', im: '', 
         tipoFornecedor: 'Distribuidor', situacao: 'Ativo', dataCadastro: '',
         contato: { responsavelComercial: '', responsavelFinanceiro: '', telefone: '', whatsapp: '', emailComercial: '', emailFinanceiro: '', site: '' },
-        contatos: [{ nome: '', setor: 'Comercial', email: '', telefoneComercial: '', whatsapp: '', site: '', observacao: '' }],
+        contatos: [{ nome: '', setor: 'Comercial', email: '', telefoneComercial: '', whatsapp: '', site: '', observacao: '', observacaoSalva: '' }],
         endereco: { cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', pais: 'Brasil' },
         financeiro: { formaPagamento: '', prazoPagamento: '', limiteCredito: 0, banco: '', agencia: '', conta: '', pix: '', tipoChavePix: 'CNPJ' },
         logistica: { prazoEntrega: '', diasEntrega: '', transportadora: '', pedidoMinimo: 0, freteMinimo: 0, regiaoAtendimento: '' },
@@ -925,7 +925,8 @@ export default function SettingsHub() {
                     telefoneComercial: c.telefoneComercial || '',
                     whatsapp: c.whatsapp || '',
                     site: c.site || '',
-                    observacao: c.observacao || ''
+                    observacao: c.observacao || '',
+                    observacaoSalva: c.observacaoSalva || c.observacao || ''
                 }));
             } else if (sup.contato) {
                 list = [
@@ -936,7 +937,8 @@ export default function SettingsHub() {
                         telefoneComercial: sup.contato.telefone || '',
                         whatsapp: sup.contato.whatsapp || '',
                         site: sup.contato.site || '',
-                        observacao: ''
+                        observacao: '',
+                        observacaoSalva: ''
                     }
                 ];
                 if (sup.contato.responsavelFinanceiro || sup.contato.emailFinanceiro) {
@@ -994,7 +996,7 @@ export default function SettingsHub() {
             tipoFornecedor: 'Distribuidor', situacao: 'Ativo', 
             dataCadastro: new Date().toISOString().split('T')[0],
             contato: { responsavelComercial: '', responsavelFinanceiro: '', telefone: '', whatsapp: '', emailComercial: '', emailFinanceiro: '', site: '' },
-            contatos: [{ nome: '', setor: 'Comercial', email: '', telefoneComercial: '', whatsapp: '', site: '', observacao: '' }],
+            contatos: [{ nome: '', setor: 'Comercial', email: '', telefoneComercial: '', whatsapp: '', site: '', observacao: '', observacaoSalva: '' }],
             endereco: { cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', pais: 'Brasil' },
             financeiro: { formaPagamento: '', prazoPagamento: '', limiteCredito: 0, banco: '', agencia: '', conta: '', pix: '', tipoChavePix: 'CNPJ' },
             logistica: { prazoEntrega: '', diasEntrega: '', transportadora: '', pedidoMinimo: 0, freteMinimo: 0, regiaoAtendimento: '' },
@@ -1053,6 +1055,61 @@ export default function SettingsHub() {
         }
 
         setShowFornModal(false);
+        loadData();
+    };
+
+    const handleSaveContactObservation = async (index) => {
+        if (!editingForn) return;
+
+        const currentObservation = fornForm.contatos[index]?.observacao || '';
+        const list = [...fornForm.contatos];
+        list[index] = { ...list[index], observacaoSalva: currentObservation };
+
+        setFornForm(prev => ({ ...prev, contatos: list }));
+
+        const primaryContact = list[0] || { nome: '', setor: '', email: '', whatsapp: '', site: '', telefoneComercial: '', observacao: '', observacaoSalva: '' };
+        const financeContact = list.find(c => c.setor && c.setor.toLowerCase().includes('finan')) || list[1] || { nome: '', email: '' };
+
+        const legacyContato = {
+            responsavelComercial: primaryContact.nome || '',
+            responsavelFinanceiro: financeContact.nome || '',
+            telefone: primaryContact.telefoneComercial || '',
+            whatsapp: primaryContact.whatsapp || '',
+            emailComercial: primaryContact.email || '',
+            emailFinanceiro: financeContact.email || '',
+            site: primaryContact.site || '',
+            listaContatos: list
+        };
+
+        const cleanedPrazoEntrega = fornForm.logistica.prazoEntrega ? String(fornForm.logistica.prazoEntrega).replace(/\D/g, '') : '';
+        const cleanedPrazoPagamento = fornForm.financeiro.prazoPagamento ? String(fornForm.financeiro.prazoPagamento).replace(/\D/g, '') : '';
+
+        const payload = {
+            ...fornForm,
+            contatos: list,
+            contato: legacyContato,
+            razaoSocial: fornForm.razaoSocial.toUpperCase().trim(),
+            nomeFantasia: fornForm.nomeFantasia.toUpperCase().trim(),
+            financeiro: {
+                ...fornForm.financeiro,
+                prazoPagamento: cleanedPrazoPagamento
+            },
+            logistica: {
+                ...fornForm.logistica,
+                prazoEntrega: cleanedPrazoEntrega
+            },
+            linkedProducts: tempLinkedProducts,
+            notes: tempNotes
+        };
+
+        const result = await DbService.saveSupplier(payload);
+        if (result.success) {
+            showToast('Observação do contato salva com sucesso!', 'success');
+        } else {
+            showToast('[Aviso] Observação salva em cache local offline.', 'warning');
+        }
+
+        setEditingForn(payload);
         loadData();
     };
 
@@ -2943,11 +3000,13 @@ export default function SettingsHub() {
                                                     <button
                                                         type="button"
                                                         onClick={() => {
-                                                            setFornForm(prev => {
-                                                                const list = [...prev.contatos];
-                                                                list.splice(index, 1);
-                                                                return { ...prev, contatos: list };
-                                                            });
+                                                            if (window.confirm("Deseja realmente remover este contato?")) {
+                                                                setFornForm(prev => {
+                                                                    const list = [...prev.contatos];
+                                                                    list.splice(index, 1);
+                                                                    return { ...prev, contatos: list };
+                                                                });
+                                                            }
                                                         }}
                                                         style={{
                                                             background: 'transparent',
@@ -3072,21 +3131,62 @@ export default function SettingsHub() {
                                                     </div>
                                                     <div>
                                                         <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Observação</label>
-                                                        <input 
-                                                            type="text" placeholder="Ex: Contato preferencial por e-mail..."
-                                                            value={cont.observacao} 
-                                                            onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                setFornForm(prev => {
-                                                                    const list = [...prev.contatos];
-                                                                    list[index] = { ...list[index], observacao: val };
-                                                                    return { ...prev, contatos: list };
-                                                                });
-                                                            }}
-                                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                                        />
+                                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                            <input 
+                                                                type="text" placeholder="Ex: Contato preferencial por e-mail..."
+                                                                value={cont.observacao} 
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    setFornForm(prev => {
+                                                                        const list = [...prev.contatos];
+                                                                        list[index] = { ...list[index], observacao: val };
+                                                                        return { ...prev, contatos: list };
+                                                                    });
+                                                                }}
+                                                                style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                                            />
+                                                            {editingForn && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleSaveContactObservation(index)}
+                                                                    style={{
+                                                                        background: 'var(--accent-orange)',
+                                                                        color: '#fff',
+                                                                        border: 'none',
+                                                                        borderRadius: '8px',
+                                                                        padding: '0.5rem 1rem',
+                                                                        cursor: 'pointer',
+                                                                        fontWeight: '600',
+                                                                        fontSize: '0.8rem',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '0.3rem',
+                                                                        whiteSpace: 'nowrap'
+                                                                    }}
+                                                                >
+                                                                    💾 Salvar Obs
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
+                                                {cont.observacaoSalva && (
+                                                    <div style={{ 
+                                                        marginTop: '0.8rem', 
+                                                        padding: '0.6rem 1rem', 
+                                                        background: 'rgba(235, 94, 40, 0.05)', 
+                                                        borderLeft: '4px solid var(--accent-orange)', 
+                                                        borderRadius: '4px', 
+                                                        fontSize: '0.85rem', 
+                                                        color: 'var(--text-primary)',
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: '0.2rem'
+                                                    }}>
+                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 'bold', textTransform: 'uppercase' }}>Observação Salva</span>
+                                                        <span>{cont.observacaoSalva}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     ))}
