@@ -247,7 +247,7 @@ export default function SettingsHub() {
             accessLevel: user.accessLevel || 'Colaborador',
             status: user.status || 'Ativo',
             pin: user.pin || '1234',
-            phone: user.phone || '',
+            phone: maskPhone(user.phone || ''),
             email: user.email || '',
             shift: user.shift || '',
             workStart: user.workStart || '',
@@ -258,12 +258,12 @@ export default function SettingsHub() {
             bankAgency: user.bankAgency || '',
             bankAccount: user.bankAccount || '',
             pix: user.pix || '',
-            cpf: user.cpf || '',
-            rg: user.rg || '',
+            cpf: maskCPF(user.cpf || ''),
+            rg: maskRG(user.rg || ''),
             birthDate: user.birthDate || '',
             gender: user.gender || '',
             maritalStatus: user.maritalStatus || '',
-            cep: user.cep || '',
+            cep: maskCEP(user.cep || ''),
             address: user.address || '',
             department: user.department || '',
             contractType: user.contractType || '',
@@ -1152,6 +1152,33 @@ export default function SettingsHub() {
         const num = parseInt(prazo);
         if (isNaN(num)) return prazo;
         return `${num} ${num === 1 ? 'dia' : 'dias'}`;
+    };
+    const maskCPF = (val) => {
+        if (!val) return '';
+        const d = val.replace(/\D/g, '').slice(0, 11);
+        if (d.length <= 3) return d;
+        if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+        if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+        return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+    };
+
+    const maskRG = (val) => {
+        if (!val) return '';
+        const d = val.replace(/[^a-zA-Z0-9]/g, '').slice(0, 9);
+        if (d.length <= 2) return d;
+        if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+        if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+        return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}-${d.slice(8)}`;
+    };
+
+    const maskPhone = (val) => {
+        if (!val) return '';
+        const d = val.replace(/\D/g, '').slice(0, 11);
+        if (d.length === 0) return '';
+        if (d.length <= 2) return `(${d}`;
+        if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+        if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+        return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
     };
 
     const maskCEP = (val) => {
@@ -2223,15 +2250,23 @@ export default function SettingsHub() {
                                                 </div>
                                                 <div>
                                                     <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>CPF</label>
-                                                    <input type="text" value={colabForm.cpf} onChange={(e) => setColabForm(prev => ({ ...prev, cpf: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                    <input type="text" placeholder="000.000.000-00" value={colabForm.cpf} onChange={(e) => setColabForm(prev => ({ ...prev, cpf: maskCPF(e.target.value) }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
                                                 </div>
                                                 <div>
                                                     <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>RG</label>
-                                                    <input type="text" value={colabForm.rg} onChange={(e) => setColabForm(prev => ({ ...prev, rg: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                    <input type="text" placeholder="00.000.000-0" value={colabForm.rg} onChange={(e) => setColabForm(prev => ({ ...prev, rg: maskRG(e.target.value) }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
                                                 </div>
                                                 <div>
                                                     <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Data de Nascimento</label>
-                                                    <input type="date" value={colabForm.birthDate} onChange={(e) => setColabForm(prev => ({ ...prev, birthDate: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                    <div className="custom-date-picker-wrapper">
+                                                        <Calendar className="custom-date-picker-icon" size={16} />
+                                                        <input 
+                                                            type="date" 
+                                                            value={colabForm.birthDate} 
+                                                            onChange={(e) => setColabForm(prev => ({ ...prev, birthDate: e.target.value }))} 
+                                                            className="custom-date-picker-input" 
+                                                        />
+                                                    </div>
                                                 </div>
                                                 <div>
                                                     <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Sexo / Gênero</label>
@@ -2250,11 +2285,11 @@ export default function SettingsHub() {
                                                 </div>
                                                 <div>
                                                     <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Telefone / WhatsApp</label>
-                                                    <input type="text" value={colabForm.phone} onChange={(e) => setColabForm(prev => ({ ...prev, phone: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                    <input type="text" placeholder="(00) 00000-0000" value={colabForm.phone} onChange={(e) => setColabForm(prev => ({ ...prev, phone: maskPhone(e.target.value) }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
                                                 </div>
                                                 <div>
                                                     <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>E-mail Pessoal / Corporativo</label>
-                                                    <input type="email" value={colabForm.email} onChange={(e) => setColabForm(prev => ({ ...prev, email: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                    <input type="email" placeholder="exemplo@empresa.com" value={colabForm.email} onChange={(e) => setColabForm(prev => ({ ...prev, email: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
                                                 </div>
                                             </div>
                                         </div>
@@ -2262,7 +2297,7 @@ export default function SettingsHub() {
                                         <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '1rem' }}>
                                             <div>
                                                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>CEP</label>
-                                                <input type="text" value={colabForm.cep} onChange={(e) => setColabForm(prev => ({ ...prev, cep: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                <input type="text" placeholder="00000-000" value={colabForm.cep} onChange={(e) => setColabForm(prev => ({ ...prev, cep: maskCEP(e.target.value) }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
                                             </div>
                                             <div>
                                                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Endereço Completo (Rua, Número, Bairro, Cidade)</label>
@@ -2338,23 +2373,31 @@ export default function SettingsHub() {
                                         </div>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Data de Admissão</label>
-                                            <input type="date" value={colabForm.hireDate} onChange={(e) => setColabForm(prev => ({ ...prev, hireDate: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            <div className="custom-date-picker-wrapper">
+                                                <Calendar className="custom-date-picker-icon" size={16} />
+                                                <input 
+                                                    type="date" 
+                                                    value={colabForm.hireDate} 
+                                                    onChange={(e) => setColabForm(prev => ({ ...prev, hireDate: e.target.value }))} 
+                                                    className="custom-date-picker-input" 
+                                                />
+                                            </div>
                                         </div>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Salário Base (R$)</label>
-                                            <input type="text" value={formatCurrencyValue(colabForm.salary)} onChange={(e) => handleCurrencyInputChange(e, 'salary')} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            <input type="text" placeholder="0,00" value={formatCurrencyValue(colabForm.salary)} onChange={(e) => handleCurrencyInputChange(e, 'salary')} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
                                         </div>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Comissão (%)</label>
-                                            <input type="number" step="0.1" value={colabForm.commission} onChange={(e) => setColabForm(prev => ({ ...prev, commission: parseFloat(e.target.value) || 0 }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            <input type="number" step="0.1" placeholder="0,0" value={colabForm.commission} onChange={(e) => setColabForm(prev => ({ ...prev, commission: parseFloat(e.target.value) || 0 }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
                                         </div>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Vale Alimentação (R$)</label>
-                                            <input type="text" value={formatCurrencyValue(colabForm.va)} onChange={(e) => handleCurrencyInputChange(e, 'va')} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            <input type="text" placeholder="0,00" value={formatCurrencyValue(colabForm.va)} onChange={(e) => handleCurrencyInputChange(e, 'va')} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
                                         </div>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Vale Transporte (R$)</label>
-                                            <input type="text" value={formatCurrencyValue(colabForm.vt)} onChange={(e) => handleCurrencyInputChange(e, 'vt')} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            <input type="text" placeholder="0,00" value={formatCurrencyValue(colabForm.vt)} onChange={(e) => handleCurrencyInputChange(e, 'vt')} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
                                         </div>
                                     </div>
                                 )}
@@ -2432,15 +2475,15 @@ export default function SettingsHub() {
                                         </div>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Agência</label>
-                                            <input type="text" value={colabForm.bankAgency} onChange={(e) => setColabForm(prev => ({ ...prev, bankAgency: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            <input type="text" placeholder="0000" value={colabForm.bankAgency} onChange={(e) => setColabForm(prev => ({ ...prev, bankAgency: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
                                         </div>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Conta com Dígito</label>
-                                            <input type="text" value={colabForm.bankAccount} onChange={(e) => setColabForm(prev => ({ ...prev, bankAccount: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            <input type="text" placeholder="00000-0" value={colabForm.bankAccount} onChange={(e) => setColabForm(prev => ({ ...prev, bankAccount: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
                                         </div>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Chave PIX</label>
-                                            <input type="text" value={colabForm.pix} onChange={(e) => setColabForm(prev => ({ ...prev, pix: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            <input type="text" placeholder="CPF, Celular, E-mail ou Chave Aleatória" value={colabForm.pix} onChange={(e) => setColabForm(prev => ({ ...prev, pix: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
                                         </div>
                                     </div>
                                 )}
@@ -2478,8 +2521,20 @@ export default function SettingsHub() {
                                                                     </label>
                                                                     {!docState.isIndeterminate && (
                                                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                                            <input type="date" value={docState.date} onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'date', e.target.value)} title="Data de Recebimento / Emissão" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.3rem', borderRadius: '4px', fontSize: '0.8rem', outline: 'none' }} />
-                                                                            <input type="date" value={docState.expiry} onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'expiry', e.target.value)} title="Data de Validade" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.3rem', borderRadius: '4px', fontSize: '0.8rem', outline: 'none' }} />
+                                                                            <input 
+                                                                                type="date" 
+                                                                                value={docState.date} 
+                                                                                onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'date', e.target.value)} 
+                                                                                title="Data de Recebimento / Emissão" 
+                                                                                className="checklist-date-input" 
+                                                                            />
+                                                                            <input 
+                                                                                type="date" 
+                                                                                value={docState.expiry} 
+                                                                                onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'expiry', e.target.value)} 
+                                                                                title="Data de Validade" 
+                                                                                className="checklist-date-input" 
+                                                                            />
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -2540,8 +2595,20 @@ export default function SettingsHub() {
                                                                     </label>
                                                                     {!docState.isIndeterminate && (
                                                                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                                            <input type="date" value={docState.date} onChange={(e) => handleUpdateChecklistValue('health', item.id, 'date', e.target.value)} title="Data de Realização" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.3rem', borderRadius: '4px', fontSize: '0.8rem', outline: 'none' }} />
-                                                                            <input type="date" value={docState.expiry} onChange={(e) => handleUpdateChecklistValue('health', item.id, 'expiry', e.target.value)} title="Data de Vencimento" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.3rem', borderRadius: '4px', fontSize: '0.8rem', outline: 'none' }} />
+                                                                            <input 
+                                                                                type="date" 
+                                                                                value={docState.date} 
+                                                                                onChange={(e) => handleUpdateChecklistValue('health', item.id, 'date', e.target.value)} 
+                                                                                title="Data de Realização" 
+                                                                                className="checklist-date-input" 
+                                                                            />
+                                                                            <input 
+                                                                                type="date" 
+                                                                                value={docState.expiry} 
+                                                                                onChange={(e) => handleUpdateChecklistValue('health', item.id, 'expiry', e.target.value)} 
+                                                                                title="Data de Vencimento" 
+                                                                                className="checklist-date-input" 
+                                                                            />
                                                                         </div>
                                                                     )}
                                                                 </div>
