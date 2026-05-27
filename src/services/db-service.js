@@ -1311,6 +1311,54 @@ export const DbService = {
         }
     },
 
+    // ─── APP SETTINGS (chave → valor global) ────────────────────────────────
+    // Tabela no Supabase:
+    //   CREATE TABLE app_settings (
+    //     key   TEXT PRIMARY KEY,
+    //     value JSONB NOT NULL DEFAULT '{}'::jsonb,
+    //     updated_at TIMESTAMPTZ DEFAULT now()
+    //   );
+    //   ALTER TABLE app_settings ENABLE ROW LEVEL SECURITY;
+    //   CREATE POLICY "Allow all" ON app_settings FOR ALL USING (true) WITH CHECK (true);
+
+    async getSetting(key, defaultValue = null) {
+        try {
+            const { data, error } = await supabase
+                .from('app_settings')
+                .select('value')
+                .eq('key', key)
+                .maybeSingle();
+
+            if (error) throw error;
+            if (data) return data.value;
+            return defaultValue;
+        } catch (e) {
+            console.warn(`[DbService] getSetting(${key}) falhou, usando localStorage:`, e.message || e);
+            const local = localStorage.getItem(`corellux_setting_${key}`);
+            if (local !== null) {
+                try { return JSON.parse(local); } catch { return local; }
+            }
+            return defaultValue;
+        }
+    },
+
+    async setSetting(key, value) {
+        try {
+            const { error } = await supabase
+                .from('app_settings')
+                .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+
+            if (error) throw error;
+            // espelho local para acesso offline imediato
+            localStorage.setItem(`corellux_setting_${key}`, JSON.stringify(value));
+            return { success: true };
+        } catch (e) {
+            console.warn(`[DbService] setSetting(${key}) falhou, salvando apenas localmente:`, e.message || e);
+            localStorage.setItem(`corellux_setting_${key}`, JSON.stringify(value));
+            return { success: false, error: e };
+        }
+    },
+
     async saveChecklistExecution(execution) {
         try {
             const snakeExec = toSnakeCase(execution);

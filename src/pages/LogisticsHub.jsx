@@ -98,15 +98,45 @@ export default function LogisticsHub() {
 
     // Supply Chain States
     const [scSubTab, setScSubTab] = useState('overview');
-    const [scTargetDays, setScTargetDays] = useState(30);
-    const [scTargetInput, setScTargetInput] = useState('30');
+    const [scTargetDays, setScTargetDays] = useState(() => {
+        // Inicializa do cache local para exibição imediata; o useEffect sincroniza com Supabase
+        try {
+            const cached = localStorage.getItem('corellux_setting_sc_target_days');
+            if (cached) return parseInt(JSON.parse(cached)) || 30;
+            // fallback chave antiga
+            const old = localStorage.getItem('corellux_sc_target_days');
+            return old ? parseInt(old) : 30;
+        } catch { return 30; }
+    });
+    const [scTargetInput, setScTargetInput] = useState(() => {
+        try {
+            const cached = localStorage.getItem('corellux_setting_sc_target_days');
+            if (cached) return String(parseInt(JSON.parse(cached)) || 30);
+            const old = localStorage.getItem('corellux_sc_target_days');
+            return old || '30';
+        } catch { return '30'; }
+    });
     const [scSearch, setScSearch] = useState('');
     const [scRecalcKey, setScRecalcKey] = useState(0);
     const [resolvedAnomalies, setResolvedAnomalies] = useState([]);
+    const [scSettingSaving, setScSettingSaving] = useState(false);
 
     // Custom Date Range for ABC Curve
     const [abcStartDate, setAbcStartDate] = useState('');
     const [abcEndDate, setAbcEndDate] = useState('');
+
+    // Carrega meta de dias do Supabase ao montar o componente
+    useEffect(() => {
+        let cancelled = false;
+        DbService.getSetting('sc_target_days', 30).then(val => {
+            if (cancelled) return;
+            const days = parseInt(val) || 30;
+            setScTargetDays(days);
+            setScTargetInput(String(days));
+            setScRecalcKey(k => k + 1);
+        });
+        return () => { cancelled = true; };
+    }, []);
 
     // Orquestração centralizada do motor de Supply Chain
     const supplyChainData = useMemo(() => {
@@ -1419,7 +1449,23 @@ export default function LogisticsHub() {
                                                 </tr>
                                             ) : (
                                                 filteredInventory.map(p => {
-                                                    const minVal = p.minStock || 0;
+                                                    const scMetric = supplyChainData.inventoryMetrics?.find(m => m.sku === p.sku);
+                                                    const avgDaily = scMetric ? scMetric.avgDailyConsumption : 0;
+                                                    
+                                                    const useDynamic = scMetric && scMetric.hasHistory;
+                                                    
+                                                    const avgVal = useDynamic 
+                                                        ? Math.round(scTargetDays * avgDaily) 
+                                                        : (p.avgStock || 0);
+                                                    
+                                                    const minVal = useDynamic 
+                                                        ? Math.round(avgVal * 0.5) 
+                                                        : (p.minStock || 0);
+                                                        
+                                                    const maxVal = useDynamic 
+                                                        ? Math.round(avgVal * 1.5) 
+                                                        : (p.maxStock || 0);
+
                                                     const isLow = p.stock <= minVal;
                                                     const isOut = p.stock <= 0;
                                                     const isExpanded = expandedItems.has(p.sku);
@@ -1427,9 +1473,6 @@ export default function LogisticsHub() {
                                                     // Expiration checks for FEFO warning tags
                                                     const productBatches = stockBatches.filter(b => b.itemSku === p.sku);
                                                     const hasExpired = productBatches.some(b => getBatchExpiryStatus(b.expirationDate).label === 'VENCIDO');
-                                                    
-                                                    const scMetric = supplyChainData.inventoryMetrics?.find(m => m.sku === p.sku);
-                                                    const avgDaily = scMetric ? scMetric.avgDailyConsumption : 0;
 
                                                     return (
                                                         <React.Fragment key={p.sku}>
@@ -1477,9 +1520,15 @@ export default function LogisticsHub() {
                                                                 </td>
                                                                 <td style={{ color: 'var(--text-secondary)' }}>{p.unit}</td>
                                                                 <td><span className="category-tag">{limitChars(p.category, 20)}</span></td>
-                                                                <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{minVal}</td>
-                                                                <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{p.avgStock || 0}</td>
-                                                                <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{p.maxStock || 0}</td>
+                                                                <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                                                    {minVal} {useDynamic && <span style={{ fontSize: '0.65rem', color: 'var(--accent-orange)', marginLeft: '2px' }} title="Dinâmico: 50% abaixo da média">★</span>}
+                                                                </td>
+                                                                <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                                                    {avgVal} {useDynamic && <span style={{ fontSize: '0.65rem', color: 'var(--accent-orange)', marginLeft: '2px' }} title="Dinâmico: Meta × Consumo Diário">★</span>}
+                                                                </td>
+                                                                <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                                                    {maxVal} {useDynamic && <span style={{ fontSize: '0.65rem', color: 'var(--accent-orange)', marginLeft: '2px' }} title="Dinâmico: 50% acima da média">★</span>}
+                                                                </td>
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)', fontWeight: '600' }}>
                                                                     {formatDailyConsumption(avgDaily, p.unit)} {p.unit}/dia
                                                                 </td>
@@ -2204,6 +2253,26 @@ export default function LogisticsHub() {
                                                 style={{ padding: '0.4rem 0.9rem', background: 'var(--accent-teal)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
                                             >
                                                 <RefreshCw size={14} /> Recalcular
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    const val = parseInt(scTargetInput) || 30;
+                                                    setScSettingSaving(true);
+                                                    const result = await DbService.setSetting('sc_target_days', val);
+                                                    setScTargetDays(val);
+                                                    setScRecalcKey(k => k + 1);
+                                                    setScSettingSaving(false);
+                                                    if (result.success) {
+                                                        showSystemAlert(`Meta de ${val} dias salva no banco de dados com sucesso!`, 'Sucesso');
+                                                    } else {
+                                                        showSystemAlert(`Meta de ${val} dias salva localmente (sem conexão com o banco).`, 'Aviso');
+                                                    }
+                                                }}
+                                                disabled={scSettingSaving}
+                                                style={{ padding: '0.4rem 0.9rem', background: scSettingSaving ? '#666' : 'var(--accent-orange)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: '700', fontSize: '0.82rem', cursor: scSettingSaving ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem', opacity: scSettingSaving ? 0.7 : 1, transition: 'all 0.2s' }}
+                                            >
+                                                {scSettingSaving ? <RefreshCw size={14} style={{ animation: 'spin 1s linear infinite' }} /> : <Check size={14} />}
+                                                {scSettingSaving ? 'Salvando...' : 'Salvar'}
                                             </button>
                                         </div>
                                     </div>

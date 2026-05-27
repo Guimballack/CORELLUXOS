@@ -278,6 +278,7 @@ export function forecastDemand(sku, product, cleanHistory, seasonalityMetrics, s
             explanation: 'Sem histórico de consumo real ainda.',
             trend: 0,
             volatilityScore: 'LOW',
+            hasHistory: false,
         };
     }
 
@@ -370,6 +371,7 @@ export function forecastDemand(sku, product, cleanHistory, seasonalityMetrics, s
         explanation,
         upcomingHolidays: upcomingHolidayNames,
         trend, volatilityScore: volatility,
+        hasHistory: true,
     };
 }
 
@@ -525,6 +527,7 @@ export function runSupplyChainEngine(products, stockBatches, suppliers, movement
             volatilityScore: forecast.volatilityScore,
             abcClass,
             status,
+            hasHistory: forecast.hasHistory,
         };
     });
 
