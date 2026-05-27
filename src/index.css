@@ -5298,3 +5298,65 @@ main {
     background: rgba(239, 68, 68, 0.15);
 }
 
+/* Custom premium buttons for header actions */
+.btn-header-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 38px;
+    padding: 0 1.2rem;
+    background-color: var(--accent-orange);
+    color: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(235, 94, 40, 0.25);
+    white-space: nowrap;
+    text-transform: uppercase;
+}
+
+.btn-header-action:hover {
+    background-color: var(--border-orange);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(235, 94, 40, 0.4);
+}
+
+.btn-header-action:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 8px rgba(235, 94, 40, 0.2);
+}
+
+.btn-header-action.teal {
+    background-color: var(--accent-teal);
+    box-shadow: 0 4px 12px rgba(20, 184, 166, 0.25);
+}
+
+.btn-header-action.teal:hover {
+    background-color: #0d9488;
+    box-shadow: 0 6px 16px rgba(20, 184, 166, 0.4);
+}
+
+.btn-header-action.teal:active {
+    box-shadow: 0 2px 8px rgba(20, 184, 166, 0.2);
+}
+
+.btn-header-action.yellow {
+    background-color: var(--accent-yellow);
+    color: #06090f;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.25);
+}
+
+.btn-header-action.yellow:hover {
+    background-color: #d97706;
+    color: #06090f;
+    box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
+}
+
+.btn-header-action.yellow:active {
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+}
+

@@ -1595,7 +1595,7 @@ export default function SettingsHub() {
                                         <Users style={{ color: 'var(--accent-orange)' }} /> Cadastro de Funcionários
                                     </h2>
                                     
-                                    <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', flex: '1', justifyContent: 'flex-end', minWidth: '300px' }}>
+                                    <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
                                         <div className="search-box" style={{ margin: 0 }}>
                                             <Search size={16} />
                                             <input 
@@ -1606,7 +1606,7 @@ export default function SettingsHub() {
                                             />
                                         </div>
                                         {isAdminUser && (
-                                            <button className="btn-primary" onClick={openColabModalForCreate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <button className="btn-header-action" onClick={openColabModalForCreate}>
                                                 <PlusCircle size={16} /> NOVO COLABORADOR
                                             </button>
                                         )}
@@ -1696,7 +1696,7 @@ export default function SettingsHub() {
                                         <Boxes style={{ color: 'var(--accent-orange)' }} /> Cadastro de Insumos
                                     </h2>
                                     
-                                    <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', flex: '1', justifyContent: 'flex-end', minWidth: '300px' }}>
+                                    <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
                                         <div className="search-box" style={{ margin: 0 }}>
                                             <Search size={16} />
                                             <input 
@@ -1707,7 +1707,7 @@ export default function SettingsHub() {
                                             />
                                         </div>
                                         {isAdminUser && (
-                                            <button className="btn-primary" onClick={openProdModalForCreate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <button className="btn-header-action" onClick={openProdModalForCreate}>
                                                 <PlusCircle size={16} /> NOVO INSUMO
                                             </button>
                                         )}
@@ -1790,7 +1790,7 @@ export default function SettingsHub() {
                                         <Tag style={{ color: 'var(--accent-orange)' }} /> Cadastro de Categorias
                                     </h2>
                                     
-                                    <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', flex: '1', justifyContent: 'flex-end', minWidth: '300px' }}>
+                                    <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
                                         <div className="search-box" style={{ margin: 0 }}>
                                             <Search size={16} />
                                             <input 
@@ -1801,7 +1801,7 @@ export default function SettingsHub() {
                                             />
                                         </div>
                                         {isAdminUser && (
-                                            <button className="btn-primary" onClick={openCatModalForCreate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <button className="btn-header-action" onClick={openCatModalForCreate}>
                                                 <PlusCircle size={16} /> NOVA CATEGORIA
                                             </button>
                                         )}
@@ -1878,7 +1878,7 @@ export default function SettingsHub() {
                                         <Truck style={{ color: 'var(--accent-orange)' }} /> Cadastro de Fornecedores
                                     </h2>
                                     
-                                    <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', flex: '1', justifyContent: 'flex-end', minWidth: '300px' }}>
+                                    <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
                                         <div className="search-box" style={{ margin: 0 }}>
                                             <Search size={16} />
                                             <input 
@@ -1889,7 +1889,7 @@ export default function SettingsHub() {
                                             />
                                         </div>
                                         {isAdminUser && (
-                                            <button className="btn-primary" onClick={openFornModalForCreate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                            <button className="btn-header-action" onClick={openFornModalForCreate}>
                                                 <PlusCircle size={16} /> NOVO FORNECEDOR
                                             </button>
                                         )}
@@ -1983,7 +1983,7 @@ export default function SettingsHub() {
                                         <LayoutGrid style={{ color: 'var(--accent-teal)' }} /> Cadastro de Setores
                                     </h2>
                                     
-                                    <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', flex: '1', justifyContent: 'flex-end', minWidth: '300px' }}>
+                                    <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
                                         <div className="search-box" style={{ margin: 0 }}>
                                             <Search size={16} />
                                             <input 
@@ -1994,7 +1994,7 @@ export default function SettingsHub() {
                                             />
                                         </div>
                                         {isAdminUser && (
-                                            <button className="btn-primary" onClick={openSectorModalForCreate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--accent-teal)', borderColor: 'var(--accent-teal)' }}>
+                                            <button className="btn-header-action teal" onClick={openSectorModalForCreate}>
                                                 <PlusCircle size={16} /> NOVO SETOR
                                             </button>
                                         )}
@@ -2079,7 +2079,7 @@ export default function SettingsHub() {
                                         <Briefcase style={{ color: 'var(--accent-yellow)' }} /> Cadastro de Cargos
                                     </h2>
                                     
-                                    <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', flex: '1', justifyContent: 'flex-end', minWidth: '300px' }}>
+                                    <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
                                         <div className="search-box" style={{ margin: 0 }}>
                                             <Search size={16} />
                                             <input 
@@ -2090,7 +2090,7 @@ export default function SettingsHub() {
                                             />
                                         </div>
                                         {isAdminUser && (
-                                            <button className="btn-primary" onClick={openCargoModalForCreate} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: 'var(--accent-yellow)', borderColor: 'var(--accent-yellow)' }}>
+                                            <button className="btn-header-action yellow" onClick={openCargoModalForCreate}>
                                                 <PlusCircle size={16} /> NOVO CARGO
                                             </button>
                                         )}
