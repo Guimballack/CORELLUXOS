@@ -55,6 +55,19 @@ function toSnakeCase(obj) {
 // SERVIÇOS DE BANCO DE DADOS
 // =============================================
 
+// Migração automática de local storage para o novo conjunto de dados v2
+try {
+    const dbVersion = localStorage.getItem('corellux_db_version_v2');
+    if (!dbVersion) {
+        localStorage.removeItem('corellux_products');
+        localStorage.removeItem('corellux_categories');
+        localStorage.removeItem('corellux_suppliers');
+        localStorage.setItem('corellux_db_version_v2', 'true');
+    }
+} catch (e) {
+    console.warn('[DbService] Erro ao migrar localStorage:', e);
+}
+
 export const DbService = {
     // 1. USUÁRIOS (APP_USERS)
     async getUsers() {
