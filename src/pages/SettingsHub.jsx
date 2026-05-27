@@ -905,6 +905,7 @@ export default function SettingsHub() {
         razaoSocial: '', nomeFantasia: '', cnpj: '', ie: '', im: '', 
         tipoFornecedor: 'Distribuidor', situacao: 'Ativo', dataCadastro: '',
         contato: { responsavelComercial: '', responsavelFinanceiro: '', telefone: '', whatsapp: '', emailComercial: '', emailFinanceiro: '', site: '' },
+        contatos: [{ nome: '', setor: 'Comercial', email: '', telefoneComercial: '', whatsapp: '', site: '', observacao: '' }],
         endereco: { cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', pais: 'Brasil' },
         financeiro: { formaPagamento: '', prazoPagamento: '', limiteCredito: 0, banco: '', agencia: '', conta: '', pix: '', tipoChavePix: 'CNPJ' },
         logistica: { prazoEntrega: '', diasEntrega: '', transportadora: '', pedidoMinimo: 0, freteMinimo: 0, regiaoAtendimento: '' },
@@ -914,17 +915,60 @@ export default function SettingsHub() {
 
     const openFornModalForEdit = (sup) => {
         setEditingForn(sup);
+        const resolvedContatos = (() => {
+            let list = [];
+            if (sup.contato?.listaContatos && Array.isArray(sup.contato.listaContatos) && sup.contato.listaContatos.length > 0) {
+                list = sup.contato.listaContatos.map(c => ({
+                    nome: c.nome || '',
+                    setor: c.setor || '',
+                    email: c.email || '',
+                    telefoneComercial: c.telefoneComercial || '',
+                    whatsapp: c.whatsapp || '',
+                    site: c.site || '',
+                    observacao: c.observacao || ''
+                }));
+            } else if (sup.contato) {
+                list = [
+                    {
+                        nome: sup.contato.responsavelComercial || '',
+                        setor: 'Comercial',
+                        email: sup.contato.emailComercial || '',
+                        telefoneComercial: sup.contato.telefone || '',
+                        whatsapp: sup.contato.whatsapp || '',
+                        site: sup.contato.site || '',
+                        observacao: ''
+                    }
+                ];
+                if (sup.contato.responsavelFinanceiro || sup.contato.emailFinanceiro) {
+                    list.push({
+                        nome: sup.contato.responsavelFinanceiro || '',
+                        setor: 'Financeiro',
+                        email: sup.contato.emailFinanceiro || '',
+                        telefoneComercial: '',
+                        whatsapp: '',
+                        site: '',
+                        observacao: ''
+                    });
+                }
+            }
+            if (list.length === 0) {
+                list = [{ nome: '', setor: 'Comercial', email: '', telefoneComercial: '', whatsapp: '', site: '', observacao: '' }];
+            }
+            return list;
+        })();
+
         setFornForm({
             id: sup.id,
             razaoSocial: sup.razaoSocial || '',
             nomeFantasia: sup.nomeFantasia || '',
-            cnpj: sup.cnpj || '',
-            ie: sup.ie || '',
+            cnpj: maskCNPJ(sup.cnpj || ''),
+            ie: maskIE(sup.ie || '', sup.endereco?.estado || ''),
             im: sup.im || '',
             tipoFornecedor: sup.tipoFornecedor || 'Distribuidor',
             situacao: sup.situacao || 'Ativo',
             dataCadastro: sup.dataCadastro || '',
             contato: sup.contato || { responsavelComercial: '', responsavelFinanceiro: '', telefone: '', whatsapp: '', emailComercial: '', emailFinanceiro: '', site: '' },
+            contatos: resolvedContatos,
             endereco: sup.endereco || { cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', pais: 'Brasil' },
             financeiro: sup.financeiro ? {
                 ...sup.financeiro,
@@ -950,6 +994,7 @@ export default function SettingsHub() {
             tipoFornecedor: 'Distribuidor', situacao: 'Ativo', 
             dataCadastro: new Date().toISOString().split('T')[0],
             contato: { responsavelComercial: '', responsavelFinanceiro: '', telefone: '', whatsapp: '', emailComercial: '', emailFinanceiro: '', site: '' },
+            contatos: [{ nome: '', setor: 'Comercial', email: '', telefoneComercial: '', whatsapp: '', site: '', observacao: '' }],
             endereco: { cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', pais: 'Brasil' },
             financeiro: { formaPagamento: '', prazoPagamento: '', limiteCredito: 0, banco: '', agencia: '', conta: '', pix: '', tipoChavePix: 'CNPJ' },
             logistica: { prazoEntrega: '', diasEntrega: '', transportadora: '', pedidoMinimo: 0, freteMinimo: 0, regiaoAtendimento: '' },
@@ -967,10 +1012,27 @@ export default function SettingsHub() {
 
         const cleanedPrazoEntrega = fornForm.logistica.prazoEntrega ? String(fornForm.logistica.prazoEntrega).replace(/\D/g, '') : '';
         const cleanedPrazoPagamento = fornForm.financeiro.prazoPagamento ? String(fornForm.financeiro.prazoPagamento).replace(/\D/g, '') : '';
+
+        // Build backward-compatible contato object from the list of contatos
+        const primaryContact = fornForm.contatos?.[0] || { nome: '', setor: '', email: '', whatsapp: '', site: '', telefoneComercial: '', observacao: '' };
+        const financeContact = fornForm.contatos?.find(c => c.setor && c.setor.toLowerCase().includes('finan')) || fornForm.contatos?.[1] || { nome: '', email: '' };
+
+        const legacyContato = {
+            responsavelComercial: primaryContact.nome || '',
+            responsavelFinanceiro: financeContact.nome || '',
+            telefone: primaryContact.telefoneComercial || '',
+            whatsapp: primaryContact.whatsapp || '',
+            emailComercial: primaryContact.email || '',
+            emailFinanceiro: financeContact.email || '',
+            site: primaryContact.site || '',
+            listaContatos: fornForm.contatos
+        };
+
         const payload = {
             ...fornForm,
             razaoSocial: fornForm.razaoSocial.toUpperCase().trim(),
             nomeFantasia: fornForm.nomeFantasia.toUpperCase().trim(),
+            contato: legacyContato,
             financeiro: {
                 ...fornForm.financeiro,
                 prazoPagamento: cleanedPrazoPagamento
@@ -1048,6 +1110,144 @@ export default function SettingsHub() {
         if (isNaN(num)) return prazo;
         return `${num} ${num === 1 ? 'dia' : 'dias'}`;
     };
+
+    const maskCNPJ = (val) => {
+        if (!val) return '';
+        const d = val.replace(/\D/g, '').slice(0, 14);
+        if (d.length <= 2) return d;
+        if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+        if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+        if (d.length <= 12) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
+        return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+    };
+
+    const maskIE = (val, uf) => {
+        if (!val) return '';
+        const d = val.replace(/\D/g, '');
+        const state = (uf || '').toUpperCase().trim();
+
+        switch (state) {
+            case 'SP':
+                {
+                    const clean = val.replace(/[^0-9P]/gi, '').toUpperCase().slice(0, 13);
+                    if (clean.startsWith('P')) {
+                        const pDigits = clean.slice(1, 13);
+                        if (pDigits.length <= 8) return `P-${pDigits}`;
+                        if (pDigits.length <= 9) return `P-${pDigits.slice(0, 8)}.${pDigits.slice(8)}`;
+                        return `P-${pDigits.slice(0, 8)}.${pDigits.slice(8, 9)}/${pDigits.slice(9)}`;
+                    } else {
+                        const digits = clean.slice(0, 12);
+                        if (digits.length <= 3) return digits;
+                        if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+                        if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+                        return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}.${digits.slice(9)}`;
+                    }
+                }
+            case 'RJ':
+                if (d.length <= 2) return d;
+                if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+                if (d.length <= 7) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+                return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 7)}-${d.slice(7, 8)}`;
+            case 'MG':
+                if (d.length <= 3) return d;
+                if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+                if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+                return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}/${d.slice(9, 13)}`;
+            case 'DF':
+                if (d.length <= 2) return d;
+                if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+                if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+                if (d.length <= 11) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
+                return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 11)}-${d.slice(11, 13)}`;
+            case 'PR':
+                if (d.length <= 3) return d;
+                if (d.length <= 8) return `${d.slice(0, 3)}.${d.slice(3)}`;
+                return `${d.slice(0, 3)}.${d.slice(3, 8)}-${d.slice(8, 10)}`;
+            case 'RS':
+                if (d.length <= 3) return d;
+                return `${d.slice(0, 3)}-${d.slice(3, 10)}`;
+            case 'BA':
+                if (d.length <= 8) {
+                    if (d.length <= 6) return d;
+                    return `${d.slice(0, 6)}-${d.slice(6, 8)}`;
+                } else {
+                    if (d.length <= 7) return d;
+                    return `${d.slice(0, 7)}-${d.slice(7, 9)}`;
+                }
+            case 'SC':
+                if (d.length <= 3) return d;
+                if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+                return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}`;
+            case 'PE':
+                if (d.length <= 9) {
+                    if (d.length <= 7) return d;
+                    return `${d.slice(0, 7)}-${d.slice(7, 9)}`;
+                } else {
+                    if (d.length <= 2) return d;
+                    if (d.length <= 3) return `${d.slice(0, 2)}.${d.slice(2)}`;
+                    if (d.length <= 6) return `${d.slice(0, 2)}.${d.slice(2, 3)}.${d.slice(3)}`;
+                    if (d.length <= 13) return `${d.slice(0, 2)}.${d.slice(2, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+                    return `${d.slice(0, 2)}.${d.slice(2, 3)}.${d.slice(3, 6)}.${d.slice(6, 13)}-${d.slice(13, 14)}`;
+                }
+            case 'CE':
+                if (d.length <= 2) return d;
+                if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2)}`;
+                return `${d.slice(0, 2)}.${d.slice(2, 8)}-${d.slice(8, 9)}`;
+            case 'GO':
+            case 'MT':
+            case 'MS':
+            case 'AM':
+            case 'AP':
+                if (d.length <= 2) return d;
+                if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+                if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+                return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}-${d.slice(8, 9)}`;
+            case 'PA':
+                if (d.length <= 2) return d;
+                if (d.length <= 8) return `${d.slice(0, 2)}-${d.slice(2)}`;
+                return `${d.slice(0, 2)}-${d.slice(2, 8)}-${d.slice(8, 9)}`;
+            case 'RN':
+                if (d.length <= 9) {
+                    if (d.length <= 2) return d;
+                    if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+                    if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+                    return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}-${d.slice(8, 9)}`;
+                } else {
+                    if (d.length <= 2) return d;
+                    if (d.length <= 3) return `${d.slice(0, 2)}.${d.slice(2)}`;
+                    if (d.length <= 6) return `${d.slice(0, 2)}.${d.slice(2, 3)}.${d.slice(3)}`;
+                    if (d.length <= 9) return `${d.slice(0, 2)}.${d.slice(2, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+                    return `${d.slice(0, 2)}.${d.slice(2, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9, 10)}`;
+                }
+            case 'PB':
+            case 'SE':
+                if (d.length <= 7) return d;
+                return `${d.slice(0, 7)}-${d.slice(7, 9)}`;
+            case 'ES':
+                if (d.length <= 3) return d;
+                if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+                if (d.length <= 8) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+                return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 8)}-${d.slice(8, 9)}`;
+            case 'AC':
+                if (d.length <= 2) return d;
+                if (d.length <= 5) return `${d.slice(0, 2)}.${d.slice(2)}`;
+                if (d.length <= 8) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5)}`;
+                if (d.length <= 11) return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8)}`;
+                return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 11)}-${d.slice(11, 13)}`;
+            case 'AL':
+            case 'RR':
+                return d.slice(0, 9);
+            case 'RO':
+                return d.slice(0, 14);
+            case 'TO':
+                return d.slice(0, 11);
+            default:
+                if (d.length <= 8) return d;
+                if (d.length <= 12) return `${d.slice(0, 8)}-${d.slice(8)}`;
+                return `${d.slice(0, 8)}-${d.slice(8, 12)}/${d.slice(12)}`;
+        }
+    };
+
 
     const handleSelectBank = (bank) => {
         setFornForm(prev => ({
@@ -2695,7 +2895,7 @@ export default function SettingsHub() {
                                             <input 
                                                 type="text" placeholder="00.000.000/0000-00" required
                                                 value={fornForm.cnpj} 
-                                                onChange={(e) => setFornForm(prev => ({ ...prev, cnpj: e.target.value }))}
+                                                onChange={(e) => setFornForm(prev => ({ ...prev, cnpj: maskCNPJ(e.target.value) }))}
                                                 style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
                                             />
                                         </div>
@@ -2704,7 +2904,7 @@ export default function SettingsHub() {
                                             <input 
                                                 type="text" 
                                                 value={fornForm.ie} 
-                                                onChange={(e) => setFornForm(prev => ({ ...prev, ie: e.target.value }))}
+                                                onChange={(e) => setFornForm(prev => ({ ...prev, ie: maskIE(e.target.value, prev.endereco?.estado) }))}
                                                 style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
                                             />
                                         </div>
@@ -2719,6 +2919,7 @@ export default function SettingsHub() {
                                                 <option value="Produtor Local">Produtor Local</option>
                                                 <option value="Atacadista">Atacadista</option>
                                                 <option value="Indústria">Indústria</option>
+                                                <option value="Comércio">Comércio</option>
                                             </select>
                                         </div>
                                     </div>
@@ -2727,47 +2928,200 @@ export default function SettingsHub() {
 
                             {/* SECTION CONTENT: CONTATOS */}
                             {fornActiveSection === 'contatos' && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Contato Comercial</label>
-                                            <input 
-                                                type="text" 
-                                                value={fornForm.contato.responsavelComercial} 
-                                                onChange={(e) => setFornForm(prev => ({ ...prev, contato: { ...prev.contato, responsavelComercial: e.target.value } }))}
-                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                            />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                                    {fornForm.contatos && fornForm.contatos.map((cont, index) => (
+                                        <div key={index} style={{ 
+                                            background: 'rgba(255, 255, 255, 0.02)', 
+                                            border: '1px solid var(--border-color)', 
+                                            borderRadius: '8px', 
+                                            padding: '1.2rem', 
+                                            position: 'relative' 
+                                        }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                                                <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>Contato #{index + 1}</span>
+                                                {fornForm.contatos.length > 1 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setFornForm(prev => {
+                                                                const list = [...prev.contatos];
+                                                                list.splice(index, 1);
+                                                                return { ...prev, contatos: list };
+                                                            });
+                                                        }}
+                                                        style={{
+                                                            background: 'transparent',
+                                                            border: 'none',
+                                                            color: '#ef4444',
+                                                            cursor: 'pointer',
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: '600',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '0.3rem'
+                                                        }}
+                                                    >
+                                                        🗑️ Remover Contato
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Nome / Responsável</label>
+                                                        <input 
+                                                            type="text" required
+                                                            value={cont.nome} 
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                setFornForm(prev => {
+                                                                    const list = [...prev.contatos];
+                                                                    list[index] = { ...list[index], nome: val };
+                                                                    return { ...prev, contatos: list };
+                                                                });
+                                                            }}
+                                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Setor / Cargo</label>
+                                                        <input 
+                                                            type="text" placeholder="Ex: Comercial, Financeiro, Vendas..."
+                                                            value={cont.setor} 
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                setFornForm(prev => {
+                                                                    const list = [...prev.contatos];
+                                                                    list[index] = { ...list[index], setor: val };
+                                                                    return { ...prev, contatos: list };
+                                                                });
+                                                            }}
+                                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>E-mail</label>
+                                                        <input 
+                                                            type="email"
+                                                            value={cont.email} 
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                setFornForm(prev => {
+                                                                    const list = [...prev.contatos];
+                                                                    list[index] = { ...list[index], email: val };
+                                                                    return { ...prev, contatos: list };
+                                                                });
+                                                            }}
+                                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Telefone Comercial</label>
+                                                        <input 
+                                                            type="text" placeholder="(00) 0000-0000"
+                                                            value={cont.telefoneComercial} 
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                setFornForm(prev => {
+                                                                    const list = [...prev.contatos];
+                                                                    list[index] = { ...list[index], telefoneComercial: val };
+                                                                    return { ...prev, contatos: list };
+                                                                });
+                                                            }}
+                                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>WhatsApp</label>
+                                                        <input 
+                                                            type="text" placeholder="(00) 00000-0000"
+                                                            value={cont.whatsapp} 
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                setFornForm(prev => {
+                                                                    const list = [...prev.contatos];
+                                                                    list[index] = { ...list[index], whatsapp: val };
+                                                                    return { ...prev, contatos: list };
+                                                                });
+                                                            }}
+                                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Site</label>
+                                                        <input 
+                                                            type="text" placeholder="www.exemplo.com.br"
+                                                            value={cont.site} 
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                setFornForm(prev => {
+                                                                    const list = [...prev.contatos];
+                                                                    list[index] = { ...list[index], site: val };
+                                                                    return { ...prev, contatos: list };
+                                                                });
+                                                            }}
+                                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Observação</label>
+                                                        <input 
+                                                            type="text" placeholder="Ex: Contato preferencial por e-mail..."
+                                                            value={cont.observacao} 
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                setFornForm(prev => {
+                                                                    const list = [...prev.contatos];
+                                                                    list[index] = { ...list[index], observacao: val };
+                                                                    return { ...prev, contatos: list };
+                                                                });
+                                                            }}
+                                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Contato Financeiro</label>
-                                            <input 
-                                                type="text" 
-                                                value={fornForm.contato.responsavelFinanceiro} 
-                                                onChange={(e) => setFornForm(prev => ({ ...prev, contato: { ...prev.contato, responsavelFinanceiro: e.target.value } }))}
-                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>WhatsApp</label>
-                                            <input 
-                                                type="text" 
-                                                value={fornForm.contato.whatsapp} 
-                                                onChange={(e) => setFornForm(prev => ({ ...prev, contato: { ...prev.contato, whatsapp: e.target.value } }))}
-                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                            />
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>E-mail Comercial</label>
-                                            <input 
-                                                type="email" 
-                                                value={fornForm.contato.emailComercial} 
-                                                onChange={(e) => setFornForm(prev => ({ ...prev, contato: { ...prev.contato, emailComercial: e.target.value } }))}
-                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                            />
-                                        </div>
-                                    </div>
+                                    ))}
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setFornForm(prev => ({
+                                                ...prev,
+                                                contatos: [...(prev.contatos || []), { nome: '', setor: '', email: '', telefoneComercial: '', whatsapp: '', site: '', observacao: '' }]
+                                            }));
+                                        }}
+                                        style={{
+                                            padding: '0.8rem',
+                                            background: 'transparent',
+                                            border: '2px dashed var(--border-color)',
+                                            color: 'var(--accent-orange)',
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            fontWeight: '600',
+                                            textAlign: 'center',
+                                            transition: 'all 0.2s',
+                                            marginTop: '0.5rem'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.target.style.background = 'rgba(235, 94, 40, 0.05)';
+                                            e.target.style.borderColor = 'var(--accent-orange)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.target.style.background = 'transparent';
+                                            e.target.style.borderColor = 'var(--border-color)';
+                                        }}
+                                    >
+                                        + Adicionar Novo Contato
+                                    </button>
                                 </div>
                             )}
 
@@ -2827,7 +3181,14 @@ export default function SettingsHub() {
                                             <input 
                                                 type="text" maxLength="2" placeholder="UF"
                                                 value={fornForm.endereco.estado} 
-                                                onChange={(e) => setFornForm(prev => ({ ...prev, endereco: { ...prev.endereco, estado: e.target.value.toUpperCase() } }))}
+                                                onChange={(e) => {
+                                                    const nextEstado = e.target.value.toUpperCase();
+                                                    setFornForm(prev => ({
+                                                        ...prev,
+                                                        endereco: { ...prev.endereco, estado: nextEstado },
+                                                        ie: maskIE(prev.ie, nextEstado)
+                                                    }));
+                                                }}
                                                 style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', textAlign: 'center' }}
                                             />
                                         </div>
