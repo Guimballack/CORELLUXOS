@@ -36,6 +36,7 @@ import {
     FolderOpen,
     Paperclip,
     Camera,
+    Calendar,
     Eye,
     Download,
     ChevronRight,
