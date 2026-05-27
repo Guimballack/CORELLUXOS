@@ -910,7 +910,10 @@ export default function SettingsHub() {
             dataCadastro: sup.dataCadastro || '',
             contato: sup.contato || { responsavelComercial: '', responsavelFinanceiro: '', telefone: '', whatsapp: '', emailComercial: '', emailFinanceiro: '', site: '' },
             endereco: sup.endereco || { cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', pais: 'Brasil' },
-            financeiro: sup.financeiro || { formaPagamento: '', prazoPagamento: '', limiteCredito: 0, banco: '', agencia: '', conta: '', pix: '', tipoChavePix: 'CNPJ' },
+            financeiro: sup.financeiro ? {
+                ...sup.financeiro,
+                prazoPagamento: sup.financeiro.prazoPagamento ? String(sup.financeiro.prazoPagamento).replace(/\D/g, '') : ''
+            } : { formaPagamento: '', prazoPagamento: '', limiteCredito: 0, banco: '', agencia: '', conta: '', pix: '', tipoChavePix: 'CNPJ' },
             logistica: sup.logistica ? {
                 ...sup.logistica,
                 prazoEntrega: sup.logistica.prazoEntrega ? String(sup.logistica.prazoEntrega).replace(/\D/g, '') : ''
@@ -947,10 +950,15 @@ export default function SettingsHub() {
         e.preventDefault();
 
         const cleanedPrazoEntrega = fornForm.logistica.prazoEntrega ? String(fornForm.logistica.prazoEntrega).replace(/\D/g, '') : '';
+        const cleanedPrazoPagamento = fornForm.financeiro.prazoPagamento ? String(fornForm.financeiro.prazoPagamento).replace(/\D/g, '') : '';
         const payload = {
             ...fornForm,
             razaoSocial: fornForm.razaoSocial.toUpperCase().trim(),
             nomeFantasia: fornForm.nomeFantasia.toUpperCase().trim(),
+            financeiro: {
+                ...fornForm.financeiro,
+                prazoPagamento: cleanedPrazoPagamento
+            },
             logistica: {
                 ...fornForm.logistica,
                 prazoEntrega: cleanedPrazoEntrega
@@ -2714,12 +2722,27 @@ export default function SettingsHub() {
                                         </div>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Prazo Faturamento</label>
-                                            <input 
-                                                type="text" placeholder="Ex: 30 dias"
-                                                value={fornForm.financeiro.prazoPagamento} 
-                                                onChange={(e) => setFornForm(prev => ({ ...prev, financeiro: { ...prev.financeiro, prazoPagamento: e.target.value } }))}
-                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                            />
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <input 
+                                                    type="number" 
+                                                    min="0"
+                                                    placeholder="Ex: 30"
+                                                    required
+                                                    value={fornForm.financeiro.prazoPagamento ? String(fornForm.financeiro.prazoPagamento).replace(/\D/g, '') : ''} 
+                                                    onChange={(e) => {
+                                                        const val = e.target.value.replace(/\D/g, '');
+                                                        setFornForm(prev => ({ 
+                                                            ...prev, 
+                                                            financeiro: { 
+                                                                ...prev.financeiro, 
+                                                                prazoPagamento: val 
+                                                            } 
+                                                        }));
+                                                    }}
+                                                    style={{ width: '100px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', textAlign: 'center' }}
+                                                />
+                                                <span style={{ color: 'var(--text-secondary)', fontWeight: '700', fontSize: '0.85rem' }}>DIAS</span>
+                                            </div>
                                         </div>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Limite de Crédito (R$)</label>
