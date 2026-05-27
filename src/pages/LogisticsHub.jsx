@@ -1470,21 +1470,21 @@ export default function LogisticsHub() {
                                 {/* FLOW STEP 2: PRODUCT SELECTION & QUANTITY INPUT */}
                                 {flowStep === 'product' && currentCategory && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                                        {/* Back to Category breadcrumb */}
-                                        {activeTab !== 'movimentar' && (
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '1rem' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center' }}>
-                                                    <button 
-                                                        onClick={() => { setFlowStep('category'); setCurrentCategory(null); }}
-                                                        className="btn-back"
-                                                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}
-                                                    >
-                                                        <ArrowLeft size={14} /> CATEGORIAS
-                                                    </button>
-                                                    <span style={{ margin: '0 0.8rem', color: 'var(--text-secondary)' }}>/</span>
-                                                    <span style={{ fontWeight: '700', color: 'var(--accent-orange)' }}>{currentCategory.name.toUpperCase()}</span>
-                                                </div>
-                                                
+                                        {/* Products Table inside Category */}
+                                        <div className="table-responsive">
+                                            <div style={{ 
+                                                padding: '1.2rem 1.5rem', 
+                                                borderBottom: '1px solid var(--border-color)', 
+                                                fontWeight: '700', 
+                                                color: 'var(--text-secondary)', 
+                                                textTransform: 'uppercase',
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                alignItems: 'center',
+                                                width: '100%',
+                                                gap: '1rem'
+                                            }}>
+                                                <span>ITENS EM {currentCategory.name}</span>
                                                 {activeTab === 'solicitacao' && (
                                                     <button
                                                         onClick={() => setShowCartModal(true)}
@@ -1501,7 +1501,8 @@ export default function LogisticsHub() {
                                                             fontSize: '0.85rem',
                                                             cursor: 'pointer',
                                                             transition: 'all 0.2s',
-                                                            boxShadow: '0 4px 6px rgba(0,0,0,0.15)'
+                                                            boxShadow: '0 4px 6px rgba(0,0,0,0.15)',
+                                                            textTransform: 'none'
                                                         }}
                                                     >
                                                         <ShoppingCart size={16} />
@@ -1521,13 +1522,6 @@ export default function LogisticsHub() {
                                                         )}
                                                     </button>
                                                 )}
-                                            </div>
-                                        )}
-
-                                        {/* Products Table inside Category */}
-                                        <div className="table-responsive">
-                                            <div style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid var(--border-color)', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
-                                                ITENS EM {currentCategory.name}
                                             </div>
                                             <table className="products-table">
                                                 <thead>
