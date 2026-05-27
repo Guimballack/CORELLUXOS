@@ -125,7 +125,7 @@ export const suppliers = [
         contato: { responsavelComercial: 'Carlos Souza', responsavelFinanceiro: 'Maria Oliveira', telefone: '(11) 3456-7890', whatsapp: '(11) 98765-4321', emailComercial: 'comercial@masteralimentos.com.br', emailFinanceiro: 'financeiro@masteralimentos.com.br', site: 'www.masteralimentos.com.br' },
         endereco: { cep: '01001-000', rua: 'Rua das Flores', numero: '1500', complemento: 'Galpão 3', bairro: 'Centro', cidade: 'São Paulo', estado: 'SP', pais: 'Brasil' },
         financeiro: { formaPagamento: 'Boleto Bancário', prazoPagamento: '30 dias', limiteCredito: 50000, banco: 'Banco do Brasil', agencia: '1234-5', conta: '98765-0', pix: 'comercial@masteralimentos.com.br', tipoChavePix: 'E-mail' },
-        logistica: { prazoEntrega: '2 dias', diasEntrega: 'Seg, Qua, Sex', transportadora: 'TransLog Express', pedidoMinimo: 500, freteMinimo: 50, regiaoAtendimento: 'Grande São Paulo' },
+        logistica: { prazoEntrega: '2', diasEntrega: 'Seg, Qua, Sex', transportadora: 'TransLog Express', pedidoMinimo: 500, freteMinimo: 50, regiaoAtendimento: 'Grande São Paulo' },
         linkedProducts: ['FRN-001', 'QUE-002', 'LEI-003'],
         ratings: { qualidade: 9, prazo: 8, atendimento: 9, preco: 7 },
         history: [
@@ -157,7 +157,7 @@ export const suppliers = [
         contato: { responsavelComercial: 'Ana Paula Mendes', responsavelFinanceiro: 'José Carlos', telefone: '(21) 2345-6789', whatsapp: '(21) 99988-7766', emailComercial: 'vendas@valeverde.com.br', emailFinanceiro: 'financeiro@valeverde.com.br', site: 'www.valeverde.com.br' },
         endereco: { cep: '20040-020', rua: 'Av. Brasil', numero: '800', complemento: '', bairro: 'Penha', cidade: 'Rio de Janeiro', estado: 'RJ', pais: 'Brasil' },
         financeiro: { formaPagamento: 'Transferência Bancária', prazoPagamento: '15 dias', limiteCredito: 25000, banco: 'Itaú', agencia: '4321-0', conta: '12345-6', pix: '98765432000110', tipoChavePix: 'CNPJ' },
-        logistica: { prazoEntrega: '1 dia', diasEntrega: 'Seg a Sáb', transportadora: 'Própria', pedidoMinimo: 200, freteMinimo: 0, regiaoAtendimento: 'Rio de Janeiro e Niterói' },
+        logistica: { prazoEntrega: '1', diasEntrega: 'Seg a Sáb', transportadora: 'Própria', pedidoMinimo: 200, freteMinimo: 0, regiaoAtendimento: 'Rio de Janeiro e Niterói' },
         linkedProducts: [],
         ratings: { qualidade: 10, prazo: 9, atendimento: 8, preco: 9 },
         history: [
@@ -181,7 +181,7 @@ export const suppliers = [
         contato: { responsavelComercial: 'Roberto Lima', responsavelFinanceiro: 'Sandra Alves', telefone: '(19) 3456-0000', whatsapp: '(19) 97654-3210', emailComercial: 'vendas@embexpress.com.br', emailFinanceiro: 'contas@embexpress.com.br', site: 'www.embexpress.com.br' },
         endereco: { cep: '13040-050', rua: 'Rua Industrial', numero: '250', complemento: 'Bloco B', bairro: 'Distrito Industrial', cidade: 'Campinas', estado: 'SP', pais: 'Brasil' },
         financeiro: { formaPagamento: 'Boleto Bancário', prazoPagamento: '45 dias', limiteCredito: 35000, banco: 'Bradesco', agencia: '5678-9', conta: '45678-1', pix: '45678901000123', tipoChavePix: 'CNPJ' },
-        logistica: { prazoEntrega: '3 dias', diasEntrega: 'Seg a Sex', transportadora: 'Jadlog', pedidoMinimo: 300, freteMinimo: 80, regiaoAtendimento: 'Estado de São Paulo' },
+        logistica: { prazoEntrega: '3', diasEntrega: 'Seg a Sex', transportadora: 'Jadlog', pedidoMinimo: 300, freteMinimo: 80, regiaoAtendimento: 'Estado de São Paulo' },
         linkedProducts: [],
         ratings: { qualidade: 8, prazo: 7, atendimento: 8, preco: 8 },
         history: [
@@ -205,7 +205,7 @@ export const suppliers = [
         contato: { responsavelComercial: 'Juliana Costa', responsavelFinanceiro: 'Pedro Henrique', telefone: '(31) 3222-1100', whatsapp: '(31) 98888-2233', emailComercial: 'vendas@latuniao.com.br', emailFinanceiro: 'financeiro@latuniao.com.br', site: '' },
         endereco: { cep: '30130-000', rua: 'Av. Amazonas', numero: '3500', complemento: 'Sala 12', bairro: 'Funcionários', cidade: 'Belo Horizonte', estado: 'MG', pais: 'Brasil' },
         financeiro: { formaPagamento: 'Cheque', prazoPagamento: '60 dias', limiteCredito: 15000, banco: 'Caixa', agencia: '0001-0', conta: '99887-7', pix: '', tipoChavePix: '' },
-        logistica: { prazoEntrega: '2 dias', diasEntrega: 'Ter, Qui', transportadora: 'Total Express', pedidoMinimo: 1000, freteMinimo: 120, regiaoAtendimento: 'Minas Gerais' },
+        logistica: { prazoEntrega: '2', diasEntrega: 'Ter, Qui', transportadora: 'Total Express', pedidoMinimo: 1000, freteMinimo: 120, regiaoAtendimento: 'Minas Gerais' },
         linkedProducts: [],
         ratings: { qualidade: 5, prazo: 4, atendimento: 6, preco: 7 },
         history: [

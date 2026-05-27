@@ -911,7 +911,10 @@ export default function SettingsHub() {
             contato: sup.contato || { responsavelComercial: '', responsavelFinanceiro: '', telefone: '', whatsapp: '', emailComercial: '', emailFinanceiro: '', site: '' },
             endereco: sup.endereco || { cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', pais: 'Brasil' },
             financeiro: sup.financeiro || { formaPagamento: '', prazoPagamento: '', limiteCredito: 0, banco: '', agencia: '', conta: '', pix: '', tipoChavePix: 'CNPJ' },
-            logistica: sup.logistica || { prazoEntrega: '', diasEntrega: '', transportadora: '', pedidoMinimo: 0, freteMinimo: 0, regiaoAtendimento: '' },
+            logistica: sup.logistica ? {
+                ...sup.logistica,
+                prazoEntrega: sup.logistica.prazoEntrega ? String(sup.logistica.prazoEntrega).replace(/\D/g, '') : ''
+            } : { prazoEntrega: '', diasEntrega: '', transportadora: '', pedidoMinimo: 0, freteMinimo: 0, regiaoAtendimento: '' },
             ratings: sup.ratings || { qualidade: 8, prazo: 8, atendimento: 8, preco: 8 },
             blockInfo: sup.blockInfo || { status: 'Ativo', motivo: '' }
         });
@@ -943,10 +946,15 @@ export default function SettingsHub() {
     const handleSaveForn = async (e) => {
         e.preventDefault();
 
+        const cleanedPrazoEntrega = fornForm.logistica.prazoEntrega ? String(fornForm.logistica.prazoEntrega).replace(/\D/g, '') : '';
         const payload = {
             ...fornForm,
             razaoSocial: fornForm.razaoSocial.toUpperCase().trim(),
             nomeFantasia: fornForm.nomeFantasia.toUpperCase().trim(),
+            logistica: {
+                ...fornForm.logistica,
+                prazoEntrega: cleanedPrazoEntrega
+            },
             linkedProducts: tempLinkedProducts,
             notes: tempNotes
         };
@@ -1008,6 +1016,13 @@ export default function SettingsHub() {
         if (!ratings) return 0;
         const total = (ratings.qualidade || 0) + (ratings.prazo || 0) + (ratings.atendimento || 0) + (ratings.preco || 0);
         return total / 4;
+    };
+
+    const formatPrazoEntrega = (prazo) => {
+        if (!prazo) return '-';
+        const num = parseInt(prazo);
+        if (isNaN(num)) return prazo;
+        return `${num} ${num === 1 ? 'dia' : 'dias'}`;
     };
 
     // =============================================
@@ -1504,7 +1519,7 @@ export default function SettingsHub() {
                                                             <br />
                                                             <small style={{ color: 'var(--text-secondary)' }}>{forn.contato?.whatsapp || forn.contato?.telefone || ''}</small>
                                                         </td>
-                                                        <td>{forn.logistica?.prazoEntrega || '-'}</td>
+                                                        <td>{formatPrazoEntrega(forn.logistica?.prazoEntrega)}</td>
                                                         <td>
                                                             <span style={{ color: 'var(--accent-orange)', fontWeight: '700', display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}>
                                                                 <Star size={14} style={{ fill: 'var(--accent-orange)' }} /> {avgRating.toFixed(1)}
@@ -2745,12 +2760,27 @@ export default function SettingsHub() {
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Prazo de Entrega</label>
-                                            <input 
-                                                type="text" placeholder="Ex: 2 dias"
-                                                value={fornForm.logistica.prazoEntrega} 
-                                                onChange={(e) => setFornForm(prev => ({ ...prev, logistica: { ...prev.logistica, prazoEntrega: e.target.value } }))}
-                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                            />
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <input 
+                                                    type="number" 
+                                                    min="0"
+                                                    placeholder="Ex: 2"
+                                                    required
+                                                    value={fornForm.logistica.prazoEntrega ? String(fornForm.logistica.prazoEntrega).replace(/\D/g, '') : ''} 
+                                                    onChange={(e) => {
+                                                        const val = e.target.value.replace(/\D/g, '');
+                                                        setFornForm(prev => ({ 
+                                                            ...prev, 
+                                                            logistica: { 
+                                                                ...prev.logistica, 
+                                                                prazoEntrega: val 
+                                                            } 
+                                                        }));
+                                                    }}
+                                                    style={{ width: '100px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', textAlign: 'center' }}
+                                                />
+                                                <span style={{ color: 'var(--text-secondary)', fontWeight: '700', fontSize: '0.85rem' }}>DIAS</span>
+                                            </div>
                                         </div>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Dias de Entrega</label>
