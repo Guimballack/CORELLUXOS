@@ -3,11 +3,12 @@
  * Módulo operacional de controle de estoque reativo em React.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useCorelluxState } from '../store/corellux-state';
 import DbService from '../services/db-service';
 import { getUserAvatar } from '../utils/initial-data';
+import { runSupplyChainEngine } from '../utils/supply-chain-engine';
 import { 
     Boxes, 
     Home,
@@ -34,7 +35,13 @@ import {
     Delete,
     Edit,
     Info,
-    Warehouse
+    Warehouse,
+    BarChart3,
+    TrendingUp,
+    TrendingDown,
+    Package,
+    AlertCircle,
+    RefreshCw
 } from 'lucide-react';
 
 
@@ -88,6 +95,14 @@ export default function LogisticsHub() {
     const [batchModalMode, setBatchModalMode] = useState('add'); // 'add', 'edit'
     const [editingBatch, setEditingBatch] = useState(null);
     const [batchProduct, setBatchProduct] = useState(null);
+
+    // Supply Chain States
+    const [scSubTab, setScSubTab] = useState('overview');
+    const [scTargetDays, setScTargetDays] = useState(30);
+    const [scTargetInput, setScTargetInput] = useState('30');
+    const [scSearch, setScSearch] = useState('');
+    const [scRecalcKey, setScRecalcKey] = useState(0);
+    const [resolvedAnomalies, setResolvedAnomalies] = useState([]);
     
     // Form fields for Batch Modal
     const [batchLot, setBatchLot] = useState('');
@@ -1127,6 +1142,18 @@ export default function LogisticsHub() {
                                     </div>
                                     <ChevronRight className="chevron" size={20} />
                                 </button>
+
+                                <button 
+                                    className="menu-card teal"
+                                    onClick={() => { setActiveTab('supply-chain'); setScSubTab('overview'); }}
+                                >
+                                    <div className="card-icon"><BarChart3 size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>SUPPLY CHAIN</h3>
+                                        <p>Inteligência preditiva, sugestões de compra e análise de cobertura.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
                             </div>
                         )}
                         {/* TAB 1: VISÃO GERAL DO ESTOQUE */}
@@ -1952,30 +1979,397 @@ export default function LogisticsHub() {
                                         </p>
                                     </div>
                                 </div>
-
-                                <div style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    minHeight: '300px',
-                                    gap: '1rem',
-                                    color: 'var(--text-secondary)',
-                                    background: 'rgba(168, 85, 247, 0.04)',
-                                    border: '1px dashed rgba(168, 85, 247, 0.3)',
-                                    borderRadius: '16px',
-                                    padding: '3rem'
-                                }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '1rem', color: 'var(--text-secondary)', background: 'rgba(168, 85, 247, 0.04)', border: '1px dashed rgba(168, 85, 247, 0.3)', borderRadius: '16px', padding: '3rem' }}>
                                     <Warehouse size={48} style={{ color: 'rgba(168, 85, 247, 0.4)' }} />
-                                    <p style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-secondary)', margin: 0 }}>
-                                        Nenhum conteúdo disponível ainda.
-                                    </p>
-                                    <p style={{ fontSize: '0.85rem', margin: 0 }}>
-                                        Este módulo está reservado para o sistema de gerenciamento de armazém.
-                                    </p>
+                                    <p style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-secondary)', margin: 0 }}>Nenhum conteúdo disponível ainda.</p>
+                                    <p style={{ fontSize: '0.85rem', margin: 0 }}>Este módulo está reservado para o sistema de gerenciamento de armazém.</p>
                                 </div>
                             </div>
                         )}
+
+                        {/* TAB: SUPPLY CHAIN */}
+                        {activeTab === 'supply-chain' && (() => {
+                            // Run engine (memoized by products+batches+targetDays+recalcKey)
+                            const movementLogs = (() => {
+                                try {
+                                    const raw = localStorage.getItem('corellux_movement_logs');
+                                    return raw ? JSON.parse(raw) : [];
+                                } catch { return []; }
+                            })();
+
+                            const scData = (() => {
+                                try {
+                                    return runSupplyChainEngine(
+                                        products,
+                                        stockBatches,
+                                        (() => { try { return JSON.parse(localStorage.getItem('corellux_suppliers') || '[]'); } catch { return []; } })(),
+                                        movementLogs,
+                                        scTargetDays
+                                    );
+                                } catch(e) {
+                                    console.error('[SupplyChain] Engine error:', e);
+                                    return { inventoryMetrics: [], abcData: [], purchaseSuggestions: [], pendingAnomalies: [], seasonalityMetrics: {} };
+                                }
+                            })();
+
+                            const { inventoryMetrics, abcData, purchaseSuggestions, pendingAnomalies } = scData;
+
+                            const criticalItems = inventoryMetrics.filter(m => m.status === 'CRÍTICO');
+                            const avgCoverage = inventoryMetrics.length ? (inventoryMetrics.reduce((s,m) => s + m.coverageDays, 0) / inventoryMetrics.length) : 0;
+                            const unresolvedAnomalies = pendingAnomalies.filter(a => !resolvedAnomalies.includes(a.id || a.date + a.sku));
+
+                            const scSearchLower = scSearch.toLowerCase();
+                            const filteredMetrics = scSearch
+                                ? inventoryMetrics.filter(m => m.name.toLowerCase().includes(scSearchLower) || m.sku.toLowerCase().includes(scSearchLower))
+                                : inventoryMetrics;
+
+                            const statusColor = (status) => ({
+                                'CRÍTICO': '#f87171', 'ALERTA': '#fbbf24', 'OK': '#4ade80'
+                            })[status] || '#94a3b8';
+
+                            const statusBg = (status) => ({
+                                'CRÍTICO': 'rgba(239,68,68,0.12)', 'ALERTA': 'rgba(245,158,11,0.12)', 'OK': 'rgba(34,197,94,0.12)'
+                            })[status] || 'rgba(148,163,184,0.1)';
+
+                            return (
+                                <div className="products-container">
+                                    {/* Header */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                                        <div>
+                                            <h2 style={{ margin: 0, color: 'var(--accent-teal)', fontSize: '1.3rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <BarChart3 size={22} /> SUPPLY CHAIN — Inteligência Preditiva
+                                            </h2>
+                                            <p style={{ margin: '0.3rem 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                                Sugestão automática de compras e cálculo de cobertura com base no consumo.
+                                            </p>
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Meta (Dias):</span>
+                                            <input
+                                                type="number" min="1" max="365"
+                                                value={scTargetInput}
+                                                onChange={e => setScTargetInput(e.target.value)}
+                                                style={{ width: '70px', padding: '0.4rem 0.6rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '8px', color: '#fff', fontSize: '0.9rem', textAlign: 'center' }}
+                                            />
+                                            <button
+                                                onClick={() => { setScTargetDays(parseInt(scTargetInput) || 30); setScRecalcKey(k => k+1); }}
+                                                style={{ padding: '0.4rem 0.9rem', background: 'var(--accent-teal)', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: '700', fontSize: '0.82rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                                            >
+                                                <RefreshCw size={14} /> Recalcular
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Sub-tab navigation */}
+                                    <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                                        {[
+                                            { id: 'overview', label: 'Visão Geral' },
+                                            { id: 'suggestions', label: `Sugestões (${purchaseSuggestions.length})` },
+                                            { id: 'coverage', label: 'Cobertura' },
+                                            { id: 'abc', label: 'Curva ABC' },
+                                            { id: 'anomalies', label: `Anomalias (${unresolvedAnomalies.length})` },
+                                        ].map(tab => (
+                                            <button
+                                                key={tab.id}
+                                                onClick={() => setScSubTab(tab.id)}
+                                                style={{
+                                                    padding: '0.5rem 1.1rem',
+                                                    borderRadius: '20px',
+                                                    border: scSubTab === tab.id ? '1px solid var(--accent-teal)' : '1px solid rgba(255,255,255,0.1)',
+                                                    background: scSubTab === tab.id ? 'rgba(20,184,166,0.15)' : 'rgba(255,255,255,0.04)',
+                                                    color: scSubTab === tab.id ? 'var(--accent-teal)' : 'var(--text-secondary)',
+                                                    fontWeight: scSubTab === tab.id ? '700' : '500',
+                                                    fontSize: '0.82rem',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s',
+                                                    letterSpacing: '0.02em',
+                                                }}
+                                            >{tab.label}</button>
+                                        ))}
+                                    </div>
+
+                                    {/* ---- ABA: VISÃO GERAL ---- */}
+                                    {scSubTab === 'overview' && (
+                                        <div>
+                                            {/* KPI Cards */}
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                                                <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: '14px', padding: '1.2rem' }}>
+                                                    <div style={{ color: '#f87171', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                        <AlertCircle size={14} /> Itens Críticos
+                                                    </div>
+                                                    <div style={{ fontSize: '2.2rem', fontWeight: '800', color: '#f87171' }}>{criticalItems.length}</div>
+                                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.3rem' }}>cobertura abaixo do lead time</div>
+                                                </div>
+                                                <div style={{ background: 'rgba(20,184,166,0.08)', border: '1px solid rgba(20,184,166,0.2)', borderRadius: '14px', padding: '1.2rem' }}>
+                                                    <div style={{ color: 'var(--accent-teal)', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                        <Package size={14} /> Cobertura Média
+                                                    </div>
+                                                    <div style={{ fontSize: '2.2rem', fontWeight: '800', color: 'var(--accent-teal)' }}>{avgCoverage.toFixed(0)}<span style={{ fontSize: '1rem', fontWeight: '600' }}> dias</span></div>
+                                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.3rem' }}>média geral dos produtos</div>
+                                                </div>
+                                                <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)', borderRadius: '14px', padding: '1.2rem' }}>
+                                                    <div style={{ color: '#fbbf24', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                        <TrendingUp size={14} /> Sugestões de Compra
+                                                    </div>
+                                                    <div style={{ fontSize: '2.2rem', fontWeight: '800', color: '#fbbf24' }}>{purchaseSuggestions.length}</div>
+                                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.3rem' }}>itens abaixo da meta de {scTargetDays} dias</div>
+                                                </div>
+                                                <div style={{ background: 'rgba(148,163,184,0.06)', border: '1px solid rgba(148,163,184,0.15)', borderRadius: '14px', padding: '1.2rem' }}>
+                                                    <div style={{ color: '#94a3b8', fontSize: '0.75rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                        <AlertCircle size={14} /> Anomalias
+                                                    </div>
+                                                    <div style={{ fontSize: '2.2rem', fontWeight: '800', color: '#94a3b8' }}>{unresolvedAnomalies.length}</div>
+                                                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.3rem' }}>registros fora do padrão</div>
+                                                </div>
+                                            </div>
+
+                                            {/* Top Urgentes */}
+                                            {purchaseSuggestions.length > 0 && (
+                                                <div style={{ background: 'rgba(0,0,0,0.2)', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.06)', padding: '1.2rem' }}>
+                                                    <h3 style={{ margin: '0 0 1rem', color: '#e2e8f0', fontSize: '0.95rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <AlertCircle size={16} style={{ color: '#f87171' }} /> Itens que precisam de atenção imediata
+                                                    </h3>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                                        {purchaseSuggestions.slice(0, 5).map(s => (
+                                                            <div key={s.sku} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem 1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '10px', borderLeft: `3px solid ${s.status === 'URGENTE' ? '#f87171' : '#fbbf24'}` }}>
+                                                                <div>
+                                                                    <div style={{ fontWeight: '600', color: '#e2e8f0', fontSize: '0.9rem' }}>{s.name}</div>
+                                                                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>SKU: {s.sku} · Fornecedor: {s.supplier} · Lead Time: {s.leadTime} dias</div>
+                                                                </div>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                                                    <div style={{ textAlign: 'right' }}>
+                                                                        <div style={{ fontWeight: '700', color: s.status === 'URGENTE' ? '#f87171' : '#fbbf24', fontSize: '0.9rem' }}>{s.currentCoverage.toFixed(1)} dias</div>
+                                                                        <div style={{ color: 'var(--text-secondary)', fontSize: '0.72rem' }}>cobertura atual</div>
+                                                                    </div>
+                                                                    <span style={{ padding: '0.3rem 0.7rem', borderRadius: '6px', fontSize: '0.72rem', fontWeight: '700', background: s.status === 'URGENTE' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)', color: s.status === 'URGENTE' ? '#f87171' : '#fbbf24', border: `1px solid ${s.status === 'URGENTE' ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'}` }}>{s.status}</span>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    {purchaseSuggestions.length > 5 && (
+                                                        <button onClick={() => setScSubTab('suggestions')} style={{ marginTop: '0.8rem', background: 'none', border: 'none', color: 'var(--accent-teal)', cursor: 'pointer', fontSize: '0.82rem', fontWeight: '600' }}>
+                                                            + {purchaseSuggestions.length - 5} itens precisam de reposição — Ver todos
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {purchaseSuggestions.length === 0 && inventoryMetrics.length > 0 && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '1.2rem', background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '12px' }}>
+                                                    <CheckCircle2 size={20} style={{ color: '#4ade80' }} />
+                                                    <span style={{ color: '#4ade80', fontWeight: '600' }}>Estoque saudável. Nenhuma ruptura prevista para a meta de {scTargetDays} dias.</span>
+                                                </div>
+                                            )}
+                                            {inventoryMetrics.length === 0 && (
+                                                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                                    <BarChart3 size={40} style={{ opacity: 0.3, marginBottom: '0.8rem' }} />
+                                                    <p style={{ margin: 0 }}>Nenhum produto ativo encontrado. Cadastre produtos para ver as métricas.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* ---- ABA: SUGESTÕES DE COMPRA ---- */}
+                                    {scSubTab === 'suggestions' && (
+                                        <div>
+                                            <div className="sc-table-container">
+                                                <table className="sc-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>Item</th>
+                                                            <th>Fornecedor</th>
+                                                            <th>Cobertura</th>
+                                                            <th>Lead Time</th>
+                                                            <th>Média / Dia</th>
+                                                            <th>Cálculo de Compra</th>
+                                                            <th>Status</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {purchaseSuggestions.length === 0 ? (
+                                                            <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#4ade80' }}>✓ Nenhuma ruptura prevista para a meta de {scTargetDays} dias.</td></tr>
+                                                        ) : purchaseSuggestions.map(s => (
+                                                            <tr key={s.sku}>
+                                                                <td>
+                                                                    <div style={{ fontWeight: '600', color: '#e2e8f0' }}>{s.name}</div>
+                                                                    <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>SKU: {s.sku} · {s.category}</div>
+                                                                </td>
+                                                                <td style={{ color: '#e2e8f0' }}>{s.supplier}</td>
+                                                                <td style={{ color: '#f87171', fontWeight: '700' }}>{s.currentCoverage.toFixed(1)} dias</td>
+                                                                <td style={{ color: '#94a3b8' }}>{s.leadTime} dias</td>
+                                                                <td style={{ color: '#e2e8f0' }}>{s.avgDailyConsumption.toFixed(1)}</td>
+                                                                <td>
+                                                                    <div style={{ fontWeight: '700', color: '#fff', fontSize: '1rem' }}>{s.suggestedQty} <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '400' }}>{s.unit}</span></div>
+                                                                    <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '2px' }}>Ciclo: {s.cycleQty} <span style={{ opacity: 0.4 }}>|</span> <span style={{ color: '#fbbf24' }}>Seg: +{s.safetyQty}</span></div>
+                                                                </td>
+                                                                <td>
+                                                                    <span style={{ padding: '0.35rem 0.75rem', borderRadius: '8px', fontSize: '0.72rem', fontWeight: '700', background: s.status === 'URGENTE' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)', color: s.status === 'URGENTE' ? '#f87171' : '#fbbf24', border: `1px solid ${s.status === 'URGENTE' ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'}` }}>{s.status}</span>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* ---- ABA: COBERTURA DE ESTOQUE ---- */}
+                                    {scSubTab === 'coverage' && (
+                                        <div>
+                                            <div style={{ marginBottom: '1rem' }}>
+                                                <div style={{ position: 'relative', maxWidth: '320px' }}>
+                                                    <Search size={16} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                                                    <input
+                                                        placeholder="Buscar produto ou SKU..."
+                                                        value={scSearch}
+                                                        onChange={e => setScSearch(e.target.value)}
+                                                        style={{ paddingLeft: '2.2rem', padding: '0.55rem 0.8rem 0.55rem 2.2rem', background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff', width: '100%', fontSize: '0.88rem' }}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="sc-table-container">
+                                                <table className="sc-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th>SKU</th>
+                                                            <th>Produto</th>
+                                                            <th>Unidade</th>
+                                                            <th>Disponível</th>
+                                                            <th>Média / Dia</th>
+                                                            <th>Sazonalidade</th>
+                                                            <th>Dias Cobertura</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {filteredMetrics
+                                                            .sort((a,b) => a.coverageDays - b.coverageDays)
+                                                            .map(m => (
+                                                            <tr key={m.sku}>
+                                                                <td style={{ color: '#64748b', fontSize: '0.8rem' }}>{m.sku}</td>
+                                                                <td style={{ fontWeight: '600', color: '#e2e8f0' }}>{m.name}</td>
+                                                                <td style={{ color: '#94a3b8' }}>{m.unit}</td>
+                                                                <td style={{ color: '#e2e8f0' }}>{m.availableStock}</td>
+                                                                <td style={{ color: '#e2e8f0' }}>{m.avgDailyConsumption.toFixed(1)}</td>
+                                                                <td>
+                                                                    {m.volatilityScore !== 'LOW' ? (
+                                                                        <span style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem', borderRadius: '5px', background: 'rgba(245,158,11,0.15)', color: '#fbbf24', fontWeight: '600' }}>{m.volatilityScore}</span>
+                                                                    ) : <span style={{ opacity: 0.3 }}>–</span>}
+                                                                </td>
+                                                                <td>
+                                                                    <span style={{ padding: '0.35rem 0.75rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '700', background: statusBg(m.status), color: statusColor(m.status), border: `1px solid ${statusColor(m.status)}33` }}>
+                                                                        {m.coverageDays >= 999 ? '∞' : `${m.coverageDays.toFixed(1)} dias`}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* ---- ABA: CURVA ABC ---- */}
+                                    {scSubTab === 'abc' && (
+                                        <div>
+                                            {abcData.length === 0 ? (
+                                                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Sem histórico de consumo para calcular a curva ABC.</div>
+                                            ) : (
+                                                <div className="sc-table-container">
+                                                    <table className="sc-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Produto</th>
+                                                                <th>Volume Consumido</th>
+                                                                <th>Custo Unit.</th>
+                                                                <th>Valor Total</th>
+                                                                <th>% Acumulado</th>
+                                                                <th>Classe</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {abcData.map(item => {
+                                                                const abcColor = { A: '#f87171', B: '#fbbf24', C: '#4ade80' }[item.abcClass] || '#94a3b8';
+                                                                return (
+                                                                    <tr key={item.sku}>
+                                                                        <td>
+                                                                            <div style={{ fontWeight: '600', color: '#e2e8f0' }}>{item.name}</div>
+                                                                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{item.sku}</div>
+                                                                        </td>
+                                                                        <td style={{ color: '#e2e8f0' }}>{item.volume} {item.unit}</td>
+                                                                        <td style={{ color: '#94a3b8' }}>R$ {item.cost.toFixed(2)}</td>
+                                                                        <td style={{ color: '#e2e8f0', fontWeight: '600' }}>R$ {item.value.toFixed(2)}</td>
+                                                                        <td style={{ color: '#94a3b8' }}>{item.cumulativePercentage.toFixed(1)}%</td>
+                                                                        <td>
+                                                                            <span style={{ padding: '0.35rem 0.8rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '700', background: `${abcColor}20`, color: abcColor, border: `1px solid ${abcColor}44` }}>Classe {item.abcClass}</span>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* ---- ABA: ANOMALIAS ---- */}
+                                    {scSubTab === 'anomalies' && (
+                                        <div>
+                                            {unresolvedAnomalies.length === 0 ? (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '1.5rem', background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '12px' }}>
+                                                    <CheckCircle2 size={20} style={{ color: '#4ade80' }} />
+                                                    <span style={{ color: '#4ade80', fontWeight: '600' }}>Nenhuma anomalia de consumo pendente.</span>
+                                                </div>
+                                            ) : (
+                                                <div className="sc-table-container">
+                                                    <table className="sc-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Produto</th>
+                                                                <th>Data</th>
+                                                                <th>Dia Semana</th>
+                                                                <th>Qtd Registrada</th>
+                                                                <th>Faixa Esperada</th>
+                                                                <th>Ações</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {unresolvedAnomalies.map((a, i) => {
+                                                                const DOW_LABELS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
+                                                                const anomalyId = a.id || (a.date + a.sku);
+                                                                return (
+                                                                    <tr key={i}>
+                                                                        <td>
+                                                                            <div style={{ fontWeight: '600', color: '#e2e8f0' }}>{a.sku}</div>
+                                                                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>SKU: {a.sku}</div>
+                                                                        </td>
+                                                                        <td style={{ color: '#94a3b8' }}>{a.date}</td>
+                                                                        <td style={{ color: '#fbbf24', fontWeight: '600' }}>{DOW_LABELS[a.dayOfWeek] || '–'}</td>
+                                                                        <td style={{ color: '#f87171', fontWeight: '700' }}>{a.qty}</td>
+                                                                        <td style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{a.expectedMin}–{a.expectedMax}</td>
+                                                                        <td>
+                                                                            <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                                                                <button
+                                                                                    onClick={() => setResolvedAnomalies(prev => [...prev, anomalyId])}
+                                                                                    style={{ background: 'rgba(34,197,94,0.15)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.4)', borderRadius: '6px', padding: '0.3rem 0.6rem', fontSize: '0.75rem', cursor: 'pointer', fontWeight: '600' }}
+                                                                                >✓ Manter</button>
+                                                                                <button
+                                                                                    onClick={() => setResolvedAnomalies(prev => [...prev, anomalyId])}
+                                                                                    style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.4)', borderRadius: '6px', padding: '0.3rem 0.6rem', fontSize: '0.75rem', cursor: 'pointer', fontWeight: '600' }}
+                                                                                >✕ Excluir</button>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
                     </>
                 )}
             </div>
