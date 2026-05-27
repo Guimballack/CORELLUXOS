@@ -103,6 +103,39 @@ export default function LogisticsHub() {
     const [scSearch, setScSearch] = useState('');
     const [scRecalcKey, setScRecalcKey] = useState(0);
     const [resolvedAnomalies, setResolvedAnomalies] = useState([]);
+
+    // Orquestração centralizada do motor de Supply Chain
+    const supplyChainData = useMemo(() => {
+        try {
+            const movementLogs = (() => {
+                try {
+                    const raw = localStorage.getItem('corellux_movement_logs');
+                    return raw ? JSON.parse(raw) : [];
+                } catch { return []; }
+            })();
+            const suppliers = (() => {
+                try {
+                    return JSON.parse(localStorage.getItem('corellux_suppliers') || '[]');
+                } catch { return []; }
+            })();
+            return runSupplyChainEngine(
+                products,
+                stockBatches,
+                suppliers,
+                movementLogs,
+                scTargetDays
+            );
+        } catch (e) {
+            console.error('[SupplyChain] Hook run error:', e);
+            return {
+                inventoryMetrics: [],
+                abcData: [],
+                purchaseSuggestions: [],
+                pendingAnomalies: [],
+                seasonalityMetrics: {}
+            };
+        }
+    }, [products, stockBatches, scTargetDays, scRecalcKey]);
     
     // Form fields for Batch Modal
     const [batchLot, setBatchLot] = useState('');
@@ -606,8 +639,16 @@ export default function LogisticsHub() {
 
     // Sort products
     const sortedProducts = [...products].sort((a, b) => {
-        let valA = a[sortField];
-        let valB = b[sortField];
+        let valA, valB;
+        if (sortField === 'avgDailyConsumption') {
+            const metricA = supplyChainData.inventoryMetrics?.find(m => m.sku === a.sku);
+            const metricB = supplyChainData.inventoryMetrics?.find(m => m.sku === b.sku);
+            valA = metricA ? metricA.avgDailyConsumption : 0;
+            valB = metricB ? metricB.avgDailyConsumption : 0;
+        } else {
+            valA = a[sortField];
+            valB = b[sortField];
+        }
         if (valA === undefined) valA = '';
         if (valB === undefined) valB = '';
         
@@ -809,6 +850,26 @@ export default function LogisticsHub() {
         }
 
         // Log transaction
+        if (flowType === 'saida') {
+            try {
+                const logsRaw = localStorage.getItem('corellux_movement_logs');
+                const logs = logsRaw ? JSON.parse(logsRaw) : [];
+                const today = new Date();
+                const newLog = {
+                    id: 'mov_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                    sku: sku,
+                    date: today.toISOString().split('T')[0],
+                    qty: pendingQty,
+                    dayOfWeek: today.getDay()
+                };
+                logs.push(newLog);
+                localStorage.setItem('corellux_movement_logs', JSON.stringify(logs));
+                setScRecalcKey(prev => prev + 1);
+            } catch (err) {
+                console.error('[Logistics] Error logging movement to localStorage:', err);
+            }
+        }
+
         console.log(`[Logistics] ${flowType.toUpperCase()} - SKU: ${sku}, Qtd: ${pendingQty}`);
 
         // Reset flow
@@ -935,6 +996,26 @@ export default function LogisticsHub() {
             } : r);
 
             saveRequests(updatedRequests);
+
+            // Log transaction to movement logs
+            try {
+                const logsRaw = localStorage.getItem('corellux_movement_logs');
+                const logs = logsRaw ? JSON.parse(logsRaw) : [];
+                const today = new Date();
+                const newLog = {
+                    id: 'mov_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                    sku: req.itemSku,
+                    date: today.toISOString().split('T')[0],
+                    qty: req.quantity,
+                    dayOfWeek: today.getDay()
+                };
+                logs.push(newLog);
+                localStorage.setItem('corellux_movement_logs', JSON.stringify(logs));
+                setScRecalcKey(prev => prev + 1);
+            } catch (err) {
+                console.error('[Logistics] Error logging movement to localStorage:', err);
+            }
+
             showSystemAlert('Solicitação aprovada e insumo baixado do estoque!', 'Sucesso');
         });
     };
@@ -1265,6 +1346,9 @@ export default function LogisticsHub() {
                                                 <th style={{ textAlign: 'center' }}>Mínimo</th>
                                                 <th style={{ textAlign: 'center' }}>Médio</th>
                                                 <th style={{ textAlign: 'center' }}>Máximo</th>
+                                                <th onClick={() => handleSort('avgDailyConsumption')} style={{ cursor: 'pointer', textAlign: 'center', minWidth: '130px' }} className={sortField === 'avgDailyConsumption' ? 'active-sort' : ''}>
+                                                    Uso Diário Méd. {sortField === 'avgDailyConsumption' && (sortOrder === 'asc' ? '▲' : '▼')}
+                                                </th>
                                                 <th onClick={() => handleSort('stock')} style={{ cursor: 'pointer', textAlign: 'center', minWidth: '120px' }} className={sortField === 'stock' ? 'active-sort' : ''}>
                                                     Estoque Atual {sortField === 'stock' && (sortOrder === 'asc' ? '▲' : '▼')}
                                                 </th>
@@ -1273,7 +1357,7 @@ export default function LogisticsHub() {
                                         <tbody>
                                             {filteredInventory.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan="10" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                                    <td colSpan="11" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                                                         Nenhum produto correspondente aos filtros foi localizado.
                                                     </td>
                                                 </tr>
@@ -1287,6 +1371,9 @@ export default function LogisticsHub() {
                                                     // Expiration checks for FEFO warning tags
                                                     const productBatches = stockBatches.filter(b => b.itemSku === p.sku);
                                                     const hasExpired = productBatches.some(b => getBatchExpiryStatus(b.expirationDate).label === 'VENCIDO');
+                                                    
+                                                    const scMetric = supplyChainData.inventoryMetrics?.find(m => m.sku === p.sku);
+                                                    const avgDaily = scMetric ? scMetric.avgDailyConsumption : 0;
 
                                                     return (
                                                         <React.Fragment key={p.sku}>
@@ -1337,6 +1424,9 @@ export default function LogisticsHub() {
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{minVal}</td>
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{p.avgStock || 0}</td>
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{p.maxStock || 0}</td>
+                                                                <td style={{ textAlign: 'center', color: 'var(--text-secondary)', fontWeight: '600' }}>
+                                                                    {avgDaily.toFixed(2)} {p.unit}/dia
+                                                                </td>
                                                                 <td style={{ textAlign: 'center' }}>
                                                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', flexWrap: 'nowrap' }}>
                                                                         {isOut ? (
@@ -1352,7 +1442,7 @@ export default function LogisticsHub() {
                                                             {isExpanded && (
                                                                 <tr style={{ background: 'rgba(0, 0, 0, 0.15)' }}>
                                                                     <td></td>
-                                                                    <td colSpan="9" style={{ padding: '1rem 1.5rem', borderLeft: '4px solid var(--accent-orange)' }}>
+                                                                    <td colSpan="10" style={{ padding: '1rem 1.5rem', borderLeft: '4px solid var(--accent-orange)' }}>
                                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                                                                 <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -1989,30 +2079,7 @@ export default function LogisticsHub() {
 
                         {/* TAB: SUPPLY CHAIN */}
                         {activeTab === 'supply-chain' && (() => {
-                            // Run engine (memoized by products+batches+targetDays+recalcKey)
-                            const movementLogs = (() => {
-                                try {
-                                    const raw = localStorage.getItem('corellux_movement_logs');
-                                    return raw ? JSON.parse(raw) : [];
-                                } catch { return []; }
-                            })();
-
-                            const scData = (() => {
-                                try {
-                                    return runSupplyChainEngine(
-                                        products,
-                                        stockBatches,
-                                        (() => { try { return JSON.parse(localStorage.getItem('corellux_suppliers') || '[]'); } catch { return []; } })(),
-                                        movementLogs,
-                                        scTargetDays
-                                    );
-                                } catch(e) {
-                                    console.error('[SupplyChain] Engine error:', e);
-                                    return { inventoryMetrics: [], abcData: [], purchaseSuggestions: [], pendingAnomalies: [], seasonalityMetrics: {} };
-                                }
-                            })();
-
-                            const { inventoryMetrics, abcData, purchaseSuggestions, pendingAnomalies } = scData;
+                            const { inventoryMetrics, abcData, purchaseSuggestions, pendingAnomalies } = supplyChainData;
 
                             const criticalItems = inventoryMetrics.filter(m => m.status === 'CRÍTICO');
                             const avgCoverage = inventoryMetrics.length ? (inventoryMetrics.reduce((s,m) => s + m.coverageDays, 0) / inventoryMetrics.length) : 0;
