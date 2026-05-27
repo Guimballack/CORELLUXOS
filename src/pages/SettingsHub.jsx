@@ -3016,18 +3016,29 @@ export default function SettingsHub() {
                                                             }
                                                         }}
                                                         style={{
-                                                            background: 'transparent',
-                                                            border: 'none',
+                                                            background: 'rgba(239, 68, 68, 0.08)',
+                                                            border: '1px solid rgba(239, 68, 68, 0.2)',
                                                             color: '#ef4444',
+                                                            padding: '0.4rem 0.8rem',
+                                                            borderRadius: '6px',
                                                             cursor: 'pointer',
-                                                            fontSize: '0.8rem',
-                                                            fontWeight: '600',
+                                                            fontSize: '0.75rem',
+                                                            fontWeight: '700',
                                                             display: 'flex',
                                                             alignItems: 'center',
-                                                            gap: '0.3rem'
+                                                            gap: '0.4rem',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.target.style.background = 'rgba(239, 68, 68, 0.16)';
+                                                            e.target.style.borderColor = 'rgba(239, 68, 68, 0.4)';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.target.style.background = 'rgba(239, 68, 68, 0.08)';
+                                                            e.target.style.borderColor = 'rgba(239, 68, 68, 0.2)';
                                                         }}
                                                     >
-                                                        🗑️ Remover Contato
+                                                        <Trash2 size={13} /> Remover Contato
                                                     </button>
                                                 )}
                                             </div>
@@ -3167,11 +3178,11 @@ export default function SettingsHub() {
                                                                         fontSize: '0.8rem',
                                                                         display: 'flex',
                                                                         alignItems: 'center',
-                                                                        gap: '0.3rem',
+                                                                        gap: '0.4rem',
                                                                         whiteSpace: 'nowrap'
                                                                     }}
                                                                 >
-                                                                    💾 Salvar Obs
+                                                                    <Check size={14} /> Salvar Obs
                                                                 </button>
                                                             )}
                                                         </div>
