@@ -563,6 +563,26 @@ export default function SettingsHub() {
         return Number(num).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
+    const getDocStatus = (docState) => {
+        if (!docState) return { label: 'Pendente', className: 'status-pendente' };
+        if (docState.received) {
+            if (!docState.isIndeterminate && docState.expiry) {
+                const expiryDate = new Date(docState.expiry);
+                const today = new Date();
+                expiryDate.setHours(0,0,0,0);
+                today.setHours(0,0,0,0);
+                if (expiryDate < today) {
+                    return { label: 'Expirado', className: 'status-expirado' };
+                }
+            }
+            return { label: 'Recebido', className: 'status-recebido' };
+        }
+        if (docState.mandatory !== false) {
+            return { label: 'Pendente', className: 'status-pendente' };
+        }
+        return { label: 'Opcional', className: 'status-opcional' };
+    };
+
     const handleCurrencyInputChange = (e, field) => {
         let val = e.target.value;
         val = val.replace(/\D/g, '');
@@ -2568,149 +2588,255 @@ export default function SettingsHub() {
 
                                 {/* SECTION: CHECKLIST PESSOAIS */}
                                 {colabActiveSection === 'checklistPessoais' && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowX: 'auto' }}>
-                                        <table className="data-table" style={{ width: '100%', minWidth: '700px', fontSize: '0.85rem' }}>
-                                            <thead>
-                                                <tr>
-                                                    <th>Documento</th>
-                                                    <th style={{ textAlign: 'center' }}>Recebido</th>
-                                                    <th style={{ textAlign: 'center' }}>Obrigatório</th>
-                                                    <th>Data / Validade</th>
-                                                    <th>Anexos</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {PERSONAL_DOCS_ITEMS.map(item => {
-                                                    const docState = colabForm.docChecklist?.[item.id] || { received: false, mandatory: true, date: '', expiry: '', attachments: [], isIndeterminate: false };
-                                                    return (
-                                                        <tr key={item.id}>
-                                                            <td style={{ fontWeight: '600' }}>{item.label}</td>
-                                                            <td style={{ textAlign: 'center' }}>
-                                                                <input type="checkbox" checked={docState.received} onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'received', e.target.checked)} style={{ accentColor: 'var(--accent-orange)', transform: 'scale(1.2)' }} />
-                                                            </td>
-                                                            <td style={{ textAlign: 'center' }}>
-                                                                <input type="checkbox" checked={docState.mandatory} onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'mandatory', e.target.checked)} style={{ accentColor: 'var(--accent-orange)' }} />
-                                                            </td>
-                                                            <td>
-                                                                <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
-                                                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                                        <input type="checkbox" checked={docState.isIndeterminate} onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'isIndeterminate', e.target.checked)} style={{ accentColor: 'var(--accent-orange)' }} />
-                                                                        Não possui validade
-                                                                    </label>
-                                                                    {!docState.isIndeterminate && (
-                                                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                                            <input 
-                                                                                type="date" 
-                                                                                value={docState.date} 
-                                                                                onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'date', e.target.value)} 
-                                                                                title="Data de Recebimento / Emissão" 
-                                                                                className="checklist-date-input" 
-                                                                            />
-                                                                            <input 
-                                                                                type="date" 
-                                                                                value={docState.expiry} 
-                                                                                onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'expiry', e.target.value)} 
-                                                                                title="Data de Validade" 
-                                                                                className="checklist-date-input" 
-                                                                            />
-                                                                        </div>
-                                                                    )}
+                                    <div className="colab-docs-grid">
+                                        {PERSONAL_DOCS_ITEMS.map(item => {
+                                            const docState = colabForm.docChecklist?.[item.id] || { received: false, mandatory: true, date: '', expiry: '', attachments: [], isIndeterminate: false };
+                                            const status = getDocStatus(docState);
+                                            return (
+                                                <div key={item.id} className={`colab-doc-card ${docState.mandatory ? 'mandatory' : ''}`}>
+                                                    {/* Header */}
+                                                    <div className="colab-doc-header">
+                                                        <h4 className="colab-doc-title">
+                                                            {item.label}
+                                                            {docState.mandatory && <span style={{ color: 'var(--accent-orange)', marginLeft: '0.2rem' }}>*</span>}
+                                                        </h4>
+                                                        <span className={`colab-doc-badge ${status.className}`}>
+                                                            {status.label === 'Recebido' && <Check size={12} />}
+                                                            {status.label === 'Pendente' && <AlertTriangle size={12} />}
+                                                            {status.label === 'Expirado' && <AlertTriangle size={12} />}
+                                                            {status.label === 'Opcional' && <Shield size={12} />}
+                                                            {status.label}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Controls (Toggles) */}
+                                                    <div className="colab-doc-controls">
+                                                        <label className="colab-doc-toggle">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={docState.received} 
+                                                                onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'received', e.target.checked)} 
+                                                            />
+                                                            Entregue
+                                                        </label>
+                                                        <label className="colab-doc-toggle">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={docState.mandatory} 
+                                                                onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'mandatory', e.target.checked)} 
+                                                            />
+                                                            Obrigatório
+                                                        </label>
+                                                    </div>
+
+                                                    {/* Seção de Validade (Datas) */}
+                                                    <div className="colab-doc-dates">
+                                                        <label className="colab-doc-toggle" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={docState.isIndeterminate} 
+                                                                onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'isIndeterminate', e.target.checked)} 
+                                                            />
+                                                            Não possui validade
+                                                        </label>
+                                                        
+                                                        {!docState.isIndeterminate && (
+                                                            <div className="colab-doc-dates-inputs">
+                                                                <div className="colab-doc-date-field">
+                                                                    <span className="colab-doc-date-label">Emissão / Recebimento</span>
+                                                                    <div className="custom-date-picker-wrapper">
+                                                                        <Calendar className="custom-date-picker-icon" size={14} style={{ left: '0.6rem' }} />
+                                                                        <input 
+                                                                            type="date" 
+                                                                            value={docState.date} 
+                                                                            onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'date', e.target.value)} 
+                                                                            className="custom-date-picker-input"
+                                                                            style={{ paddingLeft: '1.8rem', fontSize: '0.8rem', height: '32px' }}
+                                                                        />
+                                                                    </div>
                                                                 </div>
-                                                            </td>
-                                                            <td>
-                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                                    {docState.attachments?.map((att, idx) => (
-                                                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem 0.5rem', borderRadius: '4px' }}>
-                                                                            <Paperclip size={14} color="var(--accent-orange)" />
-                                                                            <span style={{ fontSize: '0.75rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', maxWidth: '100px' }} onClick={() => setViewerUrl(att.url)} title={att.name}>{att.name}</span>
-                                                                            <button type="button" onClick={() => handleRemoveChecklistAttachment('personal', item.id, idx)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer' }}><Trash2 size={14} /></button>
-                                                                        </div>
-                                                                    ))}
-                                                                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'var(--bg-input)', border: '1px dashed var(--border-color)', padding: '0.4rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                                        <Plus size={14} /> Anexar Arquivo
-                                                                        <input type="file" onChange={(e) => handleChecklistFileUpload(e, 'personal', item.id)} style={{ display: 'none' }} />
-                                                                    </label>
+                                                                <div className="colab-doc-date-field">
+                                                                    <span className="colab-doc-date-label">Vencimento / Validade</span>
+                                                                    <div className="custom-date-picker-wrapper">
+                                                                        <Calendar className="custom-date-picker-icon" size={14} style={{ left: '0.6rem' }} />
+                                                                        <input 
+                                                                            type="date" 
+                                                                            value={docState.expiry} 
+                                                                            onChange={(e) => handleUpdateChecklistValue('personal', item.id, 'expiry', e.target.value)} 
+                                                                            className="custom-date-picker-input"
+                                                                            style={{ paddingLeft: '1.8rem', fontSize: '0.8rem', height: '32px' }}
+                                                                        />
+                                                                    </div>
                                                                 </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Anexos */}
+                                                    <div className="colab-doc-attachments">
+                                                        <span className="colab-doc-date-label">Anexos / Arquivos</span>
+                                                        
+                                                        <div className="colab-doc-attachments-list">
+                                                            {docState.attachments?.map((att, idx) => (
+                                                                <div key={idx} className="colab-doc-attachment-pill">
+                                                                    <Paperclip size={12} color="var(--accent-orange)" />
+                                                                    <span 
+                                                                        className="colab-doc-attachment-name" 
+                                                                        onClick={() => setViewerUrl(att.url)} 
+                                                                        title={att.name}
+                                                                    >
+                                                                        {att.name}
+                                                                    </span>
+                                                                    <button 
+                                                                        type="button" 
+                                                                        className="colab-doc-attachment-delete"
+                                                                        onClick={() => handleRemoveChecklistAttachment('personal', item.id, idx)}
+                                                                    >
+                                                                        <Trash2 size={12} />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+
+                                                        <label className="colab-doc-upload-btn">
+                                                            <Plus size={14} /> Anexar Documento
+                                                            <input 
+                                                                type="file" 
+                                                                onChange={(e) => handleChecklistFileUpload(e, 'personal', item.id)} 
+                                                                style={{ display: 'none' }} 
+                                                            />
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
 
                                 {/* SECTION: CHECKLIST SAÚDE */}
                                 {colabActiveSection === 'checklistSaude' && (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowX: 'auto' }}>
-                                        <table className="data-table" style={{ width: '100%', minWidth: '700px', fontSize: '0.85rem' }}>
-                                            <thead>
-                                                <tr>
-                                                    <th>Item / Exame / Treinamento</th>
-                                                    <th style={{ textAlign: 'center' }}>Realizado</th>
-                                                    <th style={{ textAlign: 'center' }}>Obrigatório</th>
-                                                    <th>Data / Validade</th>
-                                                    <th>Anexos</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {HEALTH_SAFETY_ITEMS.map(item => {
-                                                    const docState = colabForm.healthSafetyChecklist?.[item.id] || { received: false, mandatory: true, date: '', expiry: '', attachments: [], isIndeterminate: false };
-                                                    return (
-                                                        <tr key={item.id}>
-                                                            <td style={{ fontWeight: '600' }}>{item.label}</td>
-                                                            <td style={{ textAlign: 'center' }}>
-                                                                <input type="checkbox" checked={docState.received} onChange={(e) => handleUpdateChecklistValue('health', item.id, 'received', e.target.checked)} style={{ accentColor: 'var(--accent-orange)', transform: 'scale(1.2)' }} />
-                                                            </td>
-                                                            <td style={{ textAlign: 'center' }}>
-                                                                <input type="checkbox" checked={docState.mandatory} onChange={(e) => handleUpdateChecklistValue('health', item.id, 'mandatory', e.target.checked)} style={{ accentColor: 'var(--accent-orange)' }} />
-                                                            </td>
-                                                            <td>
-                                                                <div style={{ display: 'flex', gap: '0.5rem', flexDirection: 'column' }}>
-                                                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                                        <input type="checkbox" checked={docState.isIndeterminate} onChange={(e) => handleUpdateChecklistValue('health', item.id, 'isIndeterminate', e.target.checked)} style={{ accentColor: 'var(--accent-orange)' }} />
-                                                                        Sem validade (Único)
-                                                                    </label>
-                                                                    {!docState.isIndeterminate && (
-                                                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                                            <input 
-                                                                                type="date" 
-                                                                                value={docState.date} 
-                                                                                onChange={(e) => handleUpdateChecklistValue('health', item.id, 'date', e.target.value)} 
-                                                                                title="Data de Realização" 
-                                                                                className="checklist-date-input" 
-                                                                            />
-                                                                            <input 
-                                                                                type="date" 
-                                                                                value={docState.expiry} 
-                                                                                onChange={(e) => handleUpdateChecklistValue('health', item.id, 'expiry', e.target.value)} 
-                                                                                title="Data de Vencimento" 
-                                                                                className="checklist-date-input" 
-                                                                            />
-                                                                        </div>
-                                                                    )}
+                                    <div className="colab-docs-grid">
+                                        {HEALTH_SAFETY_ITEMS.map(item => {
+                                            const docState = colabForm.healthSafetyChecklist?.[item.id] || { received: false, mandatory: true, date: '', expiry: '', attachments: [], isIndeterminate: false };
+                                            const status = getDocStatus(docState);
+                                            return (
+                                                <div key={item.id} className={`colab-doc-card ${docState.mandatory ? 'mandatory' : ''}`}>
+                                                    {/* Header */}
+                                                    <div className="colab-doc-header">
+                                                        <h4 className="colab-doc-title">
+                                                            {item.label}
+                                                            {docState.mandatory && <span style={{ color: 'var(--accent-orange)', marginLeft: '0.2rem' }}>*</span>}
+                                                        </h4>
+                                                        <span className={`colab-doc-badge ${status.className}`}>
+                                                            {status.label === 'Recebido' && <Check size={12} />}
+                                                            {status.label === 'Pendente' && <AlertTriangle size={12} />}
+                                                            {status.label === 'Expirado' && <AlertTriangle size={12} />}
+                                                            {status.label === 'Opcional' && <Shield size={12} />}
+                                                            {status.label}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Controls (Toggles) */}
+                                                    <div className="colab-doc-controls">
+                                                        <label className="colab-doc-toggle">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={docState.received} 
+                                                                onChange={(e) => handleUpdateChecklistValue('health', item.id, 'received', e.target.checked)} 
+                                                            />
+                                                            Realizado
+                                                        </label>
+                                                        <label className="colab-doc-toggle">
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={docState.mandatory} 
+                                                                onChange={(e) => handleUpdateChecklistValue('health', item.id, 'mandatory', e.target.checked)} 
+                                                            />
+                                                            Obrigatório
+                                                        </label>
+                                                    </div>
+
+                                                    {/* Seção de Validade (Datas) */}
+                                                    <div className="colab-doc-dates">
+                                                        <label className="colab-doc-toggle" style={{ fontSize: '0.75rem', marginBottom: '0.2rem' }}>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={docState.isIndeterminate} 
+                                                                onChange={(e) => handleUpdateChecklistValue('health', item.id, 'isIndeterminate', e.target.checked)} 
+                                                            />
+                                                            Sem validade (Único)
+                                                        </label>
+                                                        
+                                                        {!docState.isIndeterminate && (
+                                                            <div className="colab-doc-dates-inputs">
+                                                                <div className="colab-doc-date-field">
+                                                                    <span className="colab-doc-date-label">Data Realização</span>
+                                                                    <div className="custom-date-picker-wrapper">
+                                                                        <Calendar className="custom-date-picker-icon" size={14} style={{ left: '0.6rem' }} />
+                                                                        <input 
+                                                                            type="date" 
+                                                                            value={docState.date} 
+                                                                            onChange={(e) => handleUpdateChecklistValue('health', item.id, 'date', e.target.value)} 
+                                                                            className="custom-date-picker-input"
+                                                                            style={{ paddingLeft: '1.8rem', fontSize: '0.8rem', height: '32px' }}
+                                                                        />
+                                                                    </div>
                                                                 </div>
-                                                            </td>
-                                                            <td>
-                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                                    {docState.attachments?.map((att, idx) => (
-                                                                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.05)', padding: '0.3rem 0.5rem', borderRadius: '4px' }}>
-                                                                            <Paperclip size={14} color="var(--accent-orange)" />
-                                                                            <span style={{ fontSize: '0.75rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer', maxWidth: '100px' }} onClick={() => setViewerUrl(att.url)} title={att.name}>{att.name}</span>
-                                                                            <button type="button" onClick={() => handleRemoveChecklistAttachment('health', item.id, idx)} style={{ background: 'none', border: 'none', color: '#ff4444', cursor: 'pointer' }}><Trash2 size={14} /></button>
-                                                                        </div>
-                                                                    ))}
-                                                                    <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: 'var(--bg-input)', border: '1px dashed var(--border-color)', padding: '0.4rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                                        <Plus size={14} /> Anexar Arquivo
-                                                                        <input type="file" onChange={(e) => handleChecklistFileUpload(e, 'health', item.id)} style={{ display: 'none' }} />
-                                                                    </label>
+                                                                <div className="colab-doc-date-field">
+                                                                    <span className="colab-doc-date-label">Data Vencimento</span>
+                                                                    <div className="custom-date-picker-wrapper">
+                                                                        <Calendar className="custom-date-picker-icon" size={14} style={{ left: '0.6rem' }} />
+                                                                        <input 
+                                                                            type="date" 
+                                                                            value={docState.expiry} 
+                                                                            onChange={(e) => handleUpdateChecklistValue('health', item.id, 'expiry', e.target.value)} 
+                                                                            className="custom-date-picker-input"
+                                                                            style={{ paddingLeft: '1.8rem', fontSize: '0.8rem', height: '32px' }}
+                                                                        />
+                                                                    </div>
                                                                 </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Anexos */}
+                                                    <div className="colab-doc-attachments">
+                                                        <span className="colab-doc-date-label">Anexos / Arquivos</span>
+                                                        
+                                                        <div className="colab-doc-attachments-list">
+                                                            {docState.attachments?.map((att, idx) => (
+                                                                <div key={idx} className="colab-doc-attachment-pill">
+                                                                    <Paperclip size={12} color="var(--accent-orange)" />
+                                                                    <span 
+                                                                        className="colab-doc-attachment-name" 
+                                                                        onClick={() => setViewerUrl(att.url)} 
+                                                                        title={att.name}
+                                                                    >
+                                                                        {att.name}
+                                                                    </span>
+                                                                    <button 
+                                                                        type="button" 
+                                                                        className="colab-doc-attachment-delete"
+                                                                        onClick={() => handleRemoveChecklistAttachment('health', item.id, idx)}
+                                                                    >
+                                                                        <Trash2 size={12} />
+                                                                    </button>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+
+                                                        <label className="colab-doc-upload-btn">
+                                                            <Plus size={14} /> Anexar Documento
+                                                            <input 
+                                                                type="file" 
+                                                                onChange={(e) => handleChecklistFileUpload(e, 'health', item.id)} 
+                                                                style={{ display: 'none' }} 
+                                                            />
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 )}
 
