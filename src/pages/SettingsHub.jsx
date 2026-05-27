@@ -2200,17 +2200,17 @@ export default function SettingsHub() {
                 MODAL 1: CADASTRO/EDIÇÃO COLABORADOR
             ============================================= */}
             {showColabModal && createPortal(
-                <div className="pin-modal-overlay active" style={{ zIndex: 10000, overflowY: 'auto' }}>
-                    <div className="pin-modal-card" style={{ maxWidth: '850px', width: '90%', margin: '2rem auto' }}>
-                        <button className="btn-close-modal" onClick={() => setShowColabModal(false)}><X size={18} /></button>
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '850px', width: '90%', maxHeight: '90vh', margin: 'auto', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 }}>
+                        <button className="btn-close-modal" onClick={() => setShowColabModal(false)} style={{ zIndex: 10001 }}><X size={18} /></button>
                         
-                        <form onSubmit={handleSaveColab} style={{ padding: '1.5rem' }}>
-                            <h3 id="employee-modal-title" style={{ fontSize: '1.4rem', color: 'var(--accent-orange)', marginBottom: '1.5rem', textTransform: 'uppercase', fontWeight: '800' }}>
+                        <form onSubmit={handleSaveColab} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', flex: 1, boxSizing: 'border-box' }}>
+                            <h3 id="employee-modal-title" style={{ fontSize: '1.4rem', color: 'var(--accent-orange)', marginBottom: '1.5rem', textTransform: 'uppercase', fontWeight: '800', flexShrink: 0 }}>
                                 {editingColab ? 'Editar Funcionário' : 'Novo Funcionário'}
                             </h3>
 
                             {/* Collaborator Menu Layout */}
-                            <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '1.5rem', overflowX: 'auto', gap: '1rem', paddingBottom: '0.2rem' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', borderBottom: '1px solid var(--border-color)', marginBottom: '1.5rem', gap: '0.8rem', paddingBottom: '0.5rem', flexShrink: 0 }}>
                                 {[
                                     { id: 'pessoais', label: 'Dados Pessoais' },
                                     { id: 'acesso', label: 'Acesso & Permissões' },
@@ -2242,7 +2242,7 @@ export default function SettingsHub() {
                                 ))}
                             </div>
 
-                            <div style={{ marginBottom: '1.5rem' }}>
+                            <div className="modal-scrollable-content" style={{ flex: 1, overflowY: 'auto', marginBottom: '1.5rem', paddingRight: '0.5rem' }}>
                                 {/* SECTION: PESSOAIS */}
                                 {colabActiveSection === 'pessoais' && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
@@ -2877,7 +2877,7 @@ export default function SettingsHub() {
                             </div>
 
                             {/* Actions */}
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem', flexShrink: 0 }}>
                                 <button type="button" className="btn-clear-modal" onClick={() => setShowColabModal(false)}>CANCELAR</button>
                                 <button type="submit" className="btn-confirm-modal">SALVAR CADASTRO</button>
                             </div>
@@ -3122,17 +3122,17 @@ export default function SettingsHub() {
                 MODAL 4: CADASTRO/EDIÇÃO FORNECEDOR (COMPLEX MODAL)
             ============================================= */}
             {showFornModal && createPortal(
-                <div className="pin-modal-overlay active" style={{ zIndex: 10000, overflowY: 'auto' }}>
-                    <div className="pin-modal-card" style={{ maxWidth: '850px', width: '90%', margin: '2rem auto' }}>
-                        <button className="btn-close-modal" onClick={() => setShowFornModal(false)}><X size={18} /></button>
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '850px', width: '90%', maxHeight: '90vh', margin: 'auto', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 }}>
+                        <button className="btn-close-modal" onClick={() => setShowFornModal(false)} style={{ zIndex: 10001 }}><X size={18} /></button>
                         
-                        <form onSubmit={handleSaveForn} style={{ padding: '1.5rem' }}>
-                            <h3 style={{ fontSize: '1.4rem', color: 'var(--accent-orange)', marginBottom: '1rem', textTransform: 'uppercase', fontWeight: '800' }}>
+                        <form onSubmit={handleSaveForn} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', flex: 1, boxSizing: 'border-box' }}>
+                            <h3 style={{ fontSize: '1.4rem', color: 'var(--accent-orange)', marginBottom: '1rem', textTransform: 'uppercase', fontWeight: '800', flexShrink: 0 }}>
                                 {editingForn ? 'Editar Fornecedor' : 'Novo Fornecedor'}
                             </h3>
 
                             {/* Supplier Menu Layout */}
-                            <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', marginBottom: '1.5rem', overflowX: 'auto', gap: '1rem' }}>
+                            <div style={{ display: 'flex', flexWrap: 'wrap', borderBottom: '1px solid var(--border-color)', marginBottom: '1.5rem', gap: '0.8rem', paddingBottom: '0.5rem', flexShrink: 0 }}>
                                 {[
                                     { id: 'geral', label: 'Dados Gerais' },
                                     { id: 'contatos', label: 'Contatos' },
@@ -3163,9 +3163,10 @@ export default function SettingsHub() {
                                 ))}
                             </div>
 
-                            {/* SECTION CONTENT: GERAL */}
-                            {fornActiveSection === 'geral' && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                            <div className="modal-scrollable-content" style={{ flex: 1, overflowY: 'auto', marginBottom: '1.5rem', paddingRight: '0.5rem' }}>
+                                {/* SECTION CONTENT: GERAL */}
+                                {fornActiveSection === 'geral' && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Razão Social</label>
@@ -3225,7 +3226,7 @@ export default function SettingsHub() {
 
                             {/* SECTION CONTENT: CONTATOS */}
                             {fornActiveSection === 'contatos' && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                     {fornForm.contatos && fornForm.contatos.map((cont, index) => (
                                         <div key={index} style={{ 
                                             background: 'rgba(255, 255, 255, 0.02)', 
@@ -3844,9 +3845,10 @@ export default function SettingsHub() {
                                     </div>
                                 </div>
                             )}
+                            </div>
 
                             {/* Actions */}
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem', flexShrink: 0 }}>
                                 <button type="button" className="btn-clear-modal" onClick={() => setShowFornModal(false)}>CANCELAR</button>
                                 <button type="submit" className="btn-confirm-modal">SALVAR FORNECEDOR</button>
                             </div>
