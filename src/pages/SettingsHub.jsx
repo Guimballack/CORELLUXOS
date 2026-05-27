@@ -51,7 +51,8 @@ const PERSONAL_DOCS_ITEMS = [
     { id: 'address', label: 'Comprovante de Endereço' },
     { id: 'voter', label: 'Título de Eleitor' },
     { id: 'military', label: 'Reservista' },
-    { id: 'birth_marriage', label: 'Certidão Nasc/Cas' }
+    { id: 'birth_marriage', label: 'Certidão Nasc/Cas' },
+    { id: 'work_contract', label: 'Contrato de Trabalho' }
 ];
 
 const HEALTH_SAFETY_ITEMS = [
