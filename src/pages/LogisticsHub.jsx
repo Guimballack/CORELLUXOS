@@ -628,6 +628,15 @@ export default function LogisticsHub() {
     // HELPER FUNCTIONS & RENDERS
     // =============================================
 
+    const formatDailyConsumption = (val, unit) => {
+        if (val === undefined || val === null || isNaN(val)) return '0';
+        const lowerUnit = (unit || '').toLowerCase();
+        if (lowerUnit === 'kg' || lowerUnit === 'l' || lowerUnit === 'litro' || lowerUnit === 'litros') {
+            return val % 1 === 0 ? val.toFixed(0) : val.toFixed(1);
+        }
+        return Math.round(val).toString();
+    };
+
     const handleSort = (field) => {
         if (sortField === field) {
             setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
@@ -1425,7 +1434,7 @@ export default function LogisticsHub() {
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{p.avgStock || 0}</td>
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>{p.maxStock || 0}</td>
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)', fontWeight: '600' }}>
-                                                                    {avgDaily.toFixed(2)} {p.unit}/dia
+                                                                    {formatDailyConsumption(avgDaily, p.unit)} {p.unit}/dia
                                                                 </td>
                                                                 <td style={{ textAlign: 'center' }}>
                                                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', flexWrap: 'nowrap' }}>
@@ -2263,7 +2272,7 @@ export default function LogisticsHub() {
                                                                 <td style={{ color: '#e2e8f0' }}>{s.supplier}</td>
                                                                 <td style={{ color: '#f87171', fontWeight: '700' }}>{s.currentCoverage.toFixed(1)} dias</td>
                                                                 <td style={{ color: '#94a3b8' }}>{s.leadTime} dias</td>
-                                                                <td style={{ color: '#e2e8f0' }}>{s.avgDailyConsumption.toFixed(1)}</td>
+                                                                <td style={{ color: '#e2e8f0' }}>{formatDailyConsumption(s.avgDailyConsumption, s.unit)}</td>
                                                                 <td>
                                                                     <div style={{ fontWeight: '700', color: '#fff', fontSize: '1rem' }}>{s.suggestedQty} <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: '400' }}>{s.unit}</span></div>
                                                                     <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '2px' }}>Ciclo: {s.cycleQty} <span style={{ opacity: 0.4 }}>|</span> <span style={{ color: '#fbbf24' }}>Seg: +{s.safetyQty}</span></div>
@@ -2315,7 +2324,7 @@ export default function LogisticsHub() {
                                                                 <td style={{ fontWeight: '600', color: '#e2e8f0' }}>{m.name}</td>
                                                                 <td style={{ color: '#94a3b8' }}>{m.unit}</td>
                                                                 <td style={{ color: '#e2e8f0' }}>{m.availableStock}</td>
-                                                                <td style={{ color: '#e2e8f0' }}>{m.avgDailyConsumption.toFixed(1)}</td>
+                                                                <td style={{ color: '#e2e8f0' }}>{formatDailyConsumption(m.avgDailyConsumption, m.unit)}</td>
                                                                 <td>
                                                                     {m.volatilityScore !== 'LOW' ? (
                                                                         <span style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem', borderRadius: '5px', background: 'rgba(245,158,11,0.15)', color: '#fbbf24', fontWeight: '600' }}>{m.volatilityScore}</span>
