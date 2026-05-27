@@ -120,6 +120,7 @@ export default function LogisticsHub() {
     const [scRecalcKey, setScRecalcKey] = useState(0);
     const [resolvedAnomalies, setResolvedAnomalies] = useState([]);
     const [scSettingSaving, setScSettingSaving] = useState(false);
+    const [scHelpPopup, setScHelpPopup] = useState(null); // id da aba ou null
 
     // Custom Date Range for ABC Curve
     const [abcStartDate, setAbcStartDate] = useState('');
@@ -136,6 +137,28 @@ export default function LogisticsHub() {
             setScRecalcKey(k => k + 1);
         });
         return () => { cancelled = true; };
+    }, []);
+
+    // Sincroniza configuração offline com Supabase ao retomar internet
+    useEffect(() => {
+        const handleOnline = async () => {
+            const pendingKey = 'corellux_setting_sc_target_days_pending_sync';
+            const pending = localStorage.getItem(pendingKey);
+            if (pending) {
+                try {
+                    const val = parseInt(JSON.parse(pending)) || 30;
+                    const result = await DbService.setSetting('sc_target_days', val);
+                    if (result.success) {
+                        localStorage.removeItem(pendingKey);
+                        console.log('[CorelluxOS] Meta de dias sincronizada com Supabase após retomar conexão.');
+                    }
+                } catch (e) {
+                    console.warn('[CorelluxOS] Falha ao sincronizar offline setting:', e);
+                }
+            }
+        };
+        window.addEventListener('online', handleOnline);
+        return () => window.removeEventListener('online', handleOnline);
     }, []);
 
     // Orquestração centralizada do motor de Supply Chain
@@ -2278,32 +2301,168 @@ export default function LogisticsHub() {
                                     </div>
 
                                     {/* Sub-tab navigation */}
-                                    <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                                    <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                         {[
                                             { id: 'overview', label: 'Visão Geral' },
                                             { id: 'suggestions', label: `Sugestões (${purchaseSuggestions.length})` },
                                             { id: 'coverage', label: 'Cobertura' },
                                             { id: 'abc', label: 'Curva ABC' },
                                             { id: 'anomalies', label: `Anomalias (${unresolvedAnomalies.length})` },
-                                        ].map(tab => (
-                                            <button
-                                                key={tab.id}
-                                                onClick={() => setScSubTab(tab.id)}
-                                                style={{
-                                                    padding: '0.5rem 1.1rem',
-                                                    borderRadius: '20px',
-                                                    border: scSubTab === tab.id ? '1px solid var(--accent-teal)' : '1px solid rgba(255,255,255,0.1)',
-                                                    background: scSubTab === tab.id ? 'rgba(20,184,166,0.15)' : 'rgba(255,255,255,0.04)',
-                                                    color: scSubTab === tab.id ? 'var(--accent-teal)' : 'var(--text-secondary)',
-                                                    fontWeight: scSubTab === tab.id ? '700' : '500',
-                                                    fontSize: '0.82rem',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s',
-                                                    letterSpacing: '0.02em',
-                                                }}
-                                            >{tab.label}</button>
-                                        ))}
+                                        ].map(tab => {
+                                            const isActive = scSubTab === tab.id;
+                                            return (
+                                                <div key={tab.id} style={{ display: 'flex', alignItems: 'stretch' }}>
+                                                    <button
+                                                        onClick={() => setScSubTab(tab.id)}
+                                                        style={{
+                                                            padding: '0.5rem 0.75rem 0.5rem 1.1rem',
+                                                            borderRadius: '20px 0 0 20px',
+                                                            borderTop: isActive ? '1px solid var(--accent-teal)' : '1px solid rgba(255,255,255,0.1)',
+                                                            borderBottom: isActive ? '1px solid var(--accent-teal)' : '1px solid rgba(255,255,255,0.1)',
+                                                            borderLeft: isActive ? '1px solid var(--accent-teal)' : '1px solid rgba(255,255,255,0.1)',
+                                                            borderRight: 'none',
+                                                            background: isActive ? 'rgba(20,184,166,0.15)' : 'rgba(255,255,255,0.04)',
+                                                            color: isActive ? 'var(--accent-teal)' : 'var(--text-secondary)',
+                                                            fontWeight: isActive ? '700' : '500',
+                                                            fontSize: '0.82rem',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            letterSpacing: '0.02em',
+                                                        }}
+                                                    >{tab.label}</button>
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setScHelpPopup(tab.id); }}
+                                                        title={`O que é ${tab.label}?`}
+                                                        style={{
+                                                            width: '28px',
+                                                            borderRadius: '0 20px 20px 0',
+                                                            borderTop: isActive ? '1px solid var(--accent-teal)' : '1px solid rgba(255,255,255,0.1)',
+                                                            borderBottom: isActive ? '1px solid var(--accent-teal)' : '1px solid rgba(255,255,255,0.1)',
+                                                            borderRight: isActive ? '1px solid var(--accent-teal)' : '1px solid rgba(255,255,255,0.1)',
+                                                            borderLeft: isActive ? '1px solid rgba(20,184,166,0.25)' : '1px solid rgba(255,255,255,0.06)',
+                                                            background: isActive ? 'rgba(20,184,166,0.08)' : 'rgba(255,255,255,0.02)',
+                                                            color: isActive ? 'rgba(20,184,166,0.8)' : 'rgba(255,255,255,0.25)',
+                                                            fontWeight: '800',
+                                                            fontSize: '0.72rem',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            flexShrink: 0,
+                                                            padding: 0,
+                                                        }}
+                                                        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(20,184,166,0.25)'; e.currentTarget.style.color = '#fff'; }}
+                                                        onMouseLeave={e => { e.currentTarget.style.background = isActive ? 'rgba(20,184,166,0.08)' : 'rgba(255,255,255,0.02)'; e.currentTarget.style.color = isActive ? 'rgba(20,184,166,0.8)' : 'rgba(255,255,255,0.25)'; }}
+                                                    >?</button>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
+
+                                    {/* ---- Help Popup Modal ---- */}
+                                    {scHelpPopup && (() => {
+                                        const helpContent = {
+                                            overview: {
+                                                title: '📊 Visão Geral — Supply Chain',
+                                                color: 'var(--accent-teal)',
+                                                colorHex: '#14b8a6',
+                                                sections: [
+                                                    { icon: '🔴', title: 'Itens Críticos', text: 'Produtos cujo estoque atual não cobre nem o lead time de reposição — o tempo médio que o fornecedor leva para entregar. São os que precisam de ação imediata para evitar ruptura operacional.' },
+                                                    { icon: '🟡', title: 'Abaixo da Meta', text: 'Produtos com estoque suficiente para o lead time, mas abaixo da meta de dias configurada. Precisam de reposição em breve, mas ainda há margem de segurança.' },
+                                                    { icon: '🟢', title: 'Estoque Saudável', text: 'Produtos com cobertura igual ou superior à meta configurada. Situação ideal — sem necessidade de ação imediata.' },
+                                                    { icon: '📅', title: 'Meta de Dias (Dias de Cobertura)', text: 'Define quantos dias de estoque você quer manter. Exemplo: meta 30 dias → o sistema sempre garante cobertura para 30 dias de consumo. Configure no campo "Meta (Dias)" acima e clique em Salvar para persistir para todos os usuários.' },
+                                                    { icon: '📈', title: 'Consumo Médio Diário', text: 'Calculado dinamicamente com base no histórico real de saídas aprovadas. Perdas e rejeições de requisição NÃO entram nesse cálculo. Quanto mais histórico, mais preciso.' },
+                                                ]
+                                            },
+                                            suggestions: {
+                                                title: '🛒 Sugestões de Compra',
+                                                color: 'var(--accent-orange)',
+                                                colorHex: '#f36b1d',
+                                                sections: [
+                                                    { icon: '⚙️', title: 'Como é calculado?', text: 'O sistema compara o estoque atual com a quantidade ideal (meta de dias × consumo diário médio). Se o estoque estiver abaixo do ideal, o produto entra na lista de sugestões com a quantidade exata a comprar.' },
+                                                    { icon: '📦', title: 'Quantidade Sugerida', text: 'É a diferença entre o estoque ideal e o estoque atual. Representa exatamente o quanto você precisa comprar para atingir a meta de dias configurada.' },
+                                                    { icon: '🏷️', title: 'Prioridade: URGENTE vs NORMAL', text: 'URGENTE = produto abaixo do mínimo dinâmico (50% da média). Requer compra imediata. NORMAL = abaixo da meta, mas acima do mínimo. Pode aguardar o próximo ciclo de pedidos.' },
+                                                    { icon: '🔄', title: 'Atualização em Tempo Real', text: 'As sugestões se atualizam automaticamente após qualquer entrada ou saída aprovada, refletindo sempre a realidade do estoque no momento.' },
+                                                ]
+                                            },
+                                            coverage: {
+                                                title: '📅 Cobertura de Estoque',
+                                                color: '#a78bfa',
+                                                colorHex: '#a78bfa',
+                                                sections: [
+                                                    { icon: '📐', title: 'O que é Cobertura?', text: 'Quantos dias o estoque atual vai durar com o ritmo de consumo atual. Fórmula: Estoque Atual ÷ Consumo Diário Médio = Dias de Cobertura.' },
+                                                    { icon: '🟢', title: 'Cobertura Adequada (verde)', text: 'Dias de cobertura ≥ meta configurada. Situação ideal, sem ação necessária.' },
+                                                    { icon: '🟡', title: 'Cobertura Baixa (amarelo)', text: 'Entre o lead time e a meta de dias. Precisa repor em breve, mas ainda há margem.' },
+                                                    { icon: '🔴', title: 'Ruptura Iminente (vermelho)', text: 'Cobertura abaixo do lead time do fornecedor. O estoque vai acabar antes que o próximo pedido chegue. Ação imediata necessária.' },
+                                                    { icon: '📊', title: 'Mínimo / Média / Máximo Dinâmicos', text: 'Calculados com base no histórico real. Mínimo = 50% da média (ponto de alerta vermelho). Média = meta × consumo diário (referência de saúde). Máximo = 150% da média (limite superior saudável — acima disso indica excesso).' },
+                                                ]
+                                            },
+                                            abc: {
+                                                title: '📉 Curva ABC',
+                                                color: '#fbbf24',
+                                                colorHex: '#fbbf24',
+                                                sections: [
+                                                    { icon: '🅰️', title: 'Classe A — Itens Vitais (top 20%)', text: 'Os 20% de produtos que representam ~80% do valor total consumido (Lei de Pareto). Merecem controle rigoroso, monitoramento diário e prioridade máxima nas negociações com fornecedores.' },
+                                                    { icon: '🅱️', title: 'Classe B — Itens Importantes', text: 'Produtos intermediários (~15% do valor total). Merecem controle moderado e revisão periódica.' },
+                                                    { icon: '©️', title: 'Classe C — Baixo Impacto (80% dos itens)', text: 'A maioria dos produtos, mas que representam apenas ~5% do valor total. Podem ter controle simplificado com pedidos menos frequentes e em maior volume.' },
+                                                    { icon: '📆', title: 'Filtro por Período', text: 'Use os campos de data para calcular a curva ABC de um intervalo específico. Ideal para comparar sazonalidades, excluir períodos atípicos ou analisar campanhas.' },
+                                                    { icon: '💡', title: 'Por que isso importa?', text: 'Concentrar esforço nos itens A garante que você nunca ficará sem os insumos mais críticos para a operação, sem desperdiçar tempo gerenciando itens de baixo impacto.' },
+                                                ]
+                                            },
+                                            anomalies: {
+                                                title: '⚠️ Anomalias Detectadas',
+                                                color: '#f87171',
+                                                colorHex: '#f87171',
+                                                sections: [
+                                                    { icon: '🔍', title: 'O que é uma Anomalia?', text: 'Um evento de consumo que se desvia significativamente do padrão histórico. O sistema compara cada saída com a média histórica e, se o valor for muito acima ou abaixo do esperado, registra como anomalia.' },
+                                                    { icon: '📈', title: 'Pico de Consumo', text: 'Saída muito acima da média. Pode indicar evento especial, desperdício ou erro de lançamento. O sistema a excluiu da média para não distorcer as sugestões de compra.' },
+                                                    { icon: '📉', title: 'Consumo Zero / Baixo', text: 'Nenhum ou pouco movimento em um dia que historicamente tem saída. Pode indicar fechamento inesperado, falha de registro ou produto em falta.' },
+                                                    { icon: '🛡️', title: 'Impacto nas Sugestões', text: 'Anomalias não resolvidas são automaticamente excluídas do cálculo da média diária para não distorcer as sugestões de compra e os níveis de estoque.' },
+                                                    { icon: '✅', title: 'Como Resolver', text: 'Clique em "Resolver" quando o evento for confirmado como real (ex: banquete, evento especial). O sistema incorporará esse dado ao histórico. Descarte se foi erro de lançamento ou dado incorreto.' },
+                                                ]
+                                            },
+                                        };
+                                        const help = helpContent[scHelpPopup];
+                                        if (!help) return null;
+                                        return createPortal(
+                                            <div
+                                                style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', backdropFilter: 'blur(6px)' }}
+                                                onClick={() => setScHelpPopup(null)}
+                                            >
+                                                <div
+                                                    onClick={e => e.stopPropagation()}
+                                                    style={{ background: 'var(--surface)', border: `1px solid ${help.colorHex}50`, borderRadius: '20px', padding: '2rem', maxWidth: '560px', width: '100%', maxHeight: '88vh', overflowY: 'auto', boxShadow: `0 0 80px ${help.colorHex}20, 0 24px 48px rgba(0,0,0,0.6)` }}
+                                                >
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                                                        <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: '800', color: help.color }}>{help.title}</h2>
+                                                        <button
+                                                            onClick={() => setScHelpPopup(null)}
+                                                            style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'var(--text-secondary)', cursor: 'pointer', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '1rem' }}
+                                                        >✕</button>
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                                                        {help.sections.map((sec, i) => (
+                                                            <div key={i} style={{ background: `${help.colorHex}08`, border: `1px solid ${help.colorHex}20`, borderRadius: '12px', padding: '1rem 1.1rem' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                                                                    <span style={{ fontSize: '1rem' }}>{sec.icon}</span>
+                                                                    <span style={{ fontWeight: '700', fontSize: '0.87rem', color: help.color }}>{sec.title}</span>
+                                                                </div>
+                                                                <p style={{ margin: 0, fontSize: '0.83rem', color: 'var(--text-secondary)', lineHeight: '1.65' }}>{sec.text}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+                                                        <button
+                                                            onClick={() => setScHelpPopup(null)}
+                                                            style={{ padding: '0.6rem 2.2rem', background: `${help.colorHex}20`, border: `1px solid ${help.colorHex}50`, borderRadius: '12px', color: help.color, fontWeight: '700', fontSize: '0.88rem', cursor: 'pointer' }}
+                                                        >Entendido ✓</button>
+                                                    </div>
+                                                </div>
+                                            </div>,
+                                            document.body
+                                        );
+                                    })()}
 
                                     {/* ---- ABA: VISÃO GERAL ---- */}
                                     {scSubTab === 'overview' && (

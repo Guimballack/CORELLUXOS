@@ -1351,10 +1351,14 @@ export const DbService = {
             if (error) throw error;
             // espelho local para acesso offline imediato
             localStorage.setItem(`corellux_setting_${key}`, JSON.stringify(value));
+            // limpa flag de sync pendente se existia
+            localStorage.removeItem(`corellux_setting_${key}_pending_sync`);
             return { success: true };
         } catch (e) {
             console.warn(`[DbService] setSetting(${key}) falhou, salvando apenas localmente:`, e.message || e);
             localStorage.setItem(`corellux_setting_${key}`, JSON.stringify(value));
+            // marca como pendente de sincronização para quando a internet retornar
+            localStorage.setItem(`corellux_setting_${key}_pending_sync`, JSON.stringify(value));
             return { success: false, error: e };
         }
     },
