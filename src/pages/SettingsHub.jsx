@@ -971,7 +971,7 @@ export default function SettingsHub() {
             dataCadastro: sup.dataCadastro || '',
             contato: sup.contato || { responsavelComercial: '', responsavelFinanceiro: '', telefone: '', whatsapp: '', emailComercial: '', emailFinanceiro: '', site: '' },
             contatos: resolvedContatos,
-            endereco: sup.endereco || { cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', pais: 'Brasil' },
+            endereco: sup.endereco ? { ...sup.endereco, cep: maskCEP(sup.endereco.cep || '') } : { cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', pais: 'Brasil' },
             financeiro: sup.financeiro ? {
                 ...sup.financeiro,
                 prazoPagamento: sup.financeiro.prazoPagamento ? String(sup.financeiro.prazoPagamento).replace(/\D/g, '') : ''
@@ -1166,6 +1166,13 @@ export default function SettingsHub() {
         const num = parseInt(prazo);
         if (isNaN(num)) return prazo;
         return `${num} ${num === 1 ? 'dia' : 'dias'}`;
+    };
+
+    const maskCEP = (val) => {
+        if (!val) return '';
+        const d = val.replace(/\D/g, '').slice(0, 8);
+        if (d.length <= 5) return d;
+        return `${d.slice(0, 5)}-${d.slice(5)}`;
     };
 
     const maskCNPJ = (val) => {
@@ -3232,9 +3239,9 @@ export default function SettingsHub() {
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>CEP</label>
                                             <input 
-                                                type="text" 
+                                                type="text" placeholder="00000-000"
                                                 value={fornForm.endereco.cep} 
-                                                onChange={(e) => setFornForm(prev => ({ ...prev, endereco: { ...prev.endereco, cep: e.target.value } }))}
+                                                onChange={(e) => setFornForm(prev => ({ ...prev, endereco: { ...prev.endereco, cep: maskCEP(e.target.value) } }))}
                                                 style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
                                             />
                                         </div>
