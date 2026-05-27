@@ -99,6 +99,7 @@ export default function SettingsHub() {
     const [fornToDelete, setFornToDelete] = useState(null);
     const [sectorToDelete, setSectorToDelete] = useState(null);
     const [cargoToDelete, setCargoToDelete] = useState(null);
+    const [genericConfirm, setGenericConfirm] = useState(null);
     const [toast, setToast] = useState(null);
 
     const [showProdModal, setShowProdModal] = useState(false);
@@ -1335,17 +1336,23 @@ export default function SettingsHub() {
                 }));
                 setShowBancoDropdown(false);
             } else {
-                const confirmAdd = window.confirm(`O banco "${typedValue}" não está cadastrado. Deseja adicionar este novo banco à lista?`);
-                if (confirmAdd) {
-                    const newList = [...bankList, typedValue].sort();
-                    setBankList(newList);
-                    localStorage.setItem('corellux_banks', JSON.stringify(newList));
-                    setFornForm(prev => ({
-                        ...prev,
-                        financeiro: { ...prev.financeiro, banco: typedValue }
-                    }));
-                    setShowBancoDropdown(false);
-                }
+                setGenericConfirm({
+                    title: 'Adicionar Novo Banco?',
+                    message: `O banco "${typedValue}" não está cadastrado. Deseja adicionar este novo banco à lista?`,
+                    confirmText: 'ADICIONAR',
+                    cancelText: 'CANCELAR',
+                    isDanger: false,
+                    onConfirm: () => {
+                        const newList = [...bankList, typedValue].sort();
+                        setBankList(newList);
+                        localStorage.setItem('corellux_banks', JSON.stringify(newList));
+                        setFornForm(prev => ({
+                            ...prev,
+                            financeiro: { ...prev.financeiro, banco: typedValue }
+                        }));
+                        setShowBancoDropdown(false);
+                    }
+                });
             }
         }
     };
@@ -1372,17 +1379,23 @@ export default function SettingsHub() {
                 }));
                 setShowColabBancoDropdown(false);
             } else {
-                const confirmAdd = window.confirm(`O banco "${typedValue}" não está cadastrado. Deseja adicionar este novo banco à lista?`);
-                if (confirmAdd) {
-                    const newList = [...bankList, typedValue].sort();
-                    setBankList(newList);
-                    localStorage.setItem('corellux_banks', JSON.stringify(newList));
-                    setColabForm(prev => ({
-                        ...prev,
-                        bank: typedValue
-                    }));
-                    setShowColabBancoDropdown(false);
-                }
+                setGenericConfirm({
+                    title: 'Adicionar Novo Banco?',
+                    message: `O banco "${typedValue}" não está cadastrado. Deseja adicionar este novo banco à lista?`,
+                    confirmText: 'ADICIONAR',
+                    cancelText: 'CANCELAR',
+                    isDanger: false,
+                    onConfirm: () => {
+                        const newList = [...bankList, typedValue].sort();
+                        setBankList(newList);
+                        localStorage.setItem('corellux_banks', JSON.stringify(newList));
+                        setColabForm(prev => ({
+                            ...prev,
+                            bank: typedValue
+                        }));
+                        setShowColabBancoDropdown(false);
+                    }
+                });
             }
         }
     };
@@ -3007,13 +3020,20 @@ export default function SettingsHub() {
                                                     <button
                                                         type="button"
                                                         onClick={() => {
-                                                            if (window.confirm("Deseja realmente remover este contato?")) {
-                                                                setFornForm(prev => {
-                                                                    const list = [...prev.contatos];
-                                                                    list.splice(index, 1);
-                                                                    return { ...prev, contatos: list };
-                                                                });
-                                                            }
+                                                            setGenericConfirm({
+                                                                title: 'Remover Contato?',
+                                                                message: `Tem certeza de que deseja remover o Contato #${index + 1} (${cont.nome || 'Sem nome'})?`,
+                                                                confirmText: 'REMOVER',
+                                                                cancelText: 'CANCELAR',
+                                                                isDanger: true,
+                                                                onConfirm: () => {
+                                                                    setFornForm(prev => {
+                                                                        const list = [...prev.contatos];
+                                                                        list.splice(index, 1);
+                                                                        return { ...prev, contatos: list };
+                                                                    });
+                                                                }
+                                                            });
                                                         }}
                                                         style={{
                                                             background: 'rgba(239, 68, 68, 0.08)',
@@ -4157,6 +4177,81 @@ export default function SettingsHub() {
                                 }}
                             >
                                 SIM, EXCLUIR
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* MODAL: GENERIC CONFIRMATION DIALOG */}
+            {genericConfirm && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10020 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '450px', width: '90%', textAlign: 'center', padding: '2rem' }}>
+                        <div style={{
+                            width: '70px',
+                            height: '70px',
+                            borderRadius: '50%',
+                            background: genericConfirm.isDanger ? 'rgba(239, 68, 68, 0.1)' : 'rgba(235, 94, 40, 0.1)',
+                            border: `2px solid ${genericConfirm.isDanger ? '#ef4444' : 'var(--accent-orange)'}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 1.5rem auto',
+                            boxShadow: `0 0 20px ${genericConfirm.isDanger ? 'rgba(239, 68, 68, 0.2)' : 'rgba(235, 94, 40, 0.2)'}`
+                        }}>
+                            {genericConfirm.isDanger ? (
+                                <Trash2 size={36} color="#ef4444" />
+                            ) : (
+                                <AlertTriangle size={36} color="var(--accent-orange)" />
+                            )}
+                        </div>
+                        
+                        <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.8rem', fontWeight: '800' }}>
+                            {genericConfirm.title}
+                        </h3>
+                        
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '2rem' }}>
+                            {genericConfirm.message}
+                        </p>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                            <button 
+                                type="button" 
+                                className="btn-confirm-modal" 
+                                onClick={() => {
+                                    if (genericConfirm.onCancel) genericConfirm.onCancel();
+                                    setGenericConfirm(null);
+                                }}
+                                style={{ 
+                                    flex: 1, 
+                                    background: 'rgba(255, 255, 255, 0.05)', 
+                                    border: '1.5px solid var(--border-color)', 
+                                    color: 'var(--text-primary)',
+                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                {genericConfirm.cancelText || 'CANCELAR'}
+                            </button>
+                            <button 
+                                type="button" 
+                                className="btn-clear-modal" 
+                                onClick={() => {
+                                    if (genericConfirm.onConfirm) genericConfirm.onConfirm();
+                                    setGenericConfirm(null);
+                                }}
+                                style={{ 
+                                    flex: 1, 
+                                    background: genericConfirm.isDanger ? '#ef4444' : 'var(--accent-orange)', 
+                                    border: '1.5px solid #000000', 
+                                    color: '#ffffff',
+                                    boxShadow: '0 4px 0px #000000',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                {genericConfirm.confirmText || 'SIM'}
                             </button>
                         </div>
                     </div>
