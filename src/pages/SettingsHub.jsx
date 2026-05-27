@@ -141,6 +141,7 @@ export default function SettingsHub() {
         return DEFAULT_BANKS;
     });
     const [showBancoDropdown, setShowBancoDropdown] = useState(false);
+    const [showColabBancoDropdown, setShowColabBancoDropdown] = useState(false);
 
     // Collaborator form states
     const [colabOpenSections, setColabOpenSections] = useState({
@@ -1080,6 +1081,43 @@ export default function SettingsHub() {
                         financeiro: { ...prev.financeiro, banco: typedValue }
                     }));
                     setShowBancoDropdown(false);
+                }
+            }
+        }
+    };
+
+    const handleSelectColabBank = (bank) => {
+        setColabForm(prev => ({
+            ...prev,
+            bank: bank
+        }));
+        setShowColabBancoDropdown(false);
+    };
+
+    const handleColabBancoKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const typedValue = (colabForm.bank || '').trim();
+            if (!typedValue) return;
+
+            const match = bankList.find(b => b.toLowerCase() === typedValue.toLowerCase());
+            if (match) {
+                setColabForm(prev => ({
+                    ...prev,
+                    bank: match
+                }));
+                setShowColabBancoDropdown(false);
+            } else {
+                const confirmAdd = window.confirm(`O banco "${typedValue}" não está cadastrado. Deseja adicionar este novo banco à lista?`);
+                if (confirmAdd) {
+                    const newList = [...bankList, typedValue].sort();
+                    setBankList(newList);
+                    localStorage.setItem('corellux_banks', JSON.stringify(newList));
+                    setColabForm(prev => ({
+                        ...prev,
+                        bank: typedValue
+                    }));
+                    setShowColabBancoDropdown(false);
                 }
             }
         }
@@ -2098,9 +2136,47 @@ export default function SettingsHub() {
                                     </button>
                                     {colabOpenSections.bancarios && (
                                         <div style={{ padding: '1rem', borderTop: '1px solid var(--border-color)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
-                                            <div>
+                                            <div style={{ position: 'relative' }}>
                                                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Banco</label>
-                                                <input type="text" value={colabForm.bank} onChange={(e) => setColabForm(prev => ({ ...prev, bank: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                <input 
+                                                    type="text" 
+                                                    value={colabForm.bank} 
+                                                    onChange={(e) => {
+                                                        setColabForm(prev => ({ ...prev, bank: e.target.value }));
+                                                        setShowColabBancoDropdown(true);
+                                                    }}
+                                                    onFocus={() => setShowColabBancoDropdown(true)}
+                                                    onBlur={() => setTimeout(() => setShowColabBancoDropdown(false), 200)}
+                                                    onKeyDown={handleColabBancoKeyDown}
+                                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                                    placeholder="Busque ou digite o banco..."
+                                                />
+                                                {showColabBancoDropdown && (
+                                                    (() => {
+                                                        const filtered = bankList.filter(b => 
+                                                            b.toLowerCase().includes((colabForm.bank || '').toLowerCase())
+                                                        );
+                                                        return (
+                                                            <div className="bank-dropdown-container">
+                                                                {filtered.length > 0 ? (
+                                                                    filtered.map((bank, idx) => (
+                                                                        <div 
+                                                                            key={idx} 
+                                                                            className="bank-dropdown-item"
+                                                                            onMouseDown={() => handleSelectColabBank(bank)}
+                                                                        >
+                                                                            {bank}
+                                                                        </div>
+                                                                    ))
+                                                                ) : (
+                                                                    <div style={{ padding: '0.5rem 1rem', color: 'var(--text-secondary)', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                                                                        Pressione [Enter] para cadastrar: "{(colabForm.bank || '').trim()}"
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()
+                                                )}
                                             </div>
                                             <div>
                                                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Agência</label>
