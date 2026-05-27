@@ -8,7 +8,7 @@ import { createPortal } from 'react-dom';
 import { useCorelluxState } from '../store/corellux-state';
 import DbService from '../services/db-service';
 import { getUserAvatar } from '../utils/initial-data';
-import { runSupplyChainEngine } from '../utils/supply-chain-engine';
+import { runSupplyChainEngine, calculateABC } from '../utils/supply-chain-engine';
 import { 
     Boxes, 
     Home,
@@ -104,6 +104,10 @@ export default function LogisticsHub() {
     const [scRecalcKey, setScRecalcKey] = useState(0);
     const [resolvedAnomalies, setResolvedAnomalies] = useState([]);
 
+    // Custom Date Range for ABC Curve
+    const [abcStartDate, setAbcStartDate] = useState('');
+    const [abcEndDate, setAbcEndDate] = useState('');
+
     // Orquestração centralizada do motor de Supply Chain
     const supplyChainData = useMemo(() => {
         try {
@@ -136,6 +140,26 @@ export default function LogisticsHub() {
             };
         }
     }, [products, stockBatches, scTargetDays, scRecalcKey]);
+
+    // Recalcular a Curva ABC filtrada por data
+    const filteredAbcData = useMemo(() => {
+        if (!products || products.length === 0) return [];
+        const movementLogs = (() => {
+            try {
+                const raw = localStorage.getItem('corellux_movement_logs');
+                return raw ? JSON.parse(raw) : [];
+            } catch { return []; }
+        })();
+        let filteredLogs = movementLogs;
+        if (abcStartDate) {
+            filteredLogs = filteredLogs.filter(r => r.date >= abcStartDate);
+        }
+        if (abcEndDate) {
+            filteredLogs = filteredLogs.filter(r => r.date <= abcEndDate);
+        }
+        const activeProducts = products.filter(p => p.status === 'Ativo');
+        return calculateABC(activeProducts, filteredLogs);
+    }, [products, abcStartDate, abcEndDate, scRecalcKey]);
     
     // Form fields for Batch Modal
     const [batchLot, setBatchLot] = useState('');
@@ -2135,7 +2159,8 @@ export default function LogisticsHub() {
 
                         {/* TAB: SUPPLY CHAIN */}
                         {activeTab === 'supply-chain' && (() => {
-                            const { inventoryMetrics, abcData, purchaseSuggestions, pendingAnomalies } = supplyChainData;
+                            const { inventoryMetrics, purchaseSuggestions, pendingAnomalies } = supplyChainData;
+                            const abcData = filteredAbcData;
 
                             const criticalItems = inventoryMetrics.filter(m => m.status === 'CRÍTICO');
                             const avgCoverage = inventoryMetrics.length ? (inventoryMetrics.reduce((s,m) => s + m.coverageDays, 0) / inventoryMetrics.length) : 0;
@@ -2393,6 +2418,94 @@ export default function LogisticsHub() {
                                     {/* ---- ABA: CURVA ABC ---- */}
                                     {scSubTab === 'abc' && (
                                         <div>
+                                            <div style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '1rem',
+                                                background: 'rgba(255, 255, 255, 0.02)',
+                                                border: '1px solid rgba(255, 255, 255, 0.05)',
+                                                borderRadius: '12px',
+                                                padding: '1rem',
+                                                marginBottom: '1.2rem',
+                                                flexWrap: 'wrap'
+                                            }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                                    <label style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>De (Data Inicial)</label>
+                                                    <input
+                                                        type="date"
+                                                        value={abcStartDate}
+                                                        onChange={e => setAbcStartDate(e.target.value)}
+                                                        style={{
+                                                            background: 'rgba(0,0,0,0.25)',
+                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                            borderRadius: '8px',
+                                                            color: '#fff',
+                                                            padding: '0.5rem 0.8rem',
+                                                            fontSize: '0.85rem',
+                                                            outline: 'none'
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                                    <label style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Até (Data Final)</label>
+                                                    <input
+                                                        type="date"
+                                                        value={abcEndDate}
+                                                        onChange={e => setAbcEndDate(e.target.value)}
+                                                        style={{
+                                                            background: 'rgba(0,0,0,0.25)',
+                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                            borderRadius: '8px',
+                                                            color: '#fff',
+                                                            padding: '0.5rem 0.8rem',
+                                                            fontSize: '0.85rem',
+                                                            outline: 'none'
+                                                        }}
+                                                    />
+                                                </div>
+
+                                                {(abcStartDate || abcEndDate) && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setAbcStartDate(''); setAbcEndDate(''); }}
+                                                        style={{
+                                                            alignSelf: 'flex-end',
+                                                            background: 'rgba(239, 68, 68, 0.15)',
+                                                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                                                            color: '#f87171',
+                                                            padding: '0.5rem 1rem',
+                                                            borderRadius: '8px',
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: '600',
+                                                            cursor: 'pointer',
+                                                            height: '37px',
+                                                            transition: 'all 0.2s',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center'
+                                                        }}
+                                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.25)'}
+                                                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'}
+                                                    >
+                                                        LIMPAR FILTRO
+                                                    </button>
+                                                )}
+
+                                                <div style={{ marginLeft: 'auto', fontSize: '0.78rem', color: 'var(--text-secondary)', alignSelf: 'center', display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                                                    <span style={{ color: 'var(--accent-orange)', fontWeight: '700' }}>
+                                                        {abcStartDate && abcEndDate 
+                                                            ? `Período: ${new Date(abcStartDate + 'T00:00:00').toLocaleDateString('pt-BR')} até ${new Date(abcEndDate + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                                                            : abcStartDate 
+                                                                ? `A partir de: ${new Date(abcStartDate + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                                                                : abcEndDate 
+                                                                    ? `Até: ${new Date(abcEndDate + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                                                                    : 'Exibindo todo o histórico de saídas'}
+                                                    </span>
+                                                    <span>{abcData.length} produtos classificados</span>
+                                                </div>
+                                            </div>
+
                                             {abcData.length === 0 ? (
                                                 <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Sem histórico de consumo para calcular a curva ABC.</div>
                                             ) : (
