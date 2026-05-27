@@ -132,6 +132,7 @@ export default function LogisticsHub() {
     const [showReason, setShowReason] = useState(false);
     const [selectedReason, setSelectedReason] = useState('');
     const [customReasonText, setCustomReasonText] = useState('');
+    const [selectedLossSector, setSelectedLossSector] = useState('');
 
     // Inventory Filtering & Sorting
     const [inventoryCategory, setInventoryCategory] = useState('ALL');
@@ -745,6 +746,7 @@ export default function LogisticsHub() {
                 quantity: pendingQty,
                 reason: reason || 'Não informado',
                 customReason: reason === 'Outros' ? (customReasonText.trim() || 'Não especificado') : '',
+                sector: selectedLossSector || 'Não informado',
                 registeredBy: state.currentUser ? state.currentUser.name : 'Operador',
                 registeredAt: new Date().toLocaleString('pt-BR')
             };
@@ -758,6 +760,7 @@ export default function LogisticsHub() {
             setPendingQty(0);
             setSelectedReason('');
             setCustomReasonText('');
+            setSelectedLossSector('');
             return;
         }
 
@@ -1834,6 +1837,7 @@ export default function LogisticsHub() {
                                                 <th>SKU</th>
                                                 <th>Qtd</th>
                                                 <th>Unidade</th>
+                                                <th>Setor</th>
                                                 <th>Motivo</th>
                                                 <th>Registrado Por</th>
                                             </tr>
@@ -1841,7 +1845,7 @@ export default function LogisticsHub() {
                                         <tbody>
                                             {lossRecords.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                                    <td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                                                         <AlertTriangle size={32} style={{ color: 'var(--accent-yellow)', marginBottom: '0.5rem' }} />
                                                         <br />Nenhum registro de perda encontrado.
                                                     </td>
@@ -1862,6 +1866,17 @@ export default function LogisticsHub() {
                                                             </span>
                                                         </td>
                                                         <td style={{ color: 'var(--text-secondary)' }}>{rec.unit}</td>
+                                                        <td>
+                                                            <span style={{
+                                                                background: 'rgba(99,102,241,0.12)',
+                                                                border: '1px solid rgba(99,102,241,0.35)',
+                                                                color: '#a5b4fc',
+                                                                padding: '0.2rem 0.6rem',
+                                                                borderRadius: '4px',
+                                                                fontSize: '0.75rem',
+                                                                fontWeight: '700'
+                                                            }}>{rec.sector || 'N/A'}</span>
+                                                        </td>
                                                         <td>
                                                             {rec.reason === 'Outros' ? (
                                                                 <span 
@@ -2089,6 +2104,30 @@ export default function LogisticsHub() {
                             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
                                 Selecione a causa do descarte de <strong>{pendingQty} {pendingProduct.unit}</strong> de <strong>{pendingProduct.name}</strong>:
                             </p>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Setor Responsável</label>
+                                <select
+                                    value={selectedLossSector}
+                                    onChange={(e) => setSelectedLossSector(e.target.value)}
+                                    style={{
+                                        width: '100%',
+                                        padding: '0.75rem',
+                                        background: 'rgba(255,255,255,0.05)',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: '8px',
+                                        color: selectedLossSector ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                        fontSize: '0.9rem',
+                                        outline: 'none',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <option value="">-- Selecione o setor --</option>
+                                    {sectors.map(s => (
+                                        <option key={s.id} value={s.name}>{s.name}</option>
+                                    ))}
+                                </select>
+                            </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                                 {[
