@@ -3134,19 +3134,60 @@ export default function SettingsHub() {
                                                     </div>
                                                     <div>
                                                         <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>WhatsApp</label>
-                                                        <input 
-                                                            type="text" placeholder="(00) 00000-0000"
-                                                            value={cont.whatsapp} 
-                                                            onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                setFornForm(prev => {
-                                                                    const list = [...prev.contatos];
-                                                                    list[index] = { ...list[index], whatsapp: val };
-                                                                    return { ...prev, contatos: list };
-                                                                });
-                                                            }}
-                                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                                        />
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                            <input 
+                                                                type="text" placeholder="(00) 00000-0000"
+                                                                value={cont.whatsapp} 
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    setFornForm(prev => {
+                                                                        const list = [...prev.contatos];
+                                                                        list[index] = { ...list[index], whatsapp: val };
+                                                                        return { ...prev, contatos: list };
+                                                                    });
+                                                                }}
+                                                                style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', width: '100%' }}
+                                                            />
+                                                            {(cont.whatsapp || '').replace(/\D/g, '').length > 0 && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        let clean = (cont.whatsapp || '').replace(/\D/g, '');
+                                                                        if (clean.length === 10 || clean.length === 11) {
+                                                                            clean = '55' + clean;
+                                                                        }
+                                                                        window.open(`https://wa.me/${clean}`, '_blank');
+                                                                    }}
+                                                                    title="Abrir WhatsApp"
+                                                                    style={{
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        width: '38px',
+                                                                        height: '38px',
+                                                                        borderRadius: '8px',
+                                                                        border: 'none',
+                                                                        background: '#25D366',
+                                                                        color: '#fff',
+                                                                        cursor: 'pointer',
+                                                                        transition: 'all 0.2s ease',
+                                                                        flexShrink: 0
+                                                                    }}
+                                                                    onMouseOver={(e) => {
+                                                                        e.currentTarget.style.background = '#20ba56';
+                                                                        e.currentTarget.style.transform = 'scale(1.05)';
+                                                                    }}
+                                                                    onMouseOut={(e) => {
+                                                                        e.currentTarget.style.background = '#25D366';
+                                                                        e.currentTarget.style.transform = 'scale(1)';
+                                                                    }}
+                                                                >
+                                                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                                                        <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.717-1.456L0 24zm6.59-4.846c1.6.95 3.188 1.449 4.825 1.451 5.436 0 9.86-4.37 9.864-9.799.002-2.63-1.023-5.101-2.885-6.965C16.588 1.977 14.113 1.96 11.517 1.96c-5.44 0-9.866 4.372-9.87 9.802 0 1.964.517 3.598 1.502 5.093l-1.015 3.702 3.833-.983zm12.305-6.095c-.328-.163-1.94-.949-2.24-1.058-.3-.109-.519-.163-.737.163-.219.327-.848 1.058-1.038 1.277-.19.218-.38.245-.708.082-.328-.163-1.383-.504-2.63-1.602-.971-.856-1.627-1.914-1.817-2.241-.19-.327-.02-.504.144-.666.148-.146.328-.382.492-.573.164-.19.219-.327.328-.545.11-.218.055-.408-.027-.573-.082-.164-.737-1.748-1.01-2.403-.266-.632-.537-.547-.737-.557l-.629-.01c-.218 0-.573.082-.873.408-.3.327-1.147 1.107-1.147 2.698 0 1.59 1.173 3.125 1.336 3.342.164.218 2.308 3.486 5.592 4.887.781.332 1.39.53 1.868.68.784.246 1.498.211 2.062.128.629-.092 1.94-.784 2.212-1.543.273-.76.273-1.41.19-1.543-.082-.132-.3-.218-.627-.382z" />
+                                                                    </svg>
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
 
