@@ -2247,7 +2247,20 @@ export default function SettingsHub() {
                                                 </div>
                                                 <div>
                                                     <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Cargo / Função</label>
-                                                    <input type="text" required value={colabForm.role} onChange={(e) => setColabForm(prev => ({ ...prev, role: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                    <select 
+                                                        required 
+                                                        value={colabForm.role} 
+                                                        onChange={(e) => setColabForm(prev => ({ ...prev, role: e.target.value }))} 
+                                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                                    >
+                                                        <option value="">Selecione...</option>
+                                                        {cargos.map(cargo => (
+                                                            <option key={cargo.id} value={cargo.name}>{cargo.name}</option>
+                                                        ))}
+                                                        {colabForm.role && !cargos.some(c => c.name === colabForm.role) && (
+                                                            <option value={colabForm.role}>{colabForm.role} (Não Cadastrado)</option>
+                                                        )}
+                                                    </select>
                                                 </div>
                                                 <div>
                                                     <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>CPF</label>
@@ -2271,7 +2284,16 @@ export default function SettingsHub() {
                                                 </div>
                                                 <div>
                                                     <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Sexo / Gênero</label>
-                                                    <input type="text" value={colabForm.gender} onChange={(e) => setColabForm(prev => ({ ...prev, gender: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                                    <select 
+                                                        value={colabForm.gender} 
+                                                        onChange={(e) => setColabForm(prev => ({ ...prev, gender: e.target.value }))} 
+                                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                                    >
+                                                        <option value="">Selecione...</option>
+                                                        <option value="Masculino">Masculino</option>
+                                                        <option value="Feminino">Feminino</option>
+                                                        <option value="Não Definido">Não Definido</option>
+                                                    </select>
                                                 </div>
                                                 <div>
                                                     <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Estado Civil</label>
@@ -2358,8 +2380,20 @@ export default function SettingsHub() {
                                 {colabActiveSection === 'trabalhistas' && (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
                                         <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Departamento / Setor</label>
-                                            <input type="text" value={colabForm.department} onChange={(e) => setColabForm(prev => ({ ...prev, department: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Setor</label>
+                                            <select 
+                                                value={colabForm.department} 
+                                                onChange={(e) => setColabForm(prev => ({ ...prev, department: e.target.value }))} 
+                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                            >
+                                                <option value="">Selecione...</option>
+                                                {setores.map(setor => (
+                                                    <option key={setor.id} value={setor.name}>{setor.name}</option>
+                                                ))}
+                                                {colabForm.department && !setores.some(s => s.name === colabForm.department) && (
+                                                    <option value={colabForm.department}>{colabForm.department} (Não Cadastrado)</option>
+                                                )}
+                                            </select>
                                         </div>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Tipo de Contrato</label>
@@ -2393,11 +2427,11 @@ export default function SettingsHub() {
                                             <input type="number" step="0.1" placeholder="0,0" value={colabForm.commission} onChange={(e) => setColabForm(prev => ({ ...prev, commission: parseFloat(e.target.value) || 0 }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
                                         </div>
                                         <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Vale Alimentação (R$)</label>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Vale Alimentação Diário (R$)</label>
                                             <input type="text" placeholder="0,00" value={formatCurrencyValue(colabForm.va)} onChange={(e) => handleCurrencyInputChange(e, 'va')} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
                                         </div>
                                         <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Vale Transporte (R$)</label>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Vale Transporte Diário (R$)</label>
                                             <input type="text" placeholder="0,00" value={formatCurrencyValue(colabForm.vt)} onChange={(e) => handleCurrencyInputChange(e, 'vt')} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
                                         </div>
                                     </div>
@@ -2407,12 +2441,54 @@ export default function SettingsHub() {
                                 {colabActiveSection === 'cargaHoraria' && (
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
                                         <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Escala (Ex: 6x1, 5x2, 12x36)</label>
-                                            <input type="text" value={colabForm.scale} onChange={(e) => setColabForm(prev => ({ ...prev, scale: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Escala</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="6" 
+                                                    value={(() => {
+                                                        const parts = (colabForm.scale || '').split(/x/i);
+                                                        return parts[0] || '';
+                                                    })()} 
+                                                    onChange={(e) => {
+                                                        const num = e.target.value.replace(/\D/g, '');
+                                                        const parts = (colabForm.scale || '').split(/x/i);
+                                                        const right = parts[1] || '';
+                                                        setColabForm(prev => ({ ...prev, scale: num ? `${num}x${right}` : '' }));
+                                                    }} 
+                                                    style={{ width: '45%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', textAlign: 'center' }} 
+                                                />
+                                                <span style={{ color: 'var(--text-secondary)', fontWeight: 'bold' }}>X</span>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="1" 
+                                                    value={(() => {
+                                                        const parts = (colabForm.scale || '').split(/x/i);
+                                                        return parts[1] || '';
+                                                    })()} 
+                                                    onChange={(e) => {
+                                                        const num = e.target.value.replace(/\D/g, '');
+                                                        const parts = (colabForm.scale || '').split(/x/i);
+                                                        const left = parts[0] || '';
+                                                        setColabForm(prev => ({ ...prev, scale: left ? `${left}x${num}` : num }));
+                                                    }} 
+                                                    style={{ width: '45%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', textAlign: 'center' }} 
+                                                />
+                                            </div>
                                         </div>
                                         <div>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Turno (Ex: Manhã, Tarde, Noite)</label>
-                                            <input type="text" value={colabForm.shift} onChange={(e) => setColabForm(prev => ({ ...prev, shift: e.target.value }))} style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }} />
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Turno</label>
+                                            <select 
+                                                value={colabForm.shift} 
+                                                onChange={(e) => setColabForm(prev => ({ ...prev, shift: e.target.value }))} 
+                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                            >
+                                                <option value="">Selecione...</option>
+                                                <option value="Manhã">Manhã</option>
+                                                <option value="Tarde">Tarde</option>
+                                                <option value="Noite">Noite</option>
+                                                <option value="Integral">Integral</option>
+                                            </select>
                                         </div>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Horário de Início</label>
