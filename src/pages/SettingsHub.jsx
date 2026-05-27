@@ -9,6 +9,7 @@ import { createPortal } from 'react-dom';
 import { useCorelluxState, loadUsers, get, set } from '../store/corellux-state';
 import DbService from '../services/db-service';
 import { getUserAvatar } from '../utils/initial-data';
+import { DEFAULT_BANKS } from '../utils/bank-list';
 import { 
     Users, 
     Boxes, 
@@ -126,6 +127,20 @@ export default function SettingsHub() {
     const [tempLinkedProducts, setTempLinkedProducts] = useState([]);
     const [tempNotes, setTempNotes] = useState([]);
     const [newNoteText, setNewNoteText] = useState('');
+
+    const [bankList, setBankList] = useState(() => {
+        const local = localStorage.getItem('corellux_banks');
+        if (local) {
+            try {
+                return JSON.parse(local);
+            } catch (e) {
+                console.error('Error parsing corellux_banks:', e);
+            }
+        }
+        localStorage.setItem('corellux_banks', JSON.stringify(DEFAULT_BANKS));
+        return DEFAULT_BANKS;
+    });
+    const [showBancoDropdown, setShowBancoDropdown] = useState(false);
 
     // Collaborator form states
     const [colabOpenSections, setColabOpenSections] = useState({
@@ -1031,6 +1046,43 @@ export default function SettingsHub() {
         const num = parseInt(prazo);
         if (isNaN(num)) return prazo;
         return `${num} ${num === 1 ? 'dia' : 'dias'}`;
+    };
+
+    const handleSelectBank = (bank) => {
+        setFornForm(prev => ({
+            ...prev,
+            financeiro: { ...prev.financeiro, banco: bank }
+        }));
+        setShowBancoDropdown(false);
+    };
+
+    const handleBancoKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const typedValue = (fornForm.financeiro.banco || '').trim();
+            if (!typedValue) return;
+
+            const match = bankList.find(b => b.toLowerCase() === typedValue.toLowerCase());
+            if (match) {
+                setFornForm(prev => ({
+                    ...prev,
+                    financeiro: { ...prev.financeiro, banco: match }
+                }));
+                setShowBancoDropdown(false);
+            } else {
+                const confirmAdd = window.confirm(`O banco "${typedValue}" não está cadastrado. Deseja adicionar este novo banco à lista?`);
+                if (confirmAdd) {
+                    const newList = [...bankList, typedValue].sort();
+                    setBankList(newList);
+                    localStorage.setItem('corellux_banks', JSON.stringify(newList));
+                    setFornForm(prev => ({
+                        ...prev,
+                        financeiro: { ...prev.financeiro, banco: typedValue }
+                    }));
+                    setShowBancoDropdown(false);
+                }
+            }
+        }
     };
 
     // =============================================
@@ -2769,14 +2821,47 @@ export default function SettingsHub() {
                                         </div>
                                     </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                                        <div>
+                                        <div style={{ position: 'relative' }}>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Banco</label>
                                             <input 
                                                 type="text" 
                                                 value={fornForm.financeiro.banco} 
-                                                onChange={(e) => setFornForm(prev => ({ ...prev, financeiro: { ...prev.financeiro, banco: e.target.value } }))}
+                                                onChange={(e) => {
+                                                    setFornForm(prev => ({ ...prev, financeiro: { ...prev.financeiro, banco: e.target.value } }));
+                                                    setShowBancoDropdown(true);
+                                                }}
+                                                onFocus={() => setShowBancoDropdown(true)}
+                                                onBlur={() => setTimeout(() => setShowBancoDropdown(false), 200)}
+                                                onKeyDown={handleBancoKeyDown}
                                                 style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                                placeholder="Busque ou digite o banco..."
                                             />
+                                            {showBancoDropdown && (
+                                                (() => {
+                                                    const filtered = bankList.filter(b => 
+                                                        b.toLowerCase().includes((fornForm.financeiro.banco || '').toLowerCase())
+                                                    );
+                                                    return (
+                                                        <div className="bank-dropdown-container">
+                                                            {filtered.length > 0 ? (
+                                                                filtered.map((bank, idx) => (
+                                                                    <div 
+                                                                        key={idx} 
+                                                                        className="bank-dropdown-item"
+                                                                        onMouseDown={() => handleSelectBank(bank)}
+                                                                    >
+                                                                        {bank}
+                                                                    </div>
+                                                                ))
+                                                            ) : (
+                                                                <div style={{ padding: '0.5rem 1rem', color: 'var(--text-secondary)', fontSize: '0.85rem', fontStyle: 'italic' }}>
+                                                                    Pressione [Enter] para cadastrar: "{(fornForm.financeiro.banco || '').trim()}"
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })()
+                                            )}
                                         </div>
                                         <div>
                                             <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Chave PIX</label>
@@ -2931,6 +3016,31 @@ export default function SettingsHub() {
                         transform: translateY(0) scale(1);
                         opacity: 1;
                     }
+                }
+                .bank-dropdown-item {
+                    padding: 0.5rem 1rem;
+                    cursor: pointer;
+                    color: var(--text-primary);
+                    font-size: 0.85rem;
+                    transition: background 0.2s;
+                }
+                .bank-dropdown-item:hover {
+                    background: rgba(255, 255, 255, 0.08);
+                }
+                .bank-dropdown-container {
+                    position: absolute;
+                    top: 100%;
+                    left: 0;
+                    right: 0;
+                    background: rgba(20, 20, 25, 0.95);
+                    backdrop-filter: blur(10px);
+                    border: 1px solid var(--border-color);
+                    border-radius: 8px;
+                    z-index: 10000;
+                    max-height: 200px;
+                    overflow-y: auto;
+                    margin-top: 0.2rem;
+                    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
                 }
             `}</style>
 
