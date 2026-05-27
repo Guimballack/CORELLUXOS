@@ -2417,9 +2417,9 @@ export default function LogisticsHub() {
                                                                             <div style={{ fontWeight: '600', color: '#e2e8f0' }}>{item.name}</div>
                                                                             <div style={{ fontSize: '0.75rem', color: '#64748b' }}>{item.sku}</div>
                                                                         </td>
-                                                                        <td style={{ color: '#e2e8f0' }}>{item.volume} {item.unit}</td>
-                                                                        <td style={{ color: '#94a3b8' }}>R$ {item.cost.toFixed(2)}</td>
-                                                                        <td style={{ color: '#e2e8f0', fontWeight: '600' }}>R$ {item.value.toFixed(2)}</td>
+                                                                        <td style={{ color: '#e2e8f0' }}>{formatDailyConsumption(item.volume, item.unit)} {item.unit}</td>
+                                                                        <td style={{ color: '#94a3b8' }}>R$ {item.cost.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                                        <td style={{ color: '#e2e8f0', fontWeight: '600' }}>R$ {item.value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                                                         <td style={{ color: '#94a3b8' }}>{item.cumulativePercentage.toFixed(1)}%</td>
                                                                         <td>
                                                                             <span style={{ padding: '0.35rem 0.8rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: '700', background: `${abcColor}20`, color: abcColor, border: `1px solid ${abcColor}44` }}>Classe {item.abcClass}</span>
