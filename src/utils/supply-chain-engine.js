@@ -127,14 +127,17 @@ export function detectAnomalies(history) {
         const iqr = q3 - q1;
         const lower = q1 - 1.5 * iqr;
         const upper = q3 + 1.5 * iqr;
+        const roundedLower = Math.round(lower);
+        const roundedUpper = Math.round(upper);
 
         recs.forEach(r => {
-            const isOut = r.qty > upper || r.qty < Math.max(0, lower);
+            const roundedQty = Math.round(r.qty);
+            const isOut = roundedQty > roundedUpper || roundedQty < Math.max(0, roundedLower);
             result.push({
                 ...r,
                 isAnomaly: isOut,
-                expectedMin: Math.round(lower),
-                expectedMax: Math.round(upper),
+                expectedMin: roundedLower,
+                expectedMax: roundedUpper,
             });
         });
     });
