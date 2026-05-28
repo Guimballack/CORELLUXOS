@@ -564,6 +564,17 @@ export default function SettingsHub() {
             return;
         }
 
+        // Limit positions A–J (max 10)
+        const ALLOWED_POSITIONS = ['A','B','C','D','E','F','G','H','I','J'];
+        if (positions.length > 10) {
+            showToast('Máximo de 10 posições fracionadas (A a J) permitidas.', 'error');
+            return;
+        }
+        if (positions.some(p => !ALLOWED_POSITIONS.includes(p.toUpperCase()))) {
+            showToast('Posições fracionadas devem ser letras de A a J.', 'error');
+            return;
+        }
+
         const combinations = [];
         for (const aisle of aisles) {
             for (const row of rows) {
@@ -3123,9 +3134,9 @@ export default function SettingsHub() {
                                                                                                             style={{
                                                                                                                 padding: '0.3rem 1rem',
                                                                                                                 borderRadius: '6px',
-                                                                                                                border: wmsLocFilterRow === row ? '1px solid var(--accent-purple, #a78bfa)' : '1px solid var(--border-color)',
-                                                                                                                background: wmsLocFilterRow === row ? 'rgba(167,139,250,0.2)' : 'rgba(0,0,0,0.2)',
-                                                                                                                color: wmsLocFilterRow === row ? '#c4b5fd' : 'var(--text-secondary)',
+                                                                                                                border: wmsLocFilterRow === row ? '1px solid var(--accent-blue)' : '1px solid var(--border-color)',
+                                                                                                                background: wmsLocFilterRow === row ? 'rgba(59,130,246,0.2)' : 'rgba(0,0,0,0.2)',
+                                                                                                                color: wmsLocFilterRow === row ? 'white' : 'var(--text-secondary)',
                                                                                                                 fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer'
                                                                                                             }}
                                                                                                         >
@@ -3193,8 +3204,8 @@ export default function SettingsHub() {
                                                                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', justifyContent: 'flex-start' }}>
                                                                                                             {/* spacer for header row */}
                                                                                                             <div style={{ height: '28px' }} />
-                                                                                                            {(hasHeights ? heightLetters : ['\u2014']).map(h => (
-                                                                                                                <div key={h} style={{ height: '56px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '6px', fontSize: '0.75rem', fontWeight: '700', color: '#a78bfa', minWidth: '36px' }}>
+                                                                                                            {(hasHeights ? heightLetters : ['—']).map(h => (
+                                                                                                                <div key={h} style={{ height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '6px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--accent-blue)', minWidth: '40px' }}>
                                                                                                                     Alt. {h}
                                                                                                                 </div>
                                                                                                             ))}
@@ -3205,13 +3216,13 @@ export default function SettingsHub() {
                                                                                                             {/* X-axis header (shelf numbers) */}
                                                                                                             <div style={{ display: 'flex', gap: '4px' }}>
                                                                                                                 {shelfNums.map(num => (
-                                                                                                                    <div key={num} style={{ flex: 1, height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: '800', color: 'var(--accent-blue)', background: 'rgba(59,130,246,0.08)', borderRadius: '4px', minWidth: '60px' }}>
+                                                                                                                    <div key={num} style={{ flex: 1, height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: '800', color: 'var(--accent-blue)', background: 'rgba(59,130,246,0.08)', borderRadius: '4px', minWidth: '70px' }}>
                                                                                                                         Prat. {num}
                                                                                                                     </div>
                                                                                                                 ))}
                                                                                                             </div>
 
-                                                                                                            {/* Rows: one per height letter (top=highest) */}
+                                                                                                            {/* Grid rows: one per height letter (top = highest) */}
                                                                                                             {(hasHeights ? heightLetters : ['']).map(h => (
                                                                                                                 <div key={h} style={{ display: 'flex', gap: '4px' }}>
                                                                                                                     {shelfNums.map(num => {
@@ -3221,74 +3232,67 @@ export default function SettingsHub() {
                                                                                                                             .sort((a,b) => (a.position||'').localeCompare(b.position||''));
 
                                                                                                                         const allAtivo = cellLocs.length > 0 && cellLocs.every(l => l.status === 'Ativo');
-                                                                                                                        const allBloqueado = cellLocs.length > 0 && cellLocs.every(l => l.status === 'Bloqueado');
-                                                                                                                        const mixed = cellLocs.length > 0 && !allAtivo && !allBloqueado;
-
-                                                                                                                        const bgColor = cellLocs.length === 0
-                                                                                                                            ? 'rgba(255,255,255,0.02)'
-                                                                                                                            : allAtivo ? 'rgba(34,197,94,0.08)'
-                                                                                                                            : allBloqueado ? 'rgba(239,68,68,0.08)'
-                                                                                                                            : 'rgba(251,191,36,0.08)';
-
-                                                                                                                        const borderColor = cellLocs.length === 0
+                                                                                                                        const allBloq  = cellLocs.length > 0 && cellLocs.every(l => l.status === 'Bloqueado');
+                                                                                                                        const outerBorder = cellLocs.length === 0
                                                                                                                             ? 'rgba(255,255,255,0.04)'
-                                                                                                                            : allAtivo ? 'rgba(34,197,94,0.35)'
-                                                                                                                            : allBloqueado ? 'rgba(239,68,68,0.35)'
-                                                                                                                            : 'rgba(251,191,36,0.35)';
-
-                                                                                                                        const textColor = allAtivo ? 'var(--accent-green)'
-                                                                                                                            : allBloqueado ? 'var(--accent-red)'
-                                                                                                                            : mixed ? '#fbbf24'
-                                                                                                                            : 'var(--text-secondary)';
+                                                                                                                            : allAtivo  ? 'rgba(34,197,94,0.45)'
+                                                                                                                            : allBloq   ? 'rgba(239,68,68,0.45)'
+                                                                                                                            : 'rgba(251,191,36,0.45)';
+                                                                                                                        const outerBg = cellLocs.length === 0 ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.18)';
 
                                                                                                                         return (
                                                                                                                             <div
                                                                                                                                 key={num}
                                                                                                                                 title={cellLocs.length > 0 ? `${shelfCode}: ${cellLocs.map(l => formatAddressVisual(selectedZone,l.aisle,l.row,l.shelf,l.position)).join(' | ')}` : `Prat. ${shelfCode} — vazia`}
-                                                                                                                                onClick={() => cellLocs.length === 1 && handleToggleLocationStatus(cellLocs[0])}
                                                                                                                                 style={{
-                                                                                                                                    flex: 1, minWidth: '60px', height: '56px',
+                                                                                                                                    flex: 1, minWidth: '70px', height: '64px',
                                                                                                                                     borderRadius: '6px',
-                                                                                                                                    border: `1px solid ${borderColor}`,
-                                                                                                                                    background: bgColor,
-                                                                                                                                    display: 'flex', flexDirection: 'column',
-                                                                                                                                    justifyContent: 'center', alignItems: 'center',
-                                                                                                                                    cursor: cellLocs.length === 1 ? 'pointer' : 'default',
+                                                                                                                                    border: `1px solid ${outerBorder}`,
+                                                                                                                                    background: outerBg,
+                                                                                                                                    display: 'flex',
+                                                                                                                                    flexDirection: 'row', // fractions side by side
+                                                                                                                                    overflow: 'hidden',
+                                                                                                                                    boxSizing: 'border-box',
                                                                                                                                     transition: 'all 0.15s',
-                                                                                                                                    boxSizing: 'border-box', padding: '3px 2px'
                                                                                                                                 }}
-                                                                                                                                onMouseEnter={e => { if (cellLocs.length > 0) e.currentTarget.style.transform = 'scale(1.03)'; }}
-                                                                                                                                onMouseLeave={e => { e.currentTarget.style.transform = 'none'; }}
                                                                                                                             >
                                                                                                                                 {cellLocs.length === 0 ? (
-                                                                                                                                    <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.1)' }}>—</span>
+                                                                                                                                    // Empty cell
+                                                                                                                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                                                                                        <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.08)' }}>—</span>
+                                                                                                                                    </div>
                                                                                                                                 ) : (
-                                                                                                                                    <>
-                                                                                                                                        <span style={{ fontSize: '0.72rem', fontWeight: '800', color: textColor }}>{shelfCode}</span>
-                                                                                                                                        {cellLocs.length === 1 && cellLocs[0].position && (
-                                                                                                                                            <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', marginTop: '1px' }}>{cellLocs[0].position}</span>
-                                                                                                                                        )}
-                                                                                                                                        {cellLocs.length > 1 && (
-                                                                                                                                            <div style={{ display: 'flex', gap: '2px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '2px' }}>
-                                                                                                                                                {cellLocs.map(l => (
-                                                                                                                                                    <span
-                                                                                                                                                        key={l.id}
-                                                                                                                                                        onClick={ev => { ev.stopPropagation(); handleToggleLocationStatus(l); }}
-                                                                                                                                                        title={`${formatAddressVisual(selectedZone,l.aisle,l.row,l.shelf,l.position)} — clique para alterar`}
-                                                                                                                                                        style={{
-                                                                                                                                                            fontSize: '0.6rem', fontWeight: '700', cursor: 'pointer',
-                                                                                                                                                            background: l.status === 'Ativo' ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)',
-                                                                                                                                                            color: l.status === 'Ativo' ? 'var(--accent-green)' : 'var(--accent-red)',
-                                                                                                                                                            border: l.status === 'Ativo' ? '1px solid rgba(34,197,94,0.4)' : '1px solid rgba(239,68,68,0.4)',
-                                                                                                                                                            borderRadius: '3px', padding: '0 3px'
-                                                                                                                                                        }}
-                                                                                                                                                    >
-                                                                                                                                                        {l.position}
-                                                                                                                                                    </span>
-                                                                                                                                                ))}
+                                                                                                                                    // Fractional positions — divide cell into N equal vertical strips (up to 10 max)
+                                                                                                                                    cellLocs.slice(0, 10).map((loc, idx) => {
+                                                                                                                                        const isAtivo = loc.status === 'Ativo';
+                                                                                                                                        const stripColor = isAtivo ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)';
+                                                                                                                                        const stripBorder = isAtivo ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)';
+                                                                                                                                        const textClr = isAtivo ? 'var(--accent-green)' : 'var(--accent-red)';
+                                                                                                                                        return (
+                                                                                                                                            <div
+                                                                                                                                                key={loc.id}
+                                                                                                                                                onClick={() => handleToggleLocationStatus(loc)}
+                                                                                                                                                title={`${formatAddressVisual(selectedZone,loc.aisle,loc.row,loc.shelf,loc.position)} — clique para alterar`}
+                                                                                                                                                style={{
+                                                                                                                                                    flex: 1,
+                                                                                                                                                    height: '100%',
+                                                                                                                                                    display: 'flex',
+                                                                                                                                                    flexDirection: 'column',
+                                                                                                                                                    alignItems: 'center',
+                                                                                                                                                    justifyContent: 'center',
+                                                                                                                                                    background: stripColor,
+                                                                                                                                                    borderLeft: idx > 0 ? `1px solid ${stripBorder}` : 'none',
+                                                                                                                                                    cursor: 'pointer',
+                                                                                                                                                    transition: 'background 0.12s',
+                                                                                                                                                    gap: '1px',
+                                                                                                                                                }}
+                                                                                                                                                onMouseEnter={e => e.currentTarget.style.background = isAtivo ? 'rgba(34,197,94,0.28)' : 'rgba(239,68,68,0.28)'}
+                                                                                                                                                onMouseLeave={e => e.currentTarget.style.background = stripColor}
+                                                                                                                                            >
+                                                                                                                                                <span style={{ fontSize: '0.65rem', fontWeight: '800', color: textClr, lineHeight: 1 }}>{loc.position || '1'}</span>
                                                                                                                                             </div>
-                                                                                                                                        )}
-                                                                                                                                    </>
+                                                                                                                                        );
+                                                                                                                                    })
                                                                                                                                 )}
                                                                                                                             </div>
                                                                                                                         );
