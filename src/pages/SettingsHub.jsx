@@ -128,6 +128,8 @@ export default function SettingsHub() {
         rowEnd: 'C',
         shelfStart: '1',
         shelfEnd: '4',
+        shelfHeightStart: 'A',  // Altura início (A, B, C, D…)
+        shelfHeightEnd: 'D',    // Altura fim
         subdivisionType: 'Nenhuma', // Nenhuma, AB, ABC, Customizado
         subdivisionCustom: ''
     });
@@ -544,6 +546,7 @@ export default function SettingsHub() {
         const aisles = getRange(batchLocationForm.aisleStart, batchLocationForm.aisleEnd);
         const rows = getRange(batchLocationForm.rowStart, batchLocationForm.rowEnd);
         const shelves = getRange(batchLocationForm.shelfStart, batchLocationForm.shelfEnd);
+        const heights = getRange(batchLocationForm.shelfHeightStart, batchLocationForm.shelfHeightEnd);
         
         let positions = [];
         if (batchLocationForm.subdivisionType === 'AB') {
@@ -556,7 +559,7 @@ export default function SettingsHub() {
                 : [];
         }
 
-        if (aisles.length === 0 || rows.length === 0 || shelves.length === 0) {
+        if (aisles.length === 0 || rows.length === 0 || shelves.length === 0 || heights.length === 0) {
             showToast('Intervalos inválidos. Verifique os valores.', 'error');
             return;
         }
@@ -565,12 +568,16 @@ export default function SettingsHub() {
         for (const aisle of aisles) {
             for (const row of rows) {
                 for (const shelf of shelves) {
-                    if (positions.length > 0) {
-                        for (const pos of positions) {
-                            combinations.push({ aisle, row, shelf, position: pos, status: 'Ativo' });
+                    for (const height of heights) {
+                        // shelf stored as "shelf+height" compound e.g. "5D"
+                        const shelfCode = `${shelf}${height}`;
+                        if (positions.length > 0) {
+                            for (const pos of positions) {
+                                combinations.push({ aisle, row, shelf: shelfCode, position: pos, status: 'Ativo' });
+                            }
+                        } else {
+                            combinations.push({ aisle, row, shelf: shelfCode, position: null, status: 'Ativo' });
                         }
-                    } else {
-                        combinations.push({ aisle, row, shelf, position: null, status: 'Ativo' });
                     }
                 }
             }
@@ -625,15 +632,17 @@ export default function SettingsHub() {
     };
 
     const formatAddressVisual = (zone, aisle, row, shelf, position) => {
+        // shelf already contains the compound code e.g. "5D" (number=prateleira, letter=altura)
         const whAcronym = (selectedWarehouse?.acronym || 'BC').substring(0, 2).toUpperCase();
         const zoneName = (zone?.name || 'EMC').substring(0, 3).toUpperCase();
         const parts = [`${whAcronym}-${zoneName}`];
         if (aisle || row) {
             parts.push(`${aisle || ''}${row || ''}`);
         }
-        if (shelf) parts.push(shelf);
-        if (position) parts.push(position);
+        if (shelf) parts.push(shelf);      // e.g. 5D  (prateleira 5, altura D)
+        if (position) parts.push(position); // e.g. A   (fracionado)
         return parts.join('-');
+        // Result example: BC-EMC-2B-5D-A
     };
 
 
@@ -5966,6 +5975,7 @@ export default function SettingsHub() {
                                 </div>
                             </div>
 
+                            {/* Prateleira (número) */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div className="card-input-group">
                                     <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Prateleira/Nível (Início)</label>
@@ -5979,13 +5989,38 @@ export default function SettingsHub() {
                                 <div className="card-input-group">
                                     <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Prateleira/Nível (Fim)</label>
                                     <input 
-                                        type="text" required placeholder="Ex: 4"
+                                        type="text" required placeholder="Ex: 5"
                                         value={batchLocationForm.shelfEnd}
                                         onChange={(e) => setBatchLocationForm({ ...batchLocationForm, shelfEnd: e.target.value })}
                                         style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
                                     />
                                 </div>
                             </div>
+
+                            {/* Altura dentro da prateleira (letra) */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Altura na Prateleira (Início)</label>
+                                    <input 
+                                        type="text" required placeholder="Ex: A"
+                                        value={batchLocationForm.shelfHeightStart}
+                                        onChange={(e) => setBatchLocationForm({ ...batchLocationForm, shelfHeightStart: e.target.value.toUpperCase() })}
+                                        style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Altura na Prateleira (Fim)</label>
+                                    <input 
+                                        type="text" required placeholder="Ex: D"
+                                        value={batchLocationForm.shelfHeightEnd}
+                                        onChange={(e) => setBatchLocationForm({ ...batchLocationForm, shelfHeightEnd: e.target.value.toUpperCase() })}
+                                        style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                            </div>
+                            <small style={{ display: 'block', marginTop: '-0.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                A altura é concatenada ao número da prateleira. Ex: prateleira <code>5</code> + altura <code>D</code> → código <code>5D</code> no endereço.
+                            </small>
 
                                  <div className="card-input-group">
                                      <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Subdivisão Interna da Prateleira (Lados)</label>
@@ -6023,21 +6058,23 @@ export default function SettingsHub() {
                                      const aisles = getRange(batchLocationForm.aisleStart, batchLocationForm.aisleEnd);
                                      const rows = getRange(batchLocationForm.rowStart, batchLocationForm.rowEnd);
                                      const shelves = getRange(batchLocationForm.shelfStart, batchLocationForm.shelfEnd);
+                                     const heights = getRange(batchLocationForm.shelfHeightStart, batchLocationForm.shelfHeightEnd);
                                      
                                      let positions = [];
                                      if (batchLocationForm.subdivisionType === 'AB') {
-                                         positions = ['Lado A', 'Lado B'];
+                                         positions = ['A', 'B'];
                                      } else if (batchLocationForm.subdivisionType === 'ABC') {
-                                         positions = ['Lado A', 'Lado B', 'Lado C'];
+                                         positions = ['A', 'B', 'C'];
                                      } else if (batchLocationForm.subdivisionType === 'Customizado') {
                                          positions = batchLocationForm.subdivisionCustom
-                                             ? batchLocationForm.subdivisionCustom.split(';').map(p => p.trim()).filter(Boolean).map(p => p.startsWith('Lado ') ? p : `Lado ${p}`)
+                                             ? batchLocationForm.subdivisionCustom.split(';').map(p => p.trim()).filter(Boolean)
                                              : [];
                                      }
                                      
-                                     const count = aisles.length * rows.length * shelves.length * (positions.length || 1);
+                                     const count = aisles.length * rows.length * shelves.length * heights.length * (positions.length || 1);
+                                     const previewShelf = shelves[0] && heights[0] ? `${shelves[0]}${heights[0]}` : (shelves[0] || '');
 
-                                     const isValid = count > 0 && aisles[0] !== '' && rows[0] !== '' && shelves[0] !== '' && (batchLocationForm.subdivisionType !== 'Customizado' || positions.length > 0);
+                                     const isValid = count > 0 && aisles[0] !== '' && rows[0] !== '' && shelves[0] !== '' && heights[0] !== '' && (batchLocationForm.subdivisionType !== 'Customizado' || positions.length > 0);
                                      
                                      return (
                                          <div style={{
@@ -6060,7 +6097,7 @@ export default function SettingsHub() {
                                                                  selectedZone, 
                                                                  aisles[0], 
                                                                  rows[0], 
-                                                                 shelves[0], 
+                                                                 previewShelf, 
                                                                  positions[0] || null
                                                              )}
                                                          </code>
