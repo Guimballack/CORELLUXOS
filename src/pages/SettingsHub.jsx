@@ -124,10 +124,9 @@ export default function SettingsHub() {
     const [batchLocationForm, setBatchLocationForm] = useState({
         aisleStart: '1',
         aisleEnd: '3',
-        rowStart: 'A',
-        rowEnd: 'C',
+        // rows are always fixed: A (esquerdo) e B (direito) — os 2 lados de cada corredor
         shelfStart: '1',
-        shelfEnd: '4',
+        shelfEnd: '5',
         shelfHeightStart: 'A',  // Altura início (A, B, C, D…)
         shelfHeightEnd: 'D',    // Altura fim
         subdivisionType: 'Nenhuma', // Nenhuma, AB, ABC, Customizado
@@ -544,7 +543,7 @@ export default function SettingsHub() {
         }
 
         const aisles = getRange(batchLocationForm.aisleStart, batchLocationForm.aisleEnd);
-        const rows = getRange(batchLocationForm.rowStart, batchLocationForm.rowEnd);
+        const rows = ['A', 'B']; // sempre fixo: A = esquerdo, B = direito
         const shelves = getRange(batchLocationForm.shelfStart, batchLocationForm.shelfEnd);
         const heights = getRange(batchLocationForm.shelfHeightStart, batchLocationForm.shelfHeightEnd);
         
@@ -559,7 +558,7 @@ export default function SettingsHub() {
                 : [];
         }
 
-        if (aisles.length === 0 || rows.length === 0 || shelves.length === 0 || heights.length === 0) {
+        if (aisles.length === 0 || shelves.length === 0 || heights.length === 0) {
             showToast('Intervalos inválidos. Verifique os valores.', 'error');
             return;
         }
@@ -5954,24 +5953,14 @@ export default function SettingsHub() {
                                 </div>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div className="card-input-group">
-                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Fileira/Módulo (Início)</label>
-                                    <input 
-                                        type="text" required placeholder="Ex: A ou 1"
-                                        value={batchLocationForm.rowStart}
-                                        onChange={(e) => setBatchLocationForm({ ...batchLocationForm, rowStart: e.target.value })}
-                                        style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
-                                    />
-                                </div>
-                                <div className="card-input-group">
-                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Fileira/Módulo (Fim)</label>
-                                    <input 
-                                        type="text" required placeholder="Ex: C ou 5"
-                                        value={batchLocationForm.rowEnd}
-                                        onChange={(e) => setBatchLocationForm({ ...batchLocationForm, rowEnd: e.target.value })}
-                                        style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
-                                    />
+                            {/* Fileira: sempre A e B (lados do corredor) */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.7rem 1rem', background: 'rgba(99,102,241,0.08)', border: '1px solid rgba(99,102,241,0.25)', borderRadius: '8px' }}>
+                                <span style={{ fontSize: '1.1rem' }}>↔️</span>
+                                <div>
+                                    <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Fileira (Lado do Corredor)</span>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                        Fixo: <code style={{ background: 'rgba(0,0,0,0.3)', padding: '1px 6px', borderRadius: '4px', color: 'var(--accent-blue)' }}>A</code> = Esquerdo &nbsp;|&nbsp; <code style={{ background: 'rgba(0,0,0,0.3)', padding: '1px 6px', borderRadius: '4px', color: 'var(--accent-blue)' }}>B</code> = Direito — cada corredor tem exatamente 2 lados.
+                                    </div>
                                 </div>
                             </div>
 
@@ -6056,7 +6045,7 @@ export default function SettingsHub() {
                                  {/* Live calculation and summary */}
                                  {(() => {
                                      const aisles = getRange(batchLocationForm.aisleStart, batchLocationForm.aisleEnd);
-                                     const rows = getRange(batchLocationForm.rowStart, batchLocationForm.rowEnd);
+                                     const rows = ['A', 'B']; // sempre fixo
                                      const shelves = getRange(batchLocationForm.shelfStart, batchLocationForm.shelfEnd);
                                      const heights = getRange(batchLocationForm.shelfHeightStart, batchLocationForm.shelfHeightEnd);
                                      
@@ -6074,7 +6063,7 @@ export default function SettingsHub() {
                                      const count = aisles.length * rows.length * shelves.length * heights.length * (positions.length || 1);
                                      const previewShelf = shelves[0] && heights[0] ? `${shelves[0]}${heights[0]}` : (shelves[0] || '');
 
-                                     const isValid = count > 0 && aisles[0] !== '' && rows[0] !== '' && shelves[0] !== '' && heights[0] !== '' && (batchLocationForm.subdivisionType !== 'Customizado' || positions.length > 0);
+                                     const isValid = count > 0 && aisles[0] !== '' && shelves[0] !== '' && heights[0] !== '' && (batchLocationForm.subdivisionType !== 'Customizado' || positions.length > 0);
                                      
                                      return (
                                          <div style={{
