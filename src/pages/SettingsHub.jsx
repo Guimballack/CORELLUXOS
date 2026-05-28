@@ -3303,70 +3303,37 @@ export default function SettingsHub() {
                                                                                                                         const outerBg = cellLocs.length === 0 ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.18)';
 
                                                                                                                         return (
-                                                                                                                            /* Outer wrapper: position:relative + overflow:hidden for slide-up edit bar */
+                                                                                                                            /*
+                                                                                                                             * CELL: flex-column layout
+                                                                                                                             *   ┌─────────────────┐
+                                                                                                                             *   │  A  │  B  │  C  │  ← strips (flex:1, ~48px)
+                                                                                                                             *   ├─────────────────┤
+                                                                                                                             *   │  ✏ EDITAR       │  ← fixed bar (20px, always visible)
+                                                                                                                             *   └─────────────────┘
+                                                                                                                             */
                                                                                                                             <div
                                                                                                                                 key={num}
                                                                                                                                 style={{
-                                                                                                                                    flex: 1, minWidth: '70px', position: 'relative',
+                                                                                                                                    flex: 1, minWidth: '70px',
+                                                                                                                                    display: 'flex', flexDirection: 'column',
                                                                                                                                     borderRadius: '6px', overflow: 'hidden',
+                                                                                                                                    border: `1px solid ${outerBorder}`,
+                                                                                                                                    background: outerBg,
+                                                                                                                                    transition: 'border-color 0.15s, box-shadow 0.15s',
+                                                                                                                                    boxSizing: 'border-box',
+                                                                                                                                }}
+                                                                                                                                onMouseEnter={e => {
+                                                                                                                                    if (cellLocs.length === 0) return;
+                                                                                                                                    e.currentTarget.style.boxShadow = '0 0 0 2px rgba(59,130,246,0.55)';
+                                                                                                                                    e.currentTarget.style.borderColor = 'rgba(59,130,246,0.65)';
+                                                                                                                                }}
+                                                                                                                                onMouseLeave={e => {
+                                                                                                                                    e.currentTarget.style.boxShadow = 'none';
+                                                                                                                                    e.currentTarget.style.borderColor = outerBorder;
                                                                                                                                 }}
                                                                                                                             >
-                                                                                                                                {/* ── SLIDE-UP EDIT BAR ── */}
-                                                                                                                                {cellLocs.length > 0 && (
-                                                                                                                                    <button
-                                                                                                                                        className="cell-edit-btn"
-                                                                                                                                        onClick={ev => { ev.stopPropagation(); handleOpenCellEdit(cellLocs, wmsLocFilterAisle, wmsLocFilterRow, shelfCode); }}
-                                                                                                                                        title={`Editar posições fracionadas de ${shelfCode}`}
-                                                                                                                                        style={{
-                                                                                                                                            position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 20,
-                                                                                                                                            height: '24px',
-                                                                                                                                            background: 'linear-gradient(135deg, rgba(37,99,235,0.97) 0%, rgba(59,130,246,0.97) 100%)',
-                                                                                                                                            backdropFilter: 'blur(4px)',
-                                                                                                                                            border: 'none',
-                                                                                                                                            borderTop: '1px solid rgba(147,197,253,0.25)',
-                                                                                                                                            color: 'white',
-                                                                                                                                            cursor: 'pointer',
-                                                                                                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
-                                                                                                                                            fontSize: '0.6rem', fontWeight: '800', letterSpacing: '0.08em', textTransform: 'uppercase',
-                                                                                                                                            transform: 'translateY(100%)',
-                                                                                                                                            transition: 'transform 0.2s cubic-bezier(0.34,1.4,0.64,1)',
-                                                                                                                                            padding: 0, margin: 0,
-                                                                                                                                            boxShadow: '0 -2px 8px rgba(37,99,235,0.4)',
-                                                                                                                                        }}
-                                                                                                                                    >
-                                                                                                                                        <Edit2 size={9} strokeWidth={2.5} />
-                                                                                                                                        EDITAR
-                                                                                                                                    </button>
-                                                                                                                                )}
-
-                                                                                                                                {/* ── CELL BODY ── */}
-                                                                                                                                <div
-                                                                                                                                    title={cellLocs.length > 0
-                                                                                                                                        ? `${shelfCode}: ${cellLocs.map(l => formatAddressVisual(selectedZone,l.aisle,l.row,l.shelf,l.position)).join(' | ')}`
-                                                                                                                                        : `Prat. ${shelfCode} — vazia`}
-                                                                                                                                    style={{
-                                                                                                                                        width: '100%', height: '64px',
-                                                                                                                                        border: `1px solid ${outerBorder}`,
-                                                                                                                                        background: outerBg,
-                                                                                                                                        display: 'flex', flexDirection: 'row',
-                                                                                                                                        overflow: 'hidden', boxSizing: 'border-box',
-                                                                                                                                        transition: 'border-color 0.15s, box-shadow 0.15s',
-                                                                                                                                        borderRadius: '6px',
-                                                                                                                                    }}
-                                                                                                                                    onMouseEnter={e => {
-                                                                                                                                        if (cellLocs.length === 0) return;
-                                                                                                                                        const btn = e.currentTarget.parentElement.querySelector('.cell-edit-btn');
-                                                                                                                                        if (btn) btn.style.transform = 'translateY(0%)';
-                                                                                                                                        e.currentTarget.style.boxShadow = '0 0 0 2px rgba(59,130,246,0.6)';
-                                                                                                                                        e.currentTarget.style.borderColor = 'rgba(59,130,246,0.7)';
-                                                                                                                                    }}
-                                                                                                                                    onMouseLeave={e => {
-                                                                                                                                        const btn = e.currentTarget.parentElement.querySelector('.cell-edit-btn');
-                                                                                                                                        if (btn) btn.style.transform = 'translateY(100%)';
-                                                                                                                                        e.currentTarget.style.boxShadow = 'none';
-                                                                                                                                        e.currentTarget.style.borderColor = outerBorder;
-                                                                                                                                    }}
-                                                                                                                                >
+                                                                                                                                {/* ── TOP: position strips ── */}
+                                                                                                                                <div style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden', minHeight: '44px' }}>
                                                                                                                                     {cellLocs.length === 0 ? (
                                                                                                                                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                                                                                                             <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.08)' }}>—</span>
@@ -3390,7 +3357,6 @@ export default function SettingsHub() {
                                                                                                                                                         borderLeft: idx > 0 ? `1px solid ${stripBorder}` : 'none',
                                                                                                                                                         cursor: 'pointer',
                                                                                                                                                         transition: 'background 0.12s',
-                                                                                                                                                        gap: '1px',
                                                                                                                                                     }}
                                                                                                                                                     onMouseEnter={e => e.currentTarget.style.background = isAtivo ? 'rgba(34,197,94,0.28)' : 'rgba(239,68,68,0.28)'}
                                                                                                                                                     onMouseLeave={e => e.currentTarget.style.background = stripColor}
@@ -3401,6 +3367,40 @@ export default function SettingsHub() {
                                                                                                                                         })
                                                                                                                                     )}
                                                                                                                                 </div>
+
+                                                                                                                                {/* ── BOTTOM: fixed EDITAR button (only when cell has locations) ── */}
+                                                                                                                                {cellLocs.length > 0 && (
+                                                                                                                                    <button
+                                                                                                                                        onClick={ev => { ev.stopPropagation(); handleOpenCellEdit(cellLocs, wmsLocFilterAisle, wmsLocFilterRow, shelfCode); }}
+                                                                                                                                        title={`Editar posições fracionadas de ${shelfCode}`}
+                                                                                                                                        style={{
+                                                                                                                                            flexShrink: 0,
+                                                                                                                                            height: '20px',
+                                                                                                                                            width: '100%',
+                                                                                                                                            background: 'rgba(15,23,42,0.75)',
+                                                                                                                                            borderTop: '1px solid rgba(59,130,246,0.25)',
+                                                                                                                                            border: 'none',
+                                                                                                                                            color: 'rgba(147,197,253,0.85)',
+                                                                                                                                            cursor: 'pointer',
+                                                                                                                                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                                                                                                                                            fontSize: '0.58rem', fontWeight: '800', letterSpacing: '0.09em', textTransform: 'uppercase',
+                                                                                                                                            transition: 'background 0.15s, color 0.15s',
+                                                                                                                                            padding: 0, margin: 0,
+                                                                                                                                            borderTop: '1px solid rgba(59,130,246,0.2)',
+                                                                                                                                        }}
+                                                                                                                                        onMouseEnter={e => {
+                                                                                                                                            e.currentTarget.style.background = 'rgba(37,99,235,0.85)';
+                                                                                                                                            e.currentTarget.style.color = 'white';
+                                                                                                                                        }}
+                                                                                                                                        onMouseLeave={e => {
+                                                                                                                                            e.currentTarget.style.background = 'rgba(15,23,42,0.75)';
+                                                                                                                                            e.currentTarget.style.color = 'rgba(147,197,253,0.85)';
+                                                                                                                                        }}
+                                                                                                                                    >
+                                                                                                                                        <Edit2 size={8} strokeWidth={2.5} />
+                                                                                                                                        EDITAR
+                                                                                                                                    </button>
+                                                                                                                                )}
                                                                                                                             </div>
                                                                                                                         );
                                                                                                                     })}
