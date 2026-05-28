@@ -1443,9 +1443,7 @@ export default function LogisticsHub() {
                                                         </div>
                                                     )}
                                                 </th>
-                                                <th style={{ textAlign: 'center' }}>Mínimo</th>
                                                 <th style={{ textAlign: 'center' }}>Médio</th>
-                                                <th style={{ textAlign: 'center' }}>Máximo</th>
                                                 <th onClick={() => handleSort('avgDailyConsumption')} style={{ cursor: 'pointer', textAlign: 'center', minWidth: '130px' }} className={sortField === 'avgDailyConsumption' ? 'active-sort' : ''}>
                                                     Uso Diário Méd. {sortField === 'avgDailyConsumption' && (sortOrder === 'asc' ? '▲' : '▼')}
                                                 </th>
@@ -1457,7 +1455,7 @@ export default function LogisticsHub() {
                                         <tbody>
                                             {filteredInventory.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan="11" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                                    <td colSpan="9" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                                                         Nenhum produto correspondente aos filtros foi localizado.
                                                     </td>
                                                 </tr>
@@ -1535,13 +1533,25 @@ export default function LogisticsHub() {
                                                                 <td style={{ color: 'var(--text-secondary)' }}>{p.unit}</td>
                                                                 <td><span className="category-tag">{limitChars(p.category, 20)}</span></td>
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                                                    {minVal} {useDynamic && <span style={{ fontSize: '0.65rem', color: 'var(--accent-orange)', marginLeft: '2px' }} title="Dinâmico: 50% abaixo da média">★</span>}
-                                                                </td>
-                                                                <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                                                    {avgVal} {useDynamic && <span style={{ fontSize: '0.65rem', color: 'var(--accent-orange)', marginLeft: '2px' }} title="Dinâmico: Meta × Consumo Diário">★</span>}
-                                                                </td>
-                                                                <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                                                    {maxVal} {useDynamic && <span style={{ fontSize: '0.65rem', color: 'var(--accent-orange)', marginLeft: '2px' }} title="Dinâmico: 50% acima da média">★</span>}
+                                                                    <div className="sc-tooltip" style={{ cursor: 'pointer', display: 'inline-block' }}>
+                                                                        <span style={{ borderBottom: '1px dotted var(--accent-orange)', paddingBottom: '1px' }}>{avgVal}</span>
+                                                                        <div className="sc-tooltip-content" style={{ minWidth: '160px', padding: '0.8rem', background: '#090d16', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', zIndex: 1000 }}>
+                                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.8rem' }}>
+                                                                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '4px' }}>
+                                                                                    <span style={{ color: '#94a3b8' }}>Mínimo:</span>
+                                                                                    <strong style={{ color: '#f87171' }}>{minVal} {p.unit}</strong>
+                                                                                </div>
+                                                                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '4px' }}>
+                                                                                    <span style={{ color: '#94a3b8' }}>Médio (Ideal):</span>
+                                                                                    <strong style={{ color: 'var(--accent-teal)' }}>{avgVal} {p.unit}</strong>
+                                                                                </div>
+                                                                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
+                                                                                    <span style={{ color: '#94a3b8' }}>Máximo:</span>
+                                                                                    <strong style={{ color: '#4ade80' }}>{maxVal} {p.unit}</strong>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
                                                                 </td>
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)', fontWeight: '600' }}>
                                                                     {formatDailyConsumption(avgDaily, p.unit)} {p.unit}/dia
@@ -1561,7 +1571,7 @@ export default function LogisticsHub() {
                                                             {isExpanded && (
                                                                 <tr style={{ background: 'rgba(0, 0, 0, 0.15)' }}>
                                                                     <td></td>
-                                                                    <td colSpan="10" style={{ padding: '1rem 1.5rem', borderLeft: '4px solid var(--accent-orange)' }}>
+                                                                    <td colSpan="8" style={{ padding: '1rem 1.5rem', borderLeft: '4px solid var(--accent-orange)' }}>
                                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                                                                                 <span style={{ fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
@@ -2292,41 +2302,149 @@ export default function LogisticsHub() {
                                     </div>
 
                                     {/* Filtro de Período Global */}
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '0.75rem 1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                                        <span style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', flexShrink: 0 }}>📅 Período de Análise:</span>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                            <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', flexShrink: 0 }}>De</label>
-                                            <input
-                                                type="date"
-                                                value={scStartDate}
-                                                onChange={e => setScStartDate(e.target.value)}
-                                                style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', padding: '0.35rem 0.7rem', fontSize: '0.82rem', outline: 'none' }}
-                                            />
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '1rem',
+                                        background: 'linear-gradient(135deg, rgba(20,184,166,0.06) 0%, rgba(0,0,0,0.25) 100%)',
+                                        border: '1px solid rgba(20,184,166,0.2)',
+                                        borderRadius: '14px',
+                                        padding: '0.85rem 1.25rem',
+                                        marginBottom: '1.5rem',
+                                        flexWrap: 'wrap',
+                                        boxShadow: '0 2px 16px rgba(20,184,166,0.06), inset 0 1px 0 rgba(255,255,255,0.04)',
+                                        backdropFilter: 'blur(8px)',
+                                        position: 'relative',
+                                        overflow: 'hidden',
+                                    }}>
+                                        {/* Glow accent */}
+                                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '1px', background: 'linear-gradient(90deg, transparent, rgba(20,184,166,0.5), transparent)', pointerEvents: 'none' }} />
+
+                                        {/* Label */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                                            <div style={{
+                                                width: '28px', height: '28px',
+                                                background: 'rgba(20,184,166,0.15)',
+                                                border: '1px solid rgba(20,184,166,0.3)',
+                                                borderRadius: '8px',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontSize: '0.8rem'
+                                            }}>📅</div>
+                                            <span style={{
+                                                fontSize: '0.72rem',
+                                                fontWeight: '800',
+                                                color: 'rgba(20,184,166,0.9)',
+                                                textTransform: 'uppercase',
+                                                letterSpacing: '0.08em',
+                                            }}>Período de Análise</span>
                                         </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                                            <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', flexShrink: 0 }}>Até</label>
-                                            <input
-                                                type="date"
-                                                value={scEndDate}
-                                                onChange={e => setScEndDate(e.target.value)}
-                                                style={{ background: 'rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', padding: '0.35rem 0.7rem', fontSize: '0.82rem', outline: 'none' }}
-                                            />
+
+                                        {/* Divider */}
+                                        <div style={{ width: '1px', height: '28px', background: 'rgba(255,255,255,0.08)', flexShrink: 0 }} />
+
+                                        {/* Date inputs */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <label style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: '600', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>De</label>
+                                                <input
+                                                    type="date"
+                                                    value={scStartDate}
+                                                    onChange={e => setScStartDate(e.target.value)}
+                                                    style={{
+                                                        background: 'rgba(0,0,0,0.35)',
+                                                        border: `1px solid ${scStartDate ? 'rgba(20,184,166,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                                                        borderRadius: '9px',
+                                                        color: scStartDate ? '#fff' : 'rgba(255,255,255,0.5)',
+                                                        padding: '0.4rem 0.8rem',
+                                                        fontSize: '0.82rem',
+                                                        outline: 'none',
+                                                        cursor: 'pointer',
+                                                        transition: 'border-color 0.2s',
+                                                        colorScheme: 'dark',
+                                                        minWidth: '140px',
+                                                    }}
+                                                />
+                                            </div>
+
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', flexShrink: 0 }}>
+                                                <div style={{ width: '12px', height: '1px', background: 'rgba(255,255,255,0.2)' }} />
+                                                <div style={{ width: '4px', height: '4px', borderRadius: '50%', background: 'rgba(20,184,166,0.6)', marginLeft: '2px' }} />
+                                            </div>
+
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <label style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: '600', flexShrink: 0, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Até</label>
+                                                <input
+                                                    type="date"
+                                                    value={scEndDate}
+                                                    onChange={e => setScEndDate(e.target.value)}
+                                                    style={{
+                                                        background: 'rgba(0,0,0,0.35)',
+                                                        border: `1px solid ${scEndDate ? 'rgba(20,184,166,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                                                        borderRadius: '9px',
+                                                        color: scEndDate ? '#fff' : 'rgba(255,255,255,0.5)',
+                                                        padding: '0.4rem 0.8rem',
+                                                        fontSize: '0.82rem',
+                                                        outline: 'none',
+                                                        cursor: 'pointer',
+                                                        transition: 'border-color 0.2s',
+                                                        colorScheme: 'dark',
+                                                        minWidth: '140px',
+                                                    }}
+                                                />
+                                            </div>
                                         </div>
+
+                                        {/* Clear button */}
                                         {(scStartDate || scEndDate) && (
                                             <button
                                                 onClick={() => { setScStartDate(''); setScEndDate(''); }}
-                                                style={{ padding: '0.35rem 0.8rem', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '8px', color: '#f87171', fontSize: '0.78rem', fontWeight: '600', cursor: 'pointer' }}
-                                            >✕ Limpar</button>
+                                                style={{
+                                                    padding: '0.38rem 0.85rem',
+                                                    background: 'rgba(239,68,68,0.1)',
+                                                    border: '1px solid rgba(239,68,68,0.25)',
+                                                    borderRadius: '8px',
+                                                    color: '#f87171',
+                                                    fontSize: '0.75rem',
+                                                    fontWeight: '700',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.3rem',
+                                                    transition: 'all 0.2s',
+                                                    letterSpacing: '0.02em',
+                                                }}
+                                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.2)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.45)'; }}
+                                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.1)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.25)'; }}
+                                            >
+                                                <span style={{ fontSize: '0.7rem' }}>✕</span> Limpar
+                                            </button>
                                         )}
-                                        <span style={{ marginLeft: 'auto', fontSize: '0.78rem', color: scStartDate || scEndDate ? 'var(--accent-orange)' : 'var(--text-secondary)', fontWeight: scStartDate || scEndDate ? '700' : '400' }}>
-                                            {scStartDate && scEndDate
-                                                ? `${new Date(scStartDate + 'T00:00:00').toLocaleDateString('pt-BR')} → ${new Date(scEndDate + 'T00:00:00').toLocaleDateString('pt-BR')}`
-                                                : scStartDate
-                                                    ? `A partir de ${new Date(scStartDate + 'T00:00:00').toLocaleDateString('pt-BR')}`
-                                                    : scEndDate
-                                                        ? `Até ${new Date(scEndDate + 'T00:00:00').toLocaleDateString('pt-BR')}`
-                                                        : 'Todo o histórico disponível'}
-                                        </span>
+
+                                        {/* Status text */}
+                                        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <div style={{
+                                                width: '6px', height: '6px', borderRadius: '50%',
+                                                background: scStartDate || scEndDate ? 'var(--accent-teal)' : 'rgba(255,255,255,0.2)',
+                                                boxShadow: scStartDate || scEndDate ? '0 0 6px rgba(20,184,166,0.6)' : 'none',
+                                                flexShrink: 0,
+                                                transition: 'all 0.3s',
+                                            }} />
+                                            <span style={{
+                                                fontSize: '0.78rem',
+                                                color: scStartDate || scEndDate ? 'rgba(20,184,166,0.9)' : 'var(--text-secondary)',
+                                                fontWeight: scStartDate || scEndDate ? '700' : '400',
+                                                transition: 'all 0.3s',
+                                                whiteSpace: 'nowrap',
+                                            }}>
+                                                {scStartDate && scEndDate
+                                                    ? `${new Date(scStartDate + 'T00:00:00').toLocaleDateString('pt-BR')} → ${new Date(scEndDate + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                                                    : scStartDate
+                                                        ? `A partir de ${new Date(scStartDate + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                                                        : scEndDate
+                                                            ? `Até ${new Date(scEndDate + 'T00:00:00').toLocaleDateString('pt-BR')}`
+                                                            : 'Todo o histórico disponível'}
+                                            </span>
+                                        </div>
                                     </div>
 
                                     {/* Sub-tab navigation */}
@@ -2393,62 +2511,65 @@ export default function LogisticsHub() {
                                     {scHelpPopup && (() => {
                                         const helpContent = {
                                             overview: {
-                                                title: '📊 Visão Geral — Supply Chain',
+                                                title: '📊 Visão Geral — O que você vai ver aqui?',
                                                 color: 'var(--accent-teal)',
                                                 colorHex: '#14b8a6',
+                                                intro: 'Esta é a tela principal do Supply Chain. Aqui você tem um resumo rápido da situação do seu estoque — o que está bem, o que está acabando e o que precisa de compra urgente.',
                                                 sections: [
-                                                    { icon: '🔴', title: 'Itens Críticos', text: 'Produtos cujo estoque atual não cobre nem o lead time de reposição — o tempo médio que o fornecedor leva para entregar. São os que precisam de ação imediata para evitar ruptura operacional.' },
-                                                    { icon: '🟡', title: 'Abaixo da Meta', text: 'Produtos com estoque suficiente para o lead time, mas abaixo da meta de dias configurada. Precisam de reposição em breve, mas ainda há margem de segurança.' },
-                                                    { icon: '🟢', title: 'Estoque Saudável', text: 'Produtos com cobertura igual ou superior à meta configurada. Situação ideal — sem necessidade de ação imediata.' },
-                                                    { icon: '📅', title: 'Meta de Dias (Dias de Cobertura)', text: 'Define quantos dias de estoque você quer manter. Exemplo: meta 30 dias → o sistema sempre garante cobertura para 30 dias de consumo. Configure no campo "Meta (Dias)" acima e clique em Salvar para persistir para todos os usuários.' },
-                                                    { icon: '📈', title: 'Consumo Médio Diário', text: 'Calculado dinamicamente com base no histórico real de saídas aprovadas. Perdas e rejeições de requisição NÃO entram nesse cálculo. Quanto mais histórico, mais preciso.' },
+                                                    { icon: '🔴', title: 'Itens Críticos — Compre AGORA', text: 'São produtos com estoque tão baixo que vão acabar antes de o fornecedor conseguir entregar. Exemplo: o fornecedor leva 5 dias pra entregar, mas você só tem estoque pra 2 dias. Isso é um item crítico. Se não comprar hoje, vai faltar.' },
+                                                    { icon: '🟡', title: 'Abaixo da Meta — Compre em breve', text: 'O estoque ainda aguenta por alguns dias, mas está abaixo do ideal que você configurou. Precisa de atenção, mas ainda tem margem para incluir no próximo pedido sem emergência.' },
+                                                    { icon: '🟢', title: 'Estoque Saudável — Tudo certo', text: 'Produtos com quantidade suficiente para o período configurado. Não precisa de nenhuma ação agora.' },
+                                                    { icon: '⚙️', title: 'Meta de Dias — O que é isso?', text: 'É o número de dias que você quer sempre ter em estoque. Exemplo: se você colocar 30 dias, o sistema vai avisar sempre que algum produto estiver com menos de 30 dias de reserva. Configure esse número conforme a frequência dos seus pedidos ao fornecedor.' },
+                                                    { icon: '📈', title: 'Consumo Médio — Como é calculado?', text: 'O sistema analisa o histórico de saídas aprovadas e calcula quanto você usa de cada produto por dia, em média. Quanto mais histórico registrado, mais preciso fica esse cálculo.' },
                                                 ]
                                             },
                                             suggestions: {
-                                                title: '🛒 Sugestões de Compra',
+                                                title: '🛒 Sugestões de Compra — O que fazer aqui?',
                                                 color: 'var(--accent-orange)',
                                                 colorHex: '#f36b1d',
+                                                intro: 'Esta aba mostra uma lista de produtos que precisam ser comprados. O sistema calculou automaticamente o que está faltando com base no seu consumo diário e na meta de dias configurada.',
                                                 sections: [
-                                                    { icon: '⚙️', title: 'Como é calculado?', text: 'O sistema compara o estoque atual com a quantidade ideal (meta de dias × consumo diário médio). Se o estoque estiver abaixo do ideal, o produto entra na lista de sugestões com a quantidade exata a comprar.' },
-                                                    { icon: '📦', title: 'Quantidade Sugerida', text: 'É a diferença entre o estoque ideal e o estoque atual. Representa exatamente o quanto você precisa comprar para atingir a meta de dias configurada.' },
-                                                    { icon: '🏷️', title: 'Prioridade: URGENTE vs NORMAL', text: 'URGENTE = produto abaixo do mínimo dinâmico (50% da média). Requer compra imediata. NORMAL = abaixo da meta, mas acima do mínimo. Pode aguardar o próximo ciclo de pedidos.' },
-                                                    { icon: '🔄', title: 'Atualização em Tempo Real', text: 'As sugestões se atualizam automaticamente após qualquer entrada ou saída aprovada, refletindo sempre a realidade do estoque no momento.' },
+                                                    { icon: '🚨', title: 'URGENTE — Compre hoje', text: 'Esses produtos estão perigosamente baixos. O sistema detectou que o estoque está abaixo do mínimo aceitável. Se não comprar logo, a operação pode parar por falta desse item.' },
+                                                    { icon: '📋', title: 'NORMAL — Próximo pedido', text: 'Estão abaixo do ideal, mas ainda há tempo. Inclua esses itens no seu próximo pedido regular ao fornecedor.' },
+                                                    { icon: '📦', title: 'Quantidade Sugerida — De onde vem esse número?', text: 'É exatamente quanto você precisa comprar para atingir a meta configurada. Exemplo: se a meta é 30 dias e você tem estoque para 10 dias, o sistema sugere comprar o equivalente a 20 dias de consumo.' },
+                                                    { icon: '🔄', title: 'A lista se atualiza automaticamente', text: 'Sempre que uma entrada ou saída for aprovada no sistema, as sugestões são recalculadas na hora. Não precisa fazer nada manualmente.' },
                                                 ]
                                             },
                                             coverage: {
-                                                title: '📅 Cobertura de Estoque',
+                                                title: '📅 Cobertura de Estoque — O que é isso?',
                                                 color: '#a78bfa',
                                                 colorHex: '#a78bfa',
+                                                intro: 'Cobertura é a resposta para a pergunta: "quantos dias esse estoque vai durar?". Aqui você vê isso para cada produto individualmente, com uma barra visual que mostra a situação de forma clara.',
                                                 sections: [
-                                                    { icon: '📐', title: 'O que é Cobertura?', text: 'Quantos dias o estoque atual vai durar com o ritmo de consumo atual. Fórmula: Estoque Atual ÷ Consumo Diário Médio = Dias de Cobertura.' },
-                                                    { icon: '🟢', title: 'Cobertura Adequada (verde)', text: 'Dias de cobertura ≥ meta configurada. Situação ideal, sem ação necessária.' },
-                                                    { icon: '🟡', title: 'Cobertura Baixa (amarelo)', text: 'Entre o lead time e a meta de dias. Precisa repor em breve, mas ainda há margem.' },
-                                                    { icon: '🔴', title: 'Ruptura Iminente (vermelho)', text: 'Cobertura abaixo do lead time do fornecedor. O estoque vai acabar antes que o próximo pedido chegue. Ação imediata necessária.' },
-                                                    { icon: '📊', title: 'Mínimo / Média / Máximo Dinâmicos', text: 'Calculados com base no histórico real. Mínimo = 50% da média (ponto de alerta vermelho). Média = meta × consumo diário (referência de saúde). Máximo = 150% da média (limite superior saudável — acima disso indica excesso).' },
+                                                    { icon: '🟢', title: 'Barra verde — Estoque OK', text: 'A barra cheia em verde significa que o produto tem estoque suficiente para a meta de dias que você configurou. Não precisa de ação.' },
+                                                    { icon: '🟡', title: 'Barra amarela — Reposição em breve', text: 'O estoque ainda não vai acabar antes do próximo pedido chegar, mas está abaixo do ideal. Coloque no próximo pedido.' },
+                                                    { icon: '🔴', title: 'Barra vermelha — Risco de faltar', text: 'O estoque vai acabar antes de o fornecedor conseguir entregar. Precisa comprar com urgência. Se essa barra aparecer, aja o quanto antes.' },
+                                                    { icon: '📊', title: 'Mín / Média / Máx — O que significam?', text: 'São referências calculadas pelo sistema. Mínimo = quantidade de alerta (abaixo disso, está crítico). Média = quantidade ideal para a meta configurada. Máximo = acima disso, você está com estoque em excesso e pode estar imobilizando dinheiro desnecessariamente.' },
                                                 ]
                                             },
                                             abc: {
-                                                title: '📉 Curva ABC',
+                                                title: '📉 Curva ABC — Para que serve?',
                                                 color: '#fbbf24',
                                                 colorHex: '#fbbf24',
+                                                intro: 'A Curva ABC classifica seus produtos por importância financeira. A ideia é simples: nem todo produto merece a mesma atenção. Essa análise diz quais você deve monitorar de perto e quais podem ter controle mais simples.',
                                                 sections: [
-                                                    { icon: '🅰️', title: 'Classe A — Itens Vitais (top 20%)', text: 'Os 20% de produtos que representam ~80% do valor total consumido (Lei de Pareto). Merecem controle rigoroso, monitoramento diário e prioridade máxima nas negociações com fornecedores.' },
-                                                    { icon: '🅱️', title: 'Classe B — Itens Importantes', text: 'Produtos intermediários (~15% do valor total). Merecem controle moderado e revisão periódica.' },
-                                                    { icon: '©️', title: 'Classe C — Baixo Impacto (80% dos itens)', text: 'A maioria dos produtos, mas que representam apenas ~5% do valor total. Podem ter controle simplificado com pedidos menos frequentes e em maior volume.' },
-                                                    { icon: '📆', title: 'Filtro por Período', text: 'Use os campos de data para calcular a curva ABC de um intervalo específico. Ideal para comparar sazonalidades, excluir períodos atípicos ou analisar campanhas.' },
-                                                    { icon: '💡', title: 'Por que isso importa?', text: 'Concentrar esforço nos itens A garante que você nunca ficará sem os insumos mais críticos para a operação, sem desperdiçar tempo gerenciando itens de baixo impacto.' },
+                                                    { icon: '🅰️', title: 'Classe A — Os mais importantes', text: 'São poucos produtos (cerca de 20%), mas representam a maior parte do que você gasta (cerca de 80%). Exemplo: o frango que vai em todo prato do restaurante. Esses precisam de controle diário, bom fornecedor e nunca podem faltar.' },
+                                                    { icon: '🅱️', title: 'Classe B — Importância média', text: 'Produtos com consumo e custo intermediários. Merecem atenção regular, mas não precisam de monitoramento tão intenso quanto os da Classe A.' },
+                                                    { icon: '🇨', title: 'Classe C — Menor impacto', text: 'São muitos produtos, mas representam uma fatia pequena do gasto total. Podem ser pedidos em maior quantidade e com menos frequência. Não vale gastar muito tempo gerenciando esses itens.' },
+                                                    { icon: '📆', title: 'Filtro por Período', text: 'Quer saber quais produtos foram mais usados em dezembro (época de festas)? Use o filtro de data para ver a curva ABC de um intervalo específico e identificar sazonalidades.' },
+                                                    { icon: '💡', title: 'Dica prática', text: 'Foque sua energia e negociação com fornecedores nos itens Classe A. Para os itens C, simplifique: compre mais de uma vez, negocie um preço fixo e diminua a frequência dos pedidos.' },
                                                 ]
                                             },
                                             anomalies: {
-                                                title: '⚠️ Anomalias Detectadas',
+                                                title: '⚠️ Anomalias — O que o sistema detectou?',
                                                 color: '#f87171',
                                                 colorHex: '#f87171',
+                                                intro: 'O sistema monitora o consumo diário de cada produto e avisa quando algo saiu do padrão. Pode ser um dia em que saiu muito mais do que o normal, ou um dia em que não saiu nada quando devia.',
                                                 sections: [
-                                                    { icon: '🔍', title: 'O que é uma Anomalia?', text: 'Um evento de consumo que se desvia significativamente do padrão histórico. O sistema compara cada saída com a média histórica e, se o valor for muito acima ou abaixo do esperado, registra como anomalia.' },
-                                                    { icon: '📈', title: 'Pico de Consumo', text: 'Saída muito acima da média. Pode indicar evento especial, desperdício ou erro de lançamento. O sistema a excluiu da média para não distorcer as sugestões de compra.' },
-                                                    { icon: '📉', title: 'Consumo Zero / Baixo', text: 'Nenhum ou pouco movimento em um dia que historicamente tem saída. Pode indicar fechamento inesperado, falha de registro ou produto em falta.' },
-                                                    { icon: '🛡️', title: 'Impacto nas Sugestões', text: 'Anomalias não resolvidas são automaticamente excluídas do cálculo da média diária para não distorcer as sugestões de compra e os níveis de estoque.' },
-                                                    { icon: '✅', title: 'Como Resolver', text: 'Clique em "Resolver" quando o evento for confirmado como real (ex: banquete, evento especial). O sistema incorporará esse dado ao histórico. Descarte se foi erro de lançamento ou dado incorreto.' },
+                                                    { icon: '📈', title: 'Consumo muito acima do normal', text: 'Exemplo: você usa em média 10kg de carne por dia, mas num dia específico saíram 50kg. O sistema registra isso como anomalia. Pode ter sido um evento especial, um erro de lançamento ou um desperdício. Você decide o que fazer.' },
+                                                    { icon: '📉', title: 'Consumo muito abaixo ou zero', text: 'Exemplo: todo dia sai farinha, mas num dia não saiu nada. Pode indicar que a operação parou, que o produto estava em falta, ou que alguém esqueceu de registrar a saída.' },
+                                                    { icon: '🛡️', title: 'Essas anomalias não afetam os cálculos', text: 'Enquanto não forem resolvidas, elas ficam fora do cálculo da média diária. Isso evita que um dia atípico distorça as sugestões de compra e os alertas de estoque.' },
+                                                    { icon: '✅', title: 'O que fazer com cada anomalia?', text: 'Clique em "Resolver" se o consumo foi real (ex: teve um evento, banquete ou promoção especial). O sistema vai incorporar esse dado ao histórico. Se foi erro de lançamento ou dado incorreto, você pode descartar — o dia fica excluído permanentemente dos cálculos.' },
                                                 ]
                                             },
                                         };
@@ -2470,6 +2591,20 @@ export default function LogisticsHub() {
                                                             style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: 'var(--text-secondary)', cursor: 'pointer', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '1rem' }}
                                                         >✕</button>
                                                     </div>
+                                                    {help.intro && (
+                                                        <p style={{
+                                                            margin: '0 0 1.25rem',
+                                                            fontSize: '0.88rem',
+                                                            color: 'var(--text-primary)',
+                                                            lineHeight: '1.7',
+                                                            background: `${help.colorHex}0d`,
+                                                            border: `1px solid ${help.colorHex}25`,
+                                                            borderLeft: `3px solid ${help.colorHex}`,
+                                                            borderRadius: '10px',
+                                                            padding: '0.85rem 1rem',
+                                                            opacity: 0.9,
+                                                        }}>{help.intro}</p>
+                                                    )}
                                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                                                         {help.sections.map((sec, i) => (
                                                             <div key={i} style={{ background: `${help.colorHex}08`, border: `1px solid ${help.colorHex}20`, borderRadius: '12px', padding: '1rem 1.1rem' }}>
@@ -2747,6 +2882,7 @@ export default function LogisticsHub() {
                                                                 <th>Produto</th>
                                                                 <th>Data</th>
                                                                 <th>Dia Semana</th>
+                                                                <th>Média Diária</th>
                                                                 <th>Qtd Registrada</th>
                                                                 <th>Faixa Esperada</th>
                                                                 <th>Ações</th>
@@ -2756,18 +2892,31 @@ export default function LogisticsHub() {
                                                             {unresolvedAnomalies.map((a, i) => {
                                                                 const DOW_LABELS = ['Domingo','Segunda','Terça','Quarta','Quinta','Sexta','Sábado'];
                                                                 const anomalyId = a.id || (a.date + a.sku);
+                                                                const product = products.find(p => p.sku === a.sku);
+                                                                const productName = product ? product.name : 'Produto Desconhecido';
+                                                                const productUnit = product ? product.unit : '';
+                                                                const scMetric = supplyChainData.inventoryMetrics?.find(m => m.sku === a.sku);
+                                                                const avgDaily = scMetric ? scMetric.avgDailyConsumption : (supplyChainData.seasonalityMetrics?.[a.sku]?.overallAvg || 0);
+                                                                const displayMin = Math.max(0, a.expectedMin);
                                                                 return (
                                                                     <tr key={i}>
                                                                         <td>
-                                                                            <div style={{ fontWeight: '600', color: '#e2e8f0' }}>{a.sku}</div>
+                                                                            <div style={{ fontWeight: '600', color: '#e2e8f0' }}>{productName}</div>
                                                                             <div style={{ fontSize: '0.75rem', color: '#64748b' }}>SKU: {a.sku}</div>
                                                                         </td>
                                                                         <td style={{ color: '#94a3b8' }}>{a.date}</td>
                                                                         <td style={{ color: '#fbbf24', fontWeight: '600' }}>{DOW_LABELS[a.dayOfWeek] || '–'}</td>
-                                                                        <td style={{ color: '#f87171', fontWeight: '700' }}>{a.qty}</td>
-                                                                        <td style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{a.expectedMin}–{a.expectedMax}</td>
+                                                                        <td style={{ color: '#94a3b8' }}>
+                                                                            {formatDailyConsumption(avgDaily, productUnit)} {productUnit}/dia
+                                                                        </td>
+                                                                        <td style={{ color: '#f87171', fontWeight: '700' }}>
+                                                                            {a.qty} {productUnit}
+                                                                        </td>
+                                                                        <td style={{ color: '#94a3b8', fontSize: '0.85rem' }}>
+                                                                            Entre {displayMin} e {a.expectedMax} {productUnit}
+                                                                        </td>
                                                                         <td>
-                                                                            <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                                                            <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
                                                                                 <button
                                                                                     onClick={() => setResolvedAnomalies(prev => [...prev, anomalyId])}
                                                                                     style={{ background: 'rgba(34,197,94,0.15)', color: '#4ade80', border: '1px solid rgba(34,197,94,0.4)', borderRadius: '6px', padding: '0.3rem 0.6rem', fontSize: '0.75rem', cursor: 'pointer', fontWeight: '600' }}

@@ -4685,6 +4685,7 @@ main {
 }
 
 .sc-table th {
+    text-align: center;
     color: #94a3b8;
     font-weight: 600;
     padding: 1rem;
@@ -4696,6 +4697,7 @@ main {
 }
 
 .sc-table td {
+    text-align: center;
     color: #e2e8f0;
     padding: 1rem;
     border-bottom: 1px solid rgba(255,255,255,0.03);
@@ -4911,19 +4913,25 @@ main {
 
 /* Fix for first rows so tooltip doesn't get cut off at the top */
 .sc-table tbody tr:first-child .sc-tooltip-content,
-.sc-table tbody tr:nth-child(2) .sc-tooltip-content {
+.sc-table tbody tr:nth-child(2) .sc-tooltip-content,
+.products-table tbody tr:first-child .sc-tooltip-content,
+.products-table tbody tr:nth-child(2) .sc-tooltip-content {
     bottom: auto;
     top: 125%;
     transform: translateX(-50%) translateY(-10px);
 }
 
 .sc-table tbody tr:first-child .sc-tooltip:hover .sc-tooltip-content,
-.sc-table tbody tr:nth-child(2) .sc-tooltip:hover .sc-tooltip-content {
+.sc-table tbody tr:nth-child(2) .sc-tooltip:hover .sc-tooltip-content,
+.products-table tbody tr:first-child .sc-tooltip:hover .sc-tooltip-content,
+.products-table tbody tr:nth-child(2) .sc-tooltip:hover .sc-tooltip-content {
     transform: translateX(-50%) translateY(0);
 }
 
 .sc-table tbody tr:first-child .sc-tooltip-content::after,
-.sc-table tbody tr:nth-child(2) .sc-tooltip-content::after {
+.sc-table tbody tr:nth-child(2) .sc-tooltip-content::after,
+.products-table tbody tr:first-child .sc-tooltip-content::after,
+.products-table tbody tr:nth-child(2) .sc-tooltip-content::after {
     top: auto;
     bottom: 100%;
     border-color: transparent transparent #050505 transparent;
@@ -5070,6 +5078,7 @@ main {
 }
 
 .sc-table th {
+    text-align: center;
     color: #94a3b8;
     font-weight: 600;
     padding: 1rem;
@@ -5081,6 +5090,7 @@ main {
 }
 
 .sc-table td {
+    text-align: center;
     color: #e2e8f0;
     padding: 0.9rem 1rem;
     border-bottom: 1px solid rgba(255,255,255,0.03);
