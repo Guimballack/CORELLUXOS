@@ -171,3 +171,54 @@ INSERT INTO stock_batches (item_sku, lot, brand, supplier, manufacturing_date, e
 ('LAC-001', 'LT-9485', 'Itambé', 'MASTER ALIMENTOS', '2026-03-05', '2026-11-15', 'B-02-06', 8, 'Unidade'),
 ('BEB-001', 'LT-5757', 'Coca-Cola', 'VALE VERDE', '2026-04-13', '2026-08-21', 'A-06-01', 28, 'Unidade'),
 ('MAS-001', 'LT-2918', 'Prato Fino', 'MASTER ALIMENTOS', '2026-03-05', '2026-11-26', 'B-05-01', 16, 'Pacote');
+
+-- 9. TABELAS DE ESTRUTURA DO WMS (ARMAZÉNS, ZONAS E ENDEREÇAMENTOS)
+DROP TABLE IF EXISTS wms_locations CASCADE;
+DROP TABLE IF EXISTS wms_zones CASCADE;
+DROP TABLE IF EXISTS wms_warehouses CASCADE;
+
+-- Tabela de Armazéns
+CREATE TABLE wms_warehouses (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Inativo')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Tabela de Zonas de Armazenamento
+CREATE TABLE wms_zones (
+    id SERIAL PRIMARY KEY,
+    warehouse_id INTEGER REFERENCES wms_warehouses(id) ON DELETE CASCADE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    type VARCHAR(50) DEFAULT 'Seco' CHECK (type IN ('Seco', 'Resfriado', 'Congelado', 'Climatizado', 'Área Externa')),
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Inativo')),
+    address_mask VARCHAR(100) DEFAULT '{zone}-{aisle}-{row}-{shelf}',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    UNIQUE(warehouse_id, name)
+);
+
+-- Tabela de Endereçamentos Físicos
+CREATE TABLE wms_locations (
+    id SERIAL PRIMARY KEY,
+    zone_id INTEGER REFERENCES wms_zones(id) ON DELETE CASCADE NOT NULL,
+    aisle VARCHAR(50) NOT NULL,
+    row VARCHAR(50) NOT NULL,
+    shelf VARCHAR(50) NOT NULL,
+    position VARCHAR(50),
+    status VARCHAR(50) DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Bloqueado', 'Manutenção')),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    UNIQUE(zone_id, aisle, row, shelf, position)
+);
+
+-- Inserir dados iniciais do WMS para testes
+INSERT INTO wms_warehouses (name, description, status) VALUES
+('Armazém Central', 'Centro de distribuição e estoque principal de insumos.', 'Ativo');
+
+INSERT INTO wms_zones (warehouse_id, name, type, description, status, address_mask) VALUES
+(1, 'Câmara Fria A', 'Resfriado', 'Armazenamento de laticínios e verduras.', 'Ativo', '{zone}-{aisle}-{row}-{shelf}'),
+(1, 'Câmara Fria B', 'Congelado', 'Armazenamento de carnes e congelados.', 'Ativo', '{zone}-{aisle}-{row}-{shelf}'),
+(1, 'Estoque Seco A', 'Seco', 'Armazenamento de massas, grãos e enlatados.', 'Ativo', '{zone}/{aisle}{row}{shelf}'),
+(1, 'Estoque Seco B', 'Seco', 'Armazenamento de temperos e embalagens.', 'Ativo', '{zone}-{aisle}.{row}.{shelf}');
+

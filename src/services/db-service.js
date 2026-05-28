@@ -1389,22 +1389,452 @@ export const DbService = {
             return { success: true, data: toCamelCase(data[0]) };
         } catch (e) {
             console.warn('[DbService] Erro ao salvar execução de checklist no Supabase. Gravando localmente:', e.message || e);
-            const local = localStorage.getItem('corellux_checklist_executions');
-            let execs = [];
-            if (local) {
-                try {
-                    execs = JSON.parse(local);
-                } catch (err) {
-                    console.error('[DbService] Erro ao carregar execuções:', err);
-                }
-            }
-            const newExec = {
-                ...execution,
-                id: execution.id || 'exec_' + Date.now()
-            };
-            execs.unshift(newExec);
             localStorage.setItem('corellux_checklist_executions', JSON.stringify(execs));
             return { success: true, data: newExec };
+        }
+    },
+
+    // =============================================
+    // WMS: ARMAZÉNS, ZONAS E ENDEREÇAMENTOS
+    // =============================================
+
+    async getWmsWarehouses() {
+        try {
+            const { data, error } = await supabase
+                .from('wms_warehouses')
+                .select('*')
+                .order('name', { ascending: true });
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_wms_warehouses');
+                if (local) return JSON.parse(local);
+                const defaultW = [
+                    { id: 1, name: 'Armazém Central', description: 'Centro de distribuição e estoque principal de insumos.', status: 'Ativo' }
+                ];
+                localStorage.setItem('corellux_wms_warehouses', JSON.stringify(defaultW));
+                return defaultW;
+            }
+            const camelWarehouses = toCamelCase(data);
+            localStorage.setItem('corellux_wms_warehouses', JSON.stringify(camelWarehouses));
+            return camelWarehouses;
+        } catch (e) {
+            console.warn('[DbService] Erro ao carregar armazéns no Supabase. Fallback local:', e.message || e);
+            const local = localStorage.getItem('corellux_wms_warehouses');
+            if (local) return JSON.parse(local);
+            const defaultW = [
+                { id: 1, name: 'Armazém Central', description: 'Centro de distribuição e estoque principal de insumos.', status: 'Ativo' }
+            ];
+            localStorage.setItem('corellux_wms_warehouses', JSON.stringify(defaultW));
+            return defaultW;
+        }
+    },
+
+    async saveWmsWarehouse(warehouse) {
+        try {
+            const snakeWarehouse = toSnakeCase(warehouse);
+            let result;
+            if (warehouse.id && typeof warehouse.id === 'number') {
+                result = await supabase
+                    .from('wms_warehouses')
+                    .update(snakeWarehouse)
+                    .eq('id', warehouse.id)
+                    .select();
+            } else {
+                delete snakeWarehouse.id;
+                result = await supabase
+                    .from('wms_warehouses')
+                    .insert([snakeWarehouse])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            const saved = toCamelCase(result.data[0]);
+
+            // Sync local
+            const local = localStorage.getItem('corellux_wms_warehouses');
+            let list = local ? JSON.parse(local) : [];
+            const idx = list.findIndex(w => String(w.id) === String(saved.id));
+            if (idx !== -1) {
+                list[idx] = saved;
+            } else {
+                list.push(saved);
+            }
+            localStorage.setItem('corellux_wms_warehouses', JSON.stringify(list));
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar armazém no Supabase. Gravando local:', e.message || e);
+            const local = localStorage.getItem('corellux_wms_warehouses');
+            let list = local ? JSON.parse(local) : [];
+            const newW = {
+                ...warehouse,
+                id: warehouse.id || Date.now() + Math.floor(Math.random() * 1000)
+            };
+            const idx = list.findIndex(w => String(w.id) === String(newW.id));
+            if (idx !== -1) {
+                list[idx] = newW;
+            } else {
+                list.push(newW);
+            }
+            localStorage.setItem('corellux_wms_warehouses', JSON.stringify(list));
+            return { success: true, data: newW };
+        }
+    },
+
+    async deleteWmsWarehouse(id) {
+        try {
+            const { error } = await supabase
+                .from('wms_warehouses')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
+
+            // Sync local (cascade zones/locations locally)
+            const localW = localStorage.getItem('corellux_wms_warehouses');
+            if (localW) {
+                const list = JSON.parse(localW).filter(w => String(w.id) !== String(id));
+                localStorage.setItem('corellux_wms_warehouses', JSON.stringify(list));
+            }
+            const localZ = localStorage.getItem('corellux_wms_zones');
+            if (localZ) {
+                const zones = JSON.parse(localZ);
+                const deletedZoneIds = zones.filter(z => String(z.warehouseId) === String(id)).map(z => z.id);
+                const remainingZones = zones.filter(z => String(z.warehouseId) !== String(id));
+                localStorage.setItem('corellux_wms_zones', JSON.stringify(remainingZones));
+
+                const localLoc = localStorage.getItem('corellux_wms_locations');
+                if (localLoc) {
+                    const locations = JSON.parse(localLoc);
+                    const remainingLocations = locations.filter(l => !deletedZoneIds.includes(l.zoneId));
+                    localStorage.setItem('corellux_wms_locations', JSON.stringify(remainingLocations));
+                }
+            }
+            return { success: true };
+        } catch (e) {
+            console.warn('[DbService] Erro ao excluir armazém no Supabase. Atualizando local:', e.message || e);
+            const localW = localStorage.getItem('corellux_wms_warehouses');
+            if (localW) {
+                const list = JSON.parse(localW).filter(w => String(w.id) !== String(id));
+                localStorage.setItem('corellux_wms_warehouses', JSON.stringify(list));
+            }
+            // Cascade locally
+            const localZ = localStorage.getItem('corellux_wms_zones');
+            if (localZ) {
+                const zones = JSON.parse(localZ);
+                const deletedZoneIds = zones.filter(z => String(z.warehouseId) === String(id)).map(z => z.id);
+                const remainingZones = zones.filter(z => String(z.warehouseId) !== String(id));
+                localStorage.setItem('corellux_wms_zones', JSON.stringify(remainingZones));
+
+                const localLoc = localStorage.getItem('corellux_wms_locations');
+                if (localLoc) {
+                    const locations = JSON.parse(localLoc);
+                    const remainingLocations = locations.filter(l => !deletedZoneIds.includes(l.zoneId));
+                    localStorage.setItem('corellux_wms_locations', JSON.stringify(remainingLocations));
+                }
+            }
+            return { success: true };
+        }
+    },
+
+    async getWmsZones(warehouseId = null) {
+        try {
+            let query = supabase.from('wms_zones').select('*');
+            if (warehouseId) {
+                query = query.eq('warehouse_id', warehouseId);
+            }
+            const { data, error } = await query.order('name', { ascending: true });
+            if (error) throw error;
+
+            const defaultZones = [
+                { id: 1, warehouseId: 1, name: 'Câmara Fria A', type: 'Resfriado', description: 'Armazenamento de laticínios e verduras.', status: 'Ativo', addressMask: '{zone}-{aisle}-{row}-{shelf}' },
+                { id: 2, warehouseId: 1, name: 'Câmara Fria B', type: 'Congelado', description: 'Armazenamento de carnes e congelados.', status: 'Ativo', addressMask: '{zone}-{aisle}-{row}-{shelf}' },
+                { id: 3, warehouseId: 1, name: 'Estoque Seco A', type: 'Seco', description: 'Armazenamento de massas, grãos e enlatados.', status: 'Ativo', addressMask: '{zone}/{aisle}{row}{shelf}' },
+                { id: 4, warehouseId: 1, name: 'Estoque Seco B', type: 'Seco', description: 'Armazenamento de temperos e embalagens.', status: 'Ativo', addressMask: '{zone}-{aisle}.{row}.{shelf}' }
+            ];
+
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_wms_zones');
+                if (local) {
+                    const list = JSON.parse(local);
+                    return warehouseId ? list.filter(z => String(z.warehouseId) === String(warehouseId)) : list;
+                }
+                localStorage.setItem('corellux_wms_zones', JSON.stringify(defaultZones));
+                return warehouseId ? defaultZones.filter(z => String(z.warehouseId) === String(warehouseId)) : defaultZones;
+            }
+            const camelZones = toCamelCase(data);
+            
+            // Sync with local Storage
+            const local = localStorage.getItem('corellux_wms_zones');
+            let list = local ? JSON.parse(local) : [];
+            // Merge results
+            camelZones.forEach(z => {
+                const idx = list.findIndex(lz => String(lz.id) === String(z.id));
+                if (idx !== -1) list[idx] = z;
+                else list.push(z);
+            });
+            localStorage.setItem('corellux_wms_zones', JSON.stringify(list));
+
+            return camelZones;
+        } catch (e) {
+            console.warn('[DbService] Erro ao carregar zonas no Supabase. Fallback local:', e.message || e);
+            const defaultZones = [
+                { id: 1, warehouseId: 1, name: 'Câmara Fria A', type: 'Resfriado', description: 'Armazenamento de laticínios e verduras.', status: 'Ativo', addressMask: '{zone}-{aisle}-{row}-{shelf}' },
+                { id: 2, warehouseId: 1, name: 'Câmara Fria B', type: 'Congelado', description: 'Armazenamento de carnes e congelados.', status: 'Ativo', addressMask: '{zone}-{aisle}-{row}-{shelf}' },
+                { id: 3, warehouseId: 1, name: 'Estoque Seco A', type: 'Seco', description: 'Armazenamento de massas, grãos e enlatados.', status: 'Ativo', addressMask: '{zone}/{aisle}{row}{shelf}' },
+                { id: 4, warehouseId: 1, name: 'Estoque Seco B', type: 'Seco', description: 'Armazenamento de temperos e embalagens.', status: 'Ativo', addressMask: '{zone}-{aisle}.{row}.{shelf}' }
+            ];
+            const local = localStorage.getItem('corellux_wms_zones');
+            if (local) {
+                const list = JSON.parse(local);
+                return warehouseId ? list.filter(z => String(z.warehouseId) === String(warehouseId)) : list;
+            }
+            localStorage.setItem('corellux_wms_zones', JSON.stringify(defaultZones));
+            return warehouseId ? defaultZones.filter(z => String(z.warehouseId) === String(warehouseId)) : defaultZones;
+        }
+    },
+
+    async saveWmsZone(zone) {
+        try {
+            const snakeZone = toSnakeCase(zone);
+            let result;
+            if (zone.id && typeof zone.id === 'number') {
+                result = await supabase
+                    .from('wms_zones')
+                    .update(snakeZone)
+                    .eq('id', zone.id)
+                    .select();
+            } else {
+                delete snakeZone.id;
+                result = await supabase
+                    .from('wms_zones')
+                    .insert([snakeZone])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            const saved = toCamelCase(result.data[0]);
+
+            // Sync local
+            const local = localStorage.getItem('corellux_wms_zones');
+            let list = local ? JSON.parse(local) : [];
+            const idx = list.findIndex(z => String(z.id) === String(saved.id));
+            if (idx !== -1) {
+                list[idx] = saved;
+            } else {
+                list.push(saved);
+            }
+            localStorage.setItem('corellux_wms_zones', JSON.stringify(list));
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar zona no Supabase. Gravando local:', e.message || e);
+            const local = localStorage.getItem('corellux_wms_zones');
+            let list = local ? JSON.parse(local) : [];
+            const newZ = {
+                ...zone,
+                id: zone.id || Date.now() + Math.floor(Math.random() * 1000)
+            };
+            const idx = list.findIndex(z => String(z.id) === String(newZ.id));
+            if (idx !== -1) {
+                list[idx] = newZ;
+            } else {
+                list.push(newZ);
+            }
+            localStorage.setItem('corellux_wms_zones', JSON.stringify(list));
+            return { success: true, data: newZ };
+        }
+    },
+
+    async deleteWmsZone(id) {
+        try {
+            const { error } = await supabase
+                .from('wms_zones')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
+
+            // Sync local
+            const localZ = localStorage.getItem('corellux_wms_zones');
+            if (localZ) {
+                const list = JSON.parse(localZ).filter(z => String(z.id) !== String(id));
+                localStorage.setItem('corellux_wms_zones', JSON.stringify(list));
+            }
+            const localLoc = localStorage.getItem('corellux_wms_locations');
+            if (localLoc) {
+                const locations = JSON.parse(localLoc).filter(l => String(l.zoneId) !== String(id));
+                localStorage.setItem('corellux_wms_locations', JSON.stringify(locations));
+            }
+            return { success: true };
+        } catch (e) {
+            console.warn('[DbService] Erro ao excluir zona no Supabase. Atualizando local:', e.message || e);
+            const localZ = localStorage.getItem('corellux_wms_zones');
+            if (localZ) {
+                const list = JSON.parse(localZ).filter(z => String(z.id) !== String(id));
+                localStorage.setItem('corellux_wms_zones', JSON.stringify(list));
+            }
+            const localLoc = localStorage.getItem('corellux_wms_locations');
+            if (localLoc) {
+                const locations = JSON.parse(localLoc).filter(l => String(l.zoneId) !== String(id));
+                localStorage.setItem('corellux_wms_locations', JSON.stringify(locations));
+            }
+            return { success: true };
+        }
+    },
+
+    async getWmsLocations(zoneId = null) {
+        try {
+            let query = supabase.from('wms_locations').select('*');
+            if (zoneId) {
+                query = query.eq('zone_id', zoneId);
+            }
+            const { data, error } = await query
+                .order('aisle', { ascending: true })
+                .order('row', { ascending: true })
+                .order('shelf', { ascending: true });
+            if (error) throw error;
+
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_wms_locations');
+                if (local) {
+                    const list = JSON.parse(local);
+                    return zoneId ? list.filter(l => String(l.zoneId) === String(zoneId)) : list;
+                }
+                return [];
+            }
+            const camelLocations = toCamelCase(data);
+
+            // Sync with local storage
+            const local = localStorage.getItem('corellux_wms_locations');
+            let list = local ? JSON.parse(local) : [];
+            // Merge
+            camelLocations.forEach(l => {
+                const idx = list.findIndex(ll => String(ll.id) === String(l.id));
+                if (idx !== -1) list[idx] = l;
+                else list.push(l);
+            });
+            localStorage.setItem('corellux_wms_locations', JSON.stringify(list));
+
+            return camelLocations;
+        } catch (e) {
+            console.warn('[DbService] Erro ao carregar locais no Supabase. Fallback local:', e.message || e);
+            const local = localStorage.getItem('corellux_wms_locations');
+            if (local) {
+                const list = JSON.parse(local);
+                return zoneId ? list.filter(l => String(l.zoneId) === String(zoneId)) : list;
+            }
+            return [];
+        }
+    },
+
+    async saveWmsLocation(location) {
+        try {
+            const snakeLoc = toSnakeCase(location);
+            let result;
+            if (location.id && typeof location.id === 'number') {
+                result = await supabase
+                    .from('wms_locations')
+                    .update(snakeLoc)
+                    .eq('id', location.id)
+                    .select();
+            } else {
+                delete snakeLoc.id;
+                result = await supabase
+                    .from('wms_locations')
+                    .insert([snakeLoc])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            const saved = toCamelCase(result.data[0]);
+
+            // Sync local
+            const local = localStorage.getItem('corellux_wms_locations');
+            let list = local ? JSON.parse(local) : [];
+            const idx = list.findIndex(l => String(l.id) === String(saved.id));
+            if (idx !== -1) {
+                list[idx] = saved;
+            } else {
+                list.push(saved);
+            }
+            localStorage.setItem('corellux_wms_locations', JSON.stringify(list));
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar endereço WMS no Supabase. Gravando local:', e.message || e);
+            const local = localStorage.getItem('corellux_wms_locations');
+            let list = local ? JSON.parse(local) : [];
+            const newLoc = {
+                ...location,
+                id: location.id || Date.now() + Math.floor(Math.random() * 1000)
+            };
+            const idx = list.findIndex(l => String(l.id) === String(newLoc.id));
+            if (idx !== -1) {
+                list[idx] = newLoc;
+            } else {
+                list.push(newLoc);
+            }
+            localStorage.setItem('corellux_wms_locations', JSON.stringify(list));
+            return { success: true, data: newLoc };
+        }
+    },
+
+    async deleteWmsLocation(id) {
+        try {
+            const { error } = await supabase
+                .from('wms_locations')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
+
+            // Sync local
+            const local = localStorage.getItem('corellux_wms_locations');
+            if (local) {
+                const list = JSON.parse(local).filter(l => String(l.id) !== String(id));
+                localStorage.setItem('corellux_wms_locations', JSON.stringify(list));
+            }
+            return { success: true };
+        } catch (e) {
+            console.warn('[DbService] Erro ao excluir endereço no Supabase. Atualizando local:', e.message || e);
+            const local = localStorage.getItem('corellux_wms_locations');
+            if (local) {
+                const list = JSON.parse(local).filter(l => String(l.id) !== String(id));
+                localStorage.setItem('corellux_wms_locations', JSON.stringify(list));
+            }
+            return { success: true };
+        }
+    },
+
+    async saveWmsLocationsBatch(zoneId, locations) {
+        try {
+            const snakeLocations = locations.map(l => toSnakeCase({ ...l, zoneId }));
+            const { data, error } = await supabase
+                .from('wms_locations')
+                .insert(snakeLocations)
+                .select();
+            if (error) throw error;
+            const savedList = toCamelCase(data);
+
+            // Sync local
+            const local = localStorage.getItem('corellux_wms_locations');
+            let list = local ? JSON.parse(local) : [];
+            savedList.forEach(saved => {
+                const idx = list.findIndex(l => String(l.id) === String(saved.id));
+                if (idx !== -1) {
+                    list[idx] = saved;
+                } else {
+                    list.push(saved);
+                }
+            });
+            localStorage.setItem('corellux_wms_locations', JSON.stringify(list));
+            return { success: true, data: savedList };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar endereços em lote no Supabase. Gravando localmente:', e.message || e);
+            const local = localStorage.getItem('corellux_wms_locations');
+            let list = local ? JSON.parse(local) : [];
+            const savedList = locations.map(l => ({
+                ...l,
+                zoneId,
+                id: l.id || Date.now() + Math.floor(Math.random() * 100000) + Math.floor(Math.random() * 1000)
+            }));
+            savedList.forEach(newLoc => {
+                list.push(newLoc);
+            });
+            localStorage.setItem('corellux_wms_locations', JSON.stringify(list));
+            return { success: true, data: savedList };
         }
     }
 };

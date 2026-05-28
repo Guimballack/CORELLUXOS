@@ -42,7 +42,16 @@ import {
     ChevronRight,
     LayoutGrid,
     Briefcase,
-    ShoppingBag
+    ShoppingBag,
+    Warehouse,
+    Layers,
+    MapPin,
+    Grid3X3,
+    Wrench,
+    Shuffle,
+    Settings,
+    Map,
+    Maximize
 } from 'lucide-react';
 
 const PERSONAL_DOCS_ITEMS = [
@@ -79,6 +88,39 @@ export default function SettingsHub() {
     const [setores, setSetores] = useState([]);
     const [cargos, setCargos] = useState([]);
     const [loading, setLoading] = useState(true);
+
+    // =============================================
+    // WMS STATE DECLARATIONS
+    // =============================================
+    const [armazens, setArmazens] = useState([]);
+    const [selectedWarehouse, setSelectedWarehouse] = useState(null);
+    const [wmsZones, setWmsZones] = useState([]);
+    const [selectedZone, setSelectedZone] = useState(null);
+    const [wmsLocations, setWmsLocations] = useState([]);
+    const [activeWmsSubTab, setActiveWmsSubTab] = useState('geral'); // geral, zonas, enderecos
+    const [wmsLocFilterAisle, setWmsLocFilterAisle] = useState('');
+    const [activeWmsLocView, setActiveWmsLocView] = useState('mapa'); // mapa, lista
+
+    // WMS Modals & Forms
+    const [showWarehouseModal, setShowWarehouseModal] = useState(false);
+    const [editingWarehouse, setEditingWarehouse] = useState(null);
+    const [warehouseForm, setWarehouseForm] = useState({ name: '', description: '', status: 'Ativo' });
+
+    const [showZoneModal, setShowZoneModal] = useState(false);
+    const [editingZone, setEditingZone] = useState(null);
+    const [zoneForm, setZoneForm] = useState({ name: '', type: 'Seco', description: '', status: 'Ativo', addressMask: '{zone}-{aisle}-{row}-{shelf}' });
+
+    const [showBatchLocationModal, setShowBatchLocationModal] = useState(false);
+    const [batchLocationForm, setBatchLocationForm] = useState({
+        aisleStart: '1',
+        aisleEnd: '3',
+        rowStart: 'A',
+        rowEnd: 'C',
+        shelfStart: '1',
+        shelfEnd: '4',
+        positionStart: '',
+        positionEnd: ''
+    });
 
     // Tab control
     const activeTab = globalState.settingsActiveTab;
@@ -206,6 +248,337 @@ export default function SettingsHub() {
     const showToast = (message, type = 'success') => {
         setToast({ message, type });
     };
+
+    // =============================================
+    // WMS: LOGIC HANDLERS & OPERATIONS
+    // =============================================
+    const loadWmsData = async () => {
+        setLoading(true);
+        try {
+            const whList = await DbService.getWmsWarehouses();
+            setArmazens(whList);
+            if (whList.length > 0) {
+                // Determine warehouse to select
+                let whToSelect = whList[0];
+                if (selectedWarehouse) {
+                    const found = whList.find(w => w.id === selectedWarehouse.id);
+                    if (found) whToSelect = found;
+                }
+                setSelectedWarehouse(whToSelect);
+                await loadWarehouseZones(whToSelect.id);
+            } else {
+                setSelectedWarehouse(null);
+                setWmsZones([]);
+                setSelectedZone(null);
+                setWmsLocations([]);
+            }
+        } catch (e) {
+            console.error('[SettingsHub] Error loading WMS warehouses:', e);
+            showToast('Erro ao carregar armazéns.', 'error');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadWarehouseZones = async (whId) => {
+        try {
+            const zones = await DbService.getWmsZones(whId);
+            setWmsZones(zones);
+            if (zones.length > 0) {
+                let zoneToSelect = zones[0];
+                if (selectedZone) {
+                    const found = zones.find(z => z.id === selectedZone.id);
+                    if (found) zoneToSelect = found;
+                }
+                setSelectedZone(zoneToSelect);
+                await loadZoneLocations(zoneToSelect.id);
+            } else {
+                setSelectedZone(null);
+                setWmsLocations([]);
+            }
+        } catch (e) {
+            console.error('[SettingsHub] Error loading WMS zones:', e);
+        }
+    };
+
+    const loadZoneLocations = async (zId) => {
+        try {
+            const locs = await DbService.getWmsLocations(zId);
+            setWmsLocations(locs);
+            if (locs.length > 0) {
+                const uniqueAisles = [...new Set(locs.map(l => l.aisle))].sort((a,b) => {
+                    const numA = parseInt(a, 10);
+                    const numB = parseInt(b, 10);
+                    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                    return a.localeCompare(b);
+                });
+                if (!uniqueAisles.includes(wmsLocFilterAisle)) {
+                    setWmsLocFilterAisle(uniqueAisles[0] || '');
+                }
+            } else {
+                setWmsLocFilterAisle('');
+            }
+        } catch (e) {
+            console.error('[SettingsHub] Error loading WMS locations:', e);
+        }
+    };
+
+    useEffect(() => {
+        if (activeTab === 'wms') {
+            loadWmsData();
+        }
+    }, [activeTab]);
+
+    // Handle Warehouse Selection
+    const handleSelectWarehouse = async (wh) => {
+        setSelectedWarehouse(wh);
+        setActiveWmsSubTab('geral');
+        await loadWarehouseZones(wh.id);
+    };
+
+    // Handle Zone Selection
+    const handleSelectZone = async (zone) => {
+        setSelectedZone(zone);
+        await loadZoneLocations(zone.id);
+    };
+
+    // Warehouse CRUD Handlers
+    const openWarehouseModalForCreate = () => {
+        setEditingWarehouse(null);
+        setWarehouseForm({ name: '', description: '', status: 'Ativo' });
+        setShowWarehouseModal(true);
+    };
+
+    const openWarehouseModalForEdit = (wh) => {
+        setEditingWarehouse(wh);
+        setWarehouseForm({ name: wh.name, description: wh.description || '', status: wh.status || 'Ativo' });
+        setShowWarehouseModal(true);
+    };
+
+    const handleSaveWarehouse = async (e) => {
+        e.preventDefault();
+        if (!warehouseForm.name.trim()) {
+            showToast('O nome do armazém é obrigatório.', 'error');
+            return;
+        }
+        const payload = {
+            ...warehouseForm,
+            name: warehouseForm.name.trim()
+        };
+        if (editingWarehouse) {
+            payload.id = editingWarehouse.id;
+        }
+        const result = await DbService.saveWmsWarehouse(payload);
+        if (result.success) {
+            showToast('Armazém gravado com sucesso!', 'success');
+            setShowWarehouseModal(false);
+            await loadWmsData();
+        } else {
+            showToast('Erro ao salvar armazém.', 'error');
+        }
+    };
+
+    const handleDeleteWarehouse = async (whId) => {
+        if (window.confirm('Tem certeza que deseja excluir este armazém? Todas as zonas e endereços vinculados serão excluídos permanentemente.')) {
+            const result = await DbService.deleteWmsWarehouse(whId);
+            if (result.success) {
+                showToast('Armazém excluído com sucesso.', 'success');
+                if (selectedWarehouse?.id === whId) {
+                    setSelectedWarehouse(null);
+                    setSelectedZone(null);
+                }
+                await loadWmsData();
+            } else {
+                showToast('Erro ao excluir armazém.', 'error');
+            }
+        }
+    };
+
+    // Zone CRUD Handlers
+    const openZoneModalForCreate = () => {
+        setEditingZone(null);
+        setZoneForm({ name: '', type: 'Seco', description: '', status: 'Ativo', addressMask: '{zone}-{aisle}-{row}-{shelf}' });
+        setShowZoneModal(true);
+    };
+
+    const openZoneModalForEdit = (zone) => {
+        setEditingZone(zone);
+        setZoneForm({
+            name: zone.name,
+            type: zone.type || 'Seco',
+            description: zone.description || '',
+            status: zone.status || 'Ativo',
+            addressMask: zone.addressMask || '{zone}-{aisle}-{row}-{shelf}'
+        });
+        setShowZoneModal(true);
+    };
+
+    const handleSaveZone = async (e) => {
+        e.preventDefault();
+        if (!selectedWarehouse) return;
+        if (!zoneForm.name.trim()) {
+            showToast('O nome da zona é obrigatório.', 'error');
+            return;
+        }
+        const payload = {
+            ...zoneForm,
+            warehouseId: selectedWarehouse.id,
+            name: zoneForm.name.trim()
+        };
+        if (editingZone) {
+            payload.id = editingZone.id;
+        }
+        const result = await DbService.saveWmsZone(payload);
+        if (result.success) {
+            showToast('Zona gravada com sucesso!', 'success');
+            setShowZoneModal(false);
+            await loadWarehouseZones(selectedWarehouse.id);
+        } else {
+            showToast('Erro ao salvar zona.', 'error');
+        }
+    };
+
+    const handleDeleteZone = async (zoneId) => {
+        if (window.confirm('Tem certeza que deseja excluir esta zona? Todos os endereços vinculados serão excluídos permanentemente.')) {
+            const result = await DbService.deleteWmsZone(zoneId);
+            if (result.success) {
+                showToast('Zona excluída com sucesso.', 'success');
+                if (selectedZone?.id === zoneId) {
+                    setSelectedZone(null);
+                }
+                await loadWarehouseZones(selectedWarehouse.id);
+            } else {
+                showToast('Erro ao excluir zona.', 'error');
+            }
+        }
+    };
+
+    // Location Address Generator Helpers
+    const generateNumericRange = (start, end) => {
+        const s = parseInt(start, 10);
+        const e = parseInt(end, 10);
+        if (isNaN(s) || isNaN(e) || s > e) return [];
+        const arr = [];
+        for (let i = s; i <= e; i++) {
+            const useZeroPad = start.startsWith('0') || end.startsWith('0');
+            const str = String(i);
+            arr.push(useZeroPad ? str.padStart(Math.max(start.length, end.length), '0') : str);
+        }
+        return arr;
+    };
+
+    const generateCharRange = (start, end) => {
+        const sCode = start.toUpperCase().charCodeAt(0);
+        const eCode = end.toUpperCase().charCodeAt(0);
+        if (isNaN(sCode) || isNaN(eCode) || sCode > eCode) return [];
+        const arr = [];
+        for (let code = sCode; code <= eCode; code++) {
+            arr.push(String.fromCharCode(code));
+        }
+        return arr;
+    };
+
+    const getRange = (startVal, endVal) => {
+        if (!startVal || !endVal) return [''];
+        const isNumStart = /^\d+$/.test(startVal);
+        const isNumEnd = /^\d+$/.test(endVal);
+        if (isNumStart && isNumEnd) {
+            return generateNumericRange(startVal, endVal);
+        } else {
+            return generateCharRange(startVal, endVal);
+        }
+    };
+
+    // Batch Location Generation
+    const handleGenerateLocationsBatch = async (e) => {
+        e.preventDefault();
+        if (!selectedZone) return;
+
+        const aisles = getRange(batchLocationForm.aisleStart, batchLocationForm.aisleEnd);
+        const rows = getRange(batchLocationForm.rowStart, batchLocationForm.rowEnd);
+        const shelves = getRange(batchLocationForm.shelfStart, batchLocationForm.shelfEnd);
+        const positions = batchLocationForm.positionStart && batchLocationForm.positionEnd 
+            ? getRange(batchLocationForm.positionStart, batchLocationForm.positionEnd) 
+            : [];
+
+        if (aisles.length === 0 || rows.length === 0 || shelves.length === 0) {
+            showToast('Intervalos inválidos. Verifique os valores.', 'error');
+            return;
+        }
+
+        const combinations = [];
+        for (const aisle of aisles) {
+            for (const row of rows) {
+                for (const shelf of shelves) {
+                    if (positions.length > 0) {
+                        for (const pos of positions) {
+                            combinations.push({ aisle, row, shelf, position: pos, status: 'Ativo' });
+                        }
+                    } else {
+                        combinations.push({ aisle, row, shelf, position: null, status: 'Ativo' });
+                    }
+                }
+            }
+        }
+
+        if (combinations.length === 0) {
+            showToast('Nenhum endereço a ser gerado.', 'error');
+            return;
+        }
+
+        if (combinations.length > 1000) {
+            showToast('Limite de geração excedido (máximo 1000 endereços por vez). Reduza os intervalos.', 'error');
+            return;
+        }
+
+        setLoading(true);
+        const result = await DbService.saveWmsLocationsBatch(selectedZone.id, combinations);
+        setLoading(false);
+
+        if (result.success) {
+            showToast(`${combinations.length} endereços gerados com sucesso!`, 'success');
+            setShowBatchLocationModal(false);
+            await loadZoneLocations(selectedZone.id);
+        } else {
+            showToast('Erro ao gerar endereços em lote. Pode haver conflito de duplicidade.', 'error');
+        }
+    };
+
+    // Single Location Handlers
+    const handleDeleteLocation = async (locId) => {
+        if (window.confirm('Excluir este endereço?')) {
+            const result = await DbService.deleteWmsLocation(locId);
+            if (result.success) {
+                showToast('Endereço excluído.', 'success');
+                await loadZoneLocations(selectedZone.id);
+            } else {
+                showToast('Erro ao excluir endereço.', 'error');
+            }
+        }
+    };
+
+    const handleToggleLocationStatus = async (loc) => {
+        const newStatus = loc.status === 'Ativo' ? 'Bloqueado' : 'Ativo';
+        const updated = { ...loc, status: newStatus };
+        const result = await DbService.saveWmsLocation(updated);
+        if (result.success) {
+            showToast(`Endereço ${newStatus === 'Ativo' ? 'ativado' : 'bloqueado'}.`, 'success');
+            await loadZoneLocations(selectedZone.id);
+        } else {
+            showToast('Erro ao alterar status do endereço.', 'error');
+        }
+    };
+
+    const formatAddressVisual = (mask, zoneName, aisle, row, shelf, position) => {
+        let m = mask || '{zone}-{aisle}-{row}-{shelf}';
+        return m
+            .replace('{zone}', zoneName || '')
+            .replace('{aisle}', aisle || '')
+            .replace('{row}', row || '')
+            .replace('{shelf}', shelf || '')
+            .replace('{position}', position || '');
+    };
+
 
     // Helper: Check if logged in user is admin or has config permission
     const isAdminUser = globalState.currentUser && (
@@ -1582,6 +1955,18 @@ export default function SettingsHub() {
                                     </div>
                                     <ChevronRight className="chevron" size={20} />
                                 </button>
+
+                                <button 
+                                    className="menu-card dark-blue" 
+                                    onClick={() => setActiveTab('wms')}
+                                >
+                                    <div className="card-icon"><Warehouse size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>ARMAZÉNS (WMS)</h3>
+                                        <p>Cadastro de armazéns, zonas (frio/seco) e endereçamentos.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
                             </div>
                         )}
 
@@ -2189,6 +2574,559 @@ export default function SettingsHub() {
                                     <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '400px' }}>
                                         Esta funcionalidade está em fase de planejamento e estará disponível em breve para o cadastro de produtos finais e cardápio.
                                     </p>
+                                </div>
+                            </div>
+                        )}
+
+                        {activeTab === 'wms' && (
+                            <div className="wms-container" style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '1.5rem' }}>
+                                {/* Header */}
+                                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                    <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <Warehouse style={{ color: 'var(--accent-blue)' }} /> Configuração WMS (Armazéns)
+                                    </h2>
+                                    {isAdminUser && (
+                                        <button className="btn-header-action" onClick={openWarehouseModalForCreate} style={{ marginLeft: 'auto' }}>
+                                            <PlusCircle size={16} /> NOVO ARMAZÉM
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Main Split-Screen Layout */}
+                                <div style={{ display: 'flex', flex: 1, gap: '1.5rem', overflow: 'hidden', minHeight: '500px' }}>
+                                    {/* Left Panel: Warehouse List */}
+                                    <div style={{
+                                        width: '320px',
+                                        background: 'rgba(19, 27, 39, 0.6)',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: '12px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        overflow: 'hidden',
+                                        backdropFilter: 'blur(10px)'
+                                    }}>
+                                        <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.1)' }}>
+                                            <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '1px' }}>Armazéns Disponíveis</h4>
+                                        </div>
+                                        <div style={{ flex: 1, overflowY: 'auto', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                            {armazens.length === 0 ? (
+                                                <div style={{ textAlign: 'center', padding: '2rem 1rem', color: 'var(--text-secondary)' }}>
+                                                    Nenhum armazém cadastrado.
+                                                </div>
+                                            ) : (
+                                                armazens.map(wh => (
+                                                    <div 
+                                                        key={wh.id}
+                                                        onClick={() => handleSelectWarehouse(wh)}
+                                                        style={{
+                                                            padding: '1rem',
+                                                            borderRadius: '8px',
+                                                            background: selectedWarehouse?.id === wh.id ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255,255,255,0.02)',
+                                                            border: selectedWarehouse?.id === wh.id ? '1px solid var(--accent-blue)' : '1px solid var(--border-color)',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s',
+                                                            position: 'relative'
+                                                        }}
+                                                    >
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                                                            <div style={{ flex: 1 }}>
+                                                                <h4 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1rem' }}>{wh.name}</h4>
+                                                                <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                                                    {wh.description || 'Sem descrição.'}
+                                                                </p>
+                                                            </div>
+                                                            <div style={{ display: 'flex', gap: '0.25rem', marginLeft: '0.5rem' }}>
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); openWarehouseModalForEdit(wh); }}
+                                                                    style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px' }}
+                                                                >
+                                                                    <Edit size={14} />
+                                                                </button>
+                                                                <button 
+                                                                    onClick={(e) => { e.stopPropagation(); handleDeleteWarehouse(wh.id); }}
+                                                                    style={{ background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', padding: '2px' }}
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                            <span style={{
+                                                                fontSize: '0.75rem',
+                                                                padding: '2px 6px',
+                                                                borderRadius: '4px',
+                                                                background: wh.status === 'Ativo' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                                color: wh.status === 'Ativo' ? 'var(--accent-green)' : 'var(--accent-red)'
+                                                            }}>
+                                                                {wh.status || 'Ativo'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Right Panel: Selected Warehouse Details */}
+                                    <div style={{
+                                        flex: 1,
+                                        background: 'rgba(19, 27, 39, 0.4)',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: '12px',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        overflow: 'hidden',
+                                        backdropFilter: 'blur(10px)'
+                                    }}>
+                                        {!selectedWarehouse ? (
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, gap: '1rem', color: 'var(--text-secondary)', padding: '2rem' }}>
+                                                <Warehouse size={48} style={{ opacity: 0.3 }} />
+                                                <p>Selecione um armazém à esquerda para configurar zonas e endereçamentos.</p>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {/* Tabs Header */}
+                                                <div style={{
+                                                    display: 'flex',
+                                                    borderBottom: '1px solid var(--border-color)',
+                                                    background: 'rgba(0,0,0,0.15)',
+                                                    padding: '0 1rem',
+                                                    alignItems: 'center',
+                                                    flexShrink: 0
+                                                }}>
+                                                    <h3 style={{ fontSize: '1.1rem', margin: '0 1.5rem 0 0', color: 'var(--accent-blue)', fontWeight: '700' }}>
+                                                        {selectedWarehouse.name}
+                                                    </h3>
+                                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                        {[
+                                                            { id: 'geral', label: 'Geral', icon: <Settings size={14} /> },
+                                                            { id: 'zonas', label: 'Zonas / Estoques', icon: <Layers size={14} /> },
+                                                            { id: 'enderecos', label: 'Endereçamentos', icon: <MapPin size={14} /> }
+                                                        ].map(tab => (
+                                                            <button
+                                                                key={tab.id}
+                                                                onClick={() => setActiveWmsSubTab(tab.id)}
+                                                                style={{
+                                                                    padding: '1rem 0.75rem',
+                                                                    background: 'none',
+                                                                    border: 'none',
+                                                                    borderBottom: activeWmsSubTab === tab.id ? '2px solid var(--accent-blue)' : '2px solid transparent',
+                                                                    color: activeWmsSubTab === tab.id ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                                                    fontSize: '0.85rem',
+                                                                    fontWeight: activeWmsSubTab === tab.id ? '600' : '400',
+                                                                    cursor: 'pointer',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '0.4rem',
+                                                                    transition: 'all 0.2s'
+                                                                }}
+                                                            >
+                                                                {tab.icon} {tab.label}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Sub-tab content area */}
+                                                <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+                                                    {/* WMS SUB-TAB 1: GERAL */}
+                                                    {activeWmsSubTab === 'geral' && (
+                                                        <div style={{ maxWidth: '600px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                                            <div>
+                                                                <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-primary)' }}>Configurações Gerais</h4>
+                                                                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Visualize e edite as informações gerais do armazém.</p>
+                                                            </div>
+                                                            <div className="card-input-group">
+                                                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Nome do Armazém</label>
+                                                                <input 
+                                                                    type="text" 
+                                                                    value={selectedWarehouse.name}
+                                                                    disabled
+                                                                    style={{ width: '100%', padding: '0.75rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', opacity: 0.7 }}
+                                                                />
+                                                            </div>
+                                                            <div className="card-input-group">
+                                                                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Descrição</label>
+                                                                <textarea 
+                                                                    value={selectedWarehouse.description || ''}
+                                                                    disabled
+                                                                    rows={3}
+                                                                    style={{ width: '100%', padding: '0.75rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', opacity: 0.7, resize: 'none' }}
+                                                                />
+                                                            </div>
+                                                            <div className="card-input-group" style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                                                <div style={{ flex: 1 }}>
+                                                                    <h5 style={{ margin: 0, color: 'var(--text-primary)' }}>Status Operacional</h5>
+                                                                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Define se o armazém pode receber ou expedir insumos.</p>
+                                                                </div>
+                                                                <span className={`status-badge ${selectedWarehouse.status === 'Ativo' ? 'badge-ativo' : 'badge-desligado'}`}>
+                                                                    {selectedWarehouse.status || 'Ativo'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* WMS SUB-TAB 2: ZONAS */}
+                                                    {activeWmsSubTab === 'zonas' && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                <div>
+                                                                    <h4 style={{ margin: '0 0 0.25rem 0', color: 'var(--text-primary)' }}>Zonas de Armazenamento</h4>
+                                                                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Cada armazém possui divisões físicas específicas (ex: câmaras frias, estoques secos).</p>
+                                                                </div>
+                                                                {isAdminUser && (
+                                                                    <button className="btn-secondary" onClick={openZoneModalForCreate} style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>
+                                                                        <Plus size={14} /> NOVA ZONA
+                                                                    </button>
+                                                                )}
+                                                            </div>
+
+                                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+                                                                {wmsZones.length === 0 ? (
+                                                                    <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.01)', border: '1.5px dashed var(--border-color)', borderRadius: '12px' }}>
+                                                                        Nenhuma zona de armazenamento cadastrada para este armazém.
+                                                                    </div>
+                                                                ) : (
+                                                                    wmsZones.map(zone => {
+                                                                        let typeColor = 'var(--accent-orange)';
+                                                                        if (zone.type === 'Resfriado' || zone.type === 'Congelado') typeColor = 'var(--accent-blue)';
+                                                                        if (zone.type === 'Climatizado') typeColor = 'var(--accent-teal)';
+
+                                                                        return (
+                                                                            <div 
+                                                                                key={zone.id}
+                                                                                style={{
+                                                                                    background: 'rgba(255,255,255,0.02)',
+                                                                                    border: selectedZone?.id === zone.id ? '1px solid var(--accent-blue)' : '1px solid var(--border-color)',
+                                                                                    borderRadius: '10px',
+                                                                                    padding: '1.2rem',
+                                                                                    position: 'relative',
+                                                                                    display: 'flex',
+                                                                                    flexDirection: 'column',
+                                                                                    justifyContent: 'space-between',
+                                                                                    minHeight: '160px',
+                                                                                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                                                                                    cursor: 'pointer'
+                                                                                }}
+                                                                                onClick={() => handleSelectZone(zone)}
+                                                                            >
+                                                                                <div>
+                                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                                                                                        <h4 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: '700' }}>{zone.name}</h4>
+                                                                                        <div style={{ display: 'flex', gap: '0.3rem' }}>
+                                                                                            <button onClick={(e) => { e.stopPropagation(); openZoneModalForEdit(zone); }} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px' }} title="Editar">
+                                                                                                <Edit size={14} />
+                                                                                            </button>
+                                                                                            <button onClick={(e) => { e.stopPropagation(); handleDeleteZone(zone.id); }} style={{ background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', padding: '2px' }} title="Excluir">
+                                                                                                <Trash2 size={14} />
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                    <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-secondary)', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                                                                                        {zone.description || 'Sem descrição.'}
+                                                                                    </p>
+                                                                                </div>
+                                                                                <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                                        <span style={{ fontSize: '0.75rem', fontWeight: '600', color: typeColor, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: typeColor }} />
+                                                                                            {zone.type}
+                                                                                        </span>
+                                                                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                                                                                            Mask: <code style={{ color: 'var(--text-primary)', background: 'rgba(0,0,0,0.3)', padding: '2px 4px', borderRadius: '3px' }}>{zone.addressMask}</code>
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* WMS SUB-TAB 3: ENDEREÇOS */}
+                                                    {activeWmsSubTab === 'enderecos' && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', height: '100%' }}>
+                                                            {wmsZones.length === 0 ? (
+                                                                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
+                                                                    Crie primeiro uma Zona de armazenamento antes de gerenciar os endereços.
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    {/* Control bar: Zone dropdown, view selector, batch generate button */}
+                                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Zona:</span>
+                                                                            <select 
+                                                                                value={selectedZone?.id || ''} 
+                                                                                onChange={(e) => {
+                                                                                    const z = wmsZones.find(x => String(x.id) === String(e.target.value));
+                                                                                    if (z) handleSelectZone(z);
+                                                                                }}
+                                                                                style={{ padding: '0.4rem 0.8rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                                                            >
+                                                                                {wmsZones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+                                                                            </select>
+                                                                        </div>
+
+                                                                        <div style={{ display: 'flex', gap: '4px', background: 'rgba(0,0,0,0.3)', padding: '4px', borderRadius: '8px' }}>
+                                                                            <button 
+                                                                                onClick={() => setActiveWmsLocView('mapa')}
+                                                                                style={{
+                                                                                    padding: '0.4rem 0.8rem',
+                                                                                    background: activeWmsLocView === 'mapa' ? 'var(--accent-blue)' : 'none',
+                                                                                    color: activeWmsLocView === 'mapa' ? 'white' : 'var(--text-secondary)',
+                                                                                    border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
+                                                                                }}
+                                                                            >
+                                                                                <Map size={14} /> Mapa 2D
+                                                                            </button>
+                                                                            <button 
+                                                                                onClick={() => setActiveWmsLocView('lista')}
+                                                                                style={{
+                                                                                    padding: '0.4rem 0.8rem',
+                                                                                    background: activeWmsLocView === 'lista' ? 'var(--accent-blue)' : 'none',
+                                                                                    color: activeWmsLocView === 'lista' ? 'white' : 'var(--text-secondary)',
+                                                                                    border: 'none', borderRadius: '6px', fontSize: '0.8rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
+                                                                                }}
+                                                                            >
+                                                                                <Grid3X3 size={14} /> Lista
+                                                                            </button>
+                                                                        </div>
+
+                                                                        {isAdminUser && (
+                                                                            <button 
+                                                                                className="btn-header-action"
+                                                                                onClick={() => {
+                                                                                    setBatchLocationForm({ aisleStart: '1', aisleEnd: '3', rowStart: 'A', rowEnd: 'C', shelfStart: '1', shelfEnd: '4', positionStart: '', positionEnd: '' });
+                                                                                    setShowBatchLocationModal(true);
+                                                                                }}
+                                                                                style={{ margin: 0, padding: '0.5rem 1rem', fontSize: '0.8rem' }}
+                                                                            >
+                                                                                <Shuffle size={14} /> GERAR EM LOTE
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+
+                                                                    {/* Content for WMS Active View */}
+                                                                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                                                                        {activeWmsLocView === 'lista' ? (
+                                                                            // List view
+                                                                            <div className="table-responsive" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                                                                                <table className="products-table">
+                                                                                    <thead>
+                                                                                        <tr>
+                                                                                            <th>Endereço Formatado</th>
+                                                                                            <th>Rua</th>
+                                                                                            <th>Fileira</th>
+                                                                                            <th>Prateleira</th>
+                                                                                            <th>Posição</th>
+                                                                                            <th>Status</th>
+                                                                                            <th style={{ textAlign: 'center', width: '120px' }}>Ações</th>
+                                                                                        </tr>
+                                                                                    </thead>
+                                                                                    <tbody>
+                                                                                        {wmsLocations.length === 0 ? (
+                                                                                            <tr>
+                                                                                                <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>
+                                                                                                    Nenhum endereço cadastrado nesta zona. Clique em "Gerar em Lote" para cadastrar posições.
+                                                                                                </td>
+                                                                                            </tr>
+                                                                                        ) : (
+                                                                                            wmsLocations.map(loc => (
+                                                                                                <tr key={loc.id}>
+                                                                                                    <td style={{ fontWeight: '700', color: 'var(--accent-blue)' }}>
+                                                                                                        {formatAddressVisual(selectedZone?.addressMask, selectedZone?.name, loc.aisle, loc.row, loc.shelf, loc.position)}
+                                                                                                    </td>
+                                                                                                    <td>{loc.aisle}</td>
+                                                                                                    <td>{loc.row}</td>
+                                                                                                    <td>{loc.shelf}</td>
+                                                                                                    <td>{loc.position || '-'}</td>
+                                                                                                    <td>
+                                                                                                        <span style={{
+                                                                                                            fontSize: '0.75rem',
+                                                                                                            padding: '2px 6px',
+                                                                                                            borderRadius: '4px',
+                                                                                                            background: loc.status === 'Ativo' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                                                                            color: loc.status === 'Ativo' ? 'var(--accent-green)' : 'var(--accent-red)'
+                                                                                                        }}>
+                                                                                                            {loc.status}
+                                                                                                        </span>
+                                                                                                    </td>
+                                                                                                    <td style={{ textAlign: 'center' }}>
+                                                                                                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', alignItems: 'center' }}>
+                                                                                                            <button 
+                                                                                                                className={`switch-toggle-btn ${loc.status === 'Ativo' ? 'active' : ''}`}
+                                                                                                                onClick={() => handleToggleLocationStatus(loc)}
+                                                                                                                title={loc.status === 'Ativo' ? 'Bloquear endereço' : 'Ativar endereço'}
+                                                                                                            >
+                                                                                                                <div className="switch-toggle-track">
+                                                                                                                    <div className="switch-toggle-handle"></div>
+                                                                                                                </div>
+                                                                                                            </button>
+                                                                                                            <button className="action-btn-sm delete" onClick={() => handleDeleteLocation(loc.id)} title="Excluir">
+                                                                                                                <Trash2 size={14} />
+                                                                                                            </button>
+                                                                                                        </div>
+                                                                                                    </td>
+                                                                                                </tr>
+                                                                                            ))
+                                                                                        )}
+                                                                                    </tbody>
+                                                                                </table>
+                                                                            </div>
+                                                                        ) : (
+                                                                            // Visual map view (2D Grid)
+                                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', flex: 1 }}>
+                                                                                {wmsLocations.length === 0 ? (
+                                                                                    <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
+                                                                                        Nenhum endereço cadastrado nesta zona. Use o botão "Gerar em Lote" para preencher a estrutura física.
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <>
+                                                                                        {/* Aisle Selection Row */}
+                                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                                                                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Selecionar Corredor (Rua):</span>
+                                                                                            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                                                                                {[...new Set(wmsLocations.map(l => l.aisle))].sort((a,b) => {
+                                                                                                    const numA = parseInt(a, 10);
+                                                                                                    const numB = parseInt(b, 10);
+                                                                                                    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                                                                                                    return a.localeCompare(b);
+                                                                                                }).map(aisle => (
+                                                                                                    <button
+                                                                                                        key={aisle}
+                                                                                                        onClick={() => setWmsLocFilterAisle(aisle)}
+                                                                                                        style={{
+                                                                                                            padding: '0.3rem 0.75rem',
+                                                                                                            borderRadius: '6px',
+                                                                                                            border: wmsLocFilterAisle === aisle ? '1px solid var(--accent-blue)' : '1px solid var(--border-color)',
+                                                                                                            background: wmsLocFilterAisle === aisle ? 'rgba(59, 130, 246, 0.2)' : 'rgba(0,0,0,0.2)',
+                                                                                                            color: wmsLocFilterAisle === aisle ? 'white' : 'var(--text-secondary)',
+                                                                                                            fontSize: '0.8rem',
+                                                                                                            fontWeight: '600',
+                                                                                                            cursor: 'pointer'
+                                                                                                        }}
+                                                                                                    >
+                                                                                                        Rua {aisle}
+                                                                                                    </button>
+                                                                                                ))}
+                                                                                            </div>
+                                                                                        </div>
+
+                                                                                        {/* Grid container representation */}
+                                                                                        {(() => {
+                                                                                            const filtered = wmsLocations.filter(l => l.aisle === wmsLocFilterAisle);
+                                                                                            const rows = [...new Set(filtered.map(l => l.row))].sort();
+                                                                                            const shelves = [...new Set(filtered.map(l => l.shelf))].sort((a,b) => b.localeCompare(a)); // shelves top to bottom
+
+                                                                                            if (filtered.length === 0) {
+                                                                                                return <div style={{ color: 'var(--text-secondary)', fontStyle: 'italic', fontSize: '0.9rem' }}>Nenhum endereço cadastrado para esta Rua.</div>;
+                                                                                            }
+
+                                                                                            return (
+                                                                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)', flex: 1, minHeight: '300px', overflowX: 'auto' }}>
+                                                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                                                                                        <span style={{ fontSize: '0.8rem', fontWeight: '700', textTransform: 'uppercase', color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                                                            <Map size={14} /> Corredor Físico (Rua {wmsLocFilterAisle})
+                                                                                                        </span>
+                                                                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', gap: '1rem' }}>
+                                                                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(34, 197, 94, 0.25)', border: '1px solid var(--accent-green)' }} /> Ativo</span>
+                                                                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(239, 68, 68, 0.25)', border: '1px solid var(--accent-red)' }} /> Bloqueado</span>
+                                                                                                        </span>
+                                                                                                    </div>
+
+                                                                                                    {/* Grid Table */}
+                                                                                                    <div style={{ display: 'flex', flex: 1, flexDirection: 'column', gap: '4px' }}>
+                                                                                                        {/* Loop over Shelves (vertical levels) */}
+                                                                                                        {shelves.map(shelf => (
+                                                                                                            <div key={shelf} style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                                                                                                {/* Level indicator label */}
+                                                                                                                <div style={{ width: '80px', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'right', paddingRight: '8px', flexShrink: 0, fontWeight: '700' }}>
+                                                                                                                    Prat. {shelf}
+                                                                                                                </div>
+                                                                                                                
+                                                                                                                {/* Grid locations */}
+                                                                                                                <div style={{ display: 'flex', gap: '4px', flex: 1 }}>
+                                                                                                                    {rows.map(row => {
+                                                                                                                        const loc = filtered.find(l => l.row === row && l.shelf === shelf);
+                                                                                                                        if (!loc) {
+                                                                                                                            return <div key={row} style={{ flex: 1, height: '48px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', border: '1px dashed rgba(255,255,255,0.02)' }} />;
+                                                                                                                        }
+
+                                                                                                                        const displayAddress = formatAddressVisual(selectedZone?.addressMask, selectedZone?.name, loc.aisle, loc.row, loc.shelf, loc.position);
+                                                                                                                        const isAtivo = loc.status === 'Ativo';
+
+                                                                                                                        return (
+                                                                                                                            <div 
+                                                                                                                                key={row}
+                                                                                                                                onClick={() => handleToggleLocationStatus(loc)}
+                                                                                                                                title={`Endereço: ${displayAddress} | Clique para alterar status (Ativo/Bloqueado)`}
+                                                                                                                                style={{
+                                                                                                                                    flex: 1,
+                                                                                                                                    height: '52px',
+                                                                                                                                    borderRadius: '6px',
+                                                                                                                                    border: isAtivo ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)',
+                                                                                                                                    background: isAtivo ? 'rgba(34, 197, 94, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                                                                                                                                    display: 'flex',
+                                                                                                                                    flexDirection: 'column',
+                                                                                                                                    justifyContent: 'center',
+                                                                                                                                    alignItems: 'center',
+                                                                                                                                    cursor: 'pointer',
+                                                                                                                                    transition: 'all 0.15s',
+                                                                                                                                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02)'
+                                                                                                                                }}
+                                                                                                                                onMouseEnter={(e) => {
+                                                                                                                                    e.currentTarget.style.transform = 'scale(1.02)';
+                                                                                                                                    e.currentTarget.style.background = isAtivo ? 'rgba(34, 197, 94, 0.18)' : 'rgba(239, 68, 68, 0.18)';
+                                                                                                                                }}
+                                                                                                                                onMouseLeave={(e) => {
+                                                                                                                                    e.currentTarget.style.transform = 'none';
+                                                                                                                                    e.currentTarget.style.background = isAtivo ? 'rgba(34, 197, 94, 0.08)' : 'rgba(239, 68, 68, 0.08)';
+                                                                                                                                }}
+                                                                                                                            >
+                                                                                                                                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: isAtivo ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                                                                                                                                    {row}-{shelf}
+                                                                                                                                </span>
+                                                                                                                                <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '90%' }}>
+                                                                                                                                    {displayAddress}
+                                                                                                                                </span>
+                                                                                                                            </div>
+                                                                                                                        );
+                                                                                                                    })}
+                                                                                                                </div>
+                                                                                                            </div>
+                                                                                                        ))}
+
+                                                                                                        {/* Horizontal X Axis labels */}
+                                                                                                        <div style={{ display: 'flex', gap: '4px', marginTop: '6px', alignItems: 'center' }}>
+                                                                                                            <div style={{ width: '80px', flexShrink: 0 }} />
+                                                                                                            <div style={{ display: 'flex', gap: '4px', flex: 1 }}>
+                                                                                                                {rows.map(row => (
+                                                                                                                    <div key={row} style={{ flex: 1, fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center', fontWeight: '700' }}>
+                                                                                                                        Fil. {row}
+                                                                                                                    </div>
+                                                                                                                ))}
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            );
+                                                                                        })()}
+                                                                                    </>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         )}
@@ -4517,6 +5455,348 @@ export default function SettingsHub() {
                                 {genericConfirm.confirmText || 'SIM'}
                             </button>
                         </div>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* =============================================
+                MODAL: CADASTRO/EDIÇÃO ARMAZÉM (WMS)
+            ============================================= */}
+            {showWarehouseModal && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '500px', width: '90%', padding: '2rem' }}>
+                        <button className="btn-close-modal" onClick={() => setShowWarehouseModal(false)}><X size={18} /></button>
+                        
+                        <form onSubmit={handleSaveWarehouse} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                            <h3 style={{ fontSize: '1.4rem', color: 'var(--accent-blue)', textTransform: 'uppercase', fontWeight: '800', margin: 0 }}>
+                                {editingWarehouse ? 'Editar Armazém' : 'Novo Armazém'}
+                            </h3>
+                            
+                            <div className="card-input-group">
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Nome do Armazém</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    placeholder="Ex: Armazém Central"
+                                    value={warehouseForm.name}
+                                    onChange={(e) => setWarehouseForm({ ...warehouseForm, name: e.target.value })}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                />
+                            </div>
+
+                            <div className="card-input-group">
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Descrição</label>
+                                <textarea 
+                                    placeholder="Descrição ou observações..."
+                                    rows={3}
+                                    value={warehouseForm.description}
+                                    onChange={(e) => setWarehouseForm({ ...warehouseForm, description: e.target.value })}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', resize: 'none' }}
+                                />
+                            </div>
+
+                            <div className="card-input-group">
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Status</label>
+                                <select 
+                                    value={warehouseForm.status}
+                                    onChange={(e) => setWarehouseForm({ ...warehouseForm, status: e.target.value })}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                >
+                                    <option value="Ativo">Ativo</option>
+                                    <option value="Inativo">Inativo</option>
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                                <button 
+                                    type="button" 
+                                    className="btn-secondary" 
+                                    onClick={() => setShowWarehouseModal(false)}
+                                    style={{ flex: 1, padding: '0.75rem' }}
+                                >
+                                    CANCELAR
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="btn-header-action" 
+                                    style={{ flex: 1, padding: '0.75rem', background: 'var(--accent-blue)', borderColor: 'var(--accent-blue)', margin: 0, justifyContent: 'center' }}
+                                >
+                                    SALVAR
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* =============================================
+                MODAL: CADASTRO/EDIÇÃO ZONA / ESTOQUE (WMS)
+            ============================================= */}
+            {showZoneModal && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '500px', width: '90%', padding: '2rem' }}>
+                        <button className="btn-close-modal" onClick={() => setShowZoneModal(false)}><X size={18} /></button>
+                        
+                        <form onSubmit={handleSaveZone} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                            <h3 style={{ fontSize: '1.4rem', color: 'var(--accent-blue)', textTransform: 'uppercase', fontWeight: '800', margin: 0 }}>
+                                {editingZone ? 'Editar Zona' : 'Nova Zona / Estoque'}
+                            </h3>
+                            
+                            <div className="card-input-group">
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Nome da Zona</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    placeholder="Ex: Câmara Fria A, Estoque Seco B"
+                                    value={zoneForm.name}
+                                    onChange={(e) => setZoneForm({ ...zoneForm, name: e.target.value })}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                />
+                            </div>
+
+                            <div className="card-input-group">
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Tipo de Armazenamento</label>
+                                <select 
+                                    value={zoneForm.type}
+                                    onChange={(e) => setZoneForm({ ...zoneForm, type: e.target.value })}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                >
+                                    <option value="Seco">Seco</option>
+                                    <option value="Resfriado">Resfriado</option>
+                                    <option value="Congelado">Congelado</option>
+                                    <option value="Climatizado">Climatizado</option>
+                                    <option value="Área Externa">Área Externa</option>
+                                </select>
+                            </div>
+
+                            <div className="card-input-group">
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Máscara de Visualização do Endereço</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    value={zoneForm.addressMask}
+                                    onChange={(e) => setZoneForm({ ...zoneForm, addressMask: e.target.value })}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', fontFamily: 'monospace' }}
+                                />
+                                <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.25rem', fontSize: '0.75rem' }}>
+                                    Tags válidas: <code>{`{zone}`}</code>, <code>{`{aisle}`}</code>, <code>{`{row}`}</code>, <code>{`{shelf}`}</code>, <code>{`{position}`}</code>.
+                                    <br />
+                                    Ex: <code>{`{zone}-{aisle}-{row}-{shelf}`}</code> ou <code>{`{zone}/{aisle}{row}{shelf}`}</code>
+                                </small>
+                            </div>
+
+                            <div className="card-input-group">
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Descrição</label>
+                                <textarea 
+                                    placeholder="Descrição detalhada..."
+                                    rows={2}
+                                    value={zoneForm.description}
+                                    onChange={(e) => setZoneForm({ ...zoneForm, description: e.target.value })}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', resize: 'none' }}
+                                />
+                            </div>
+
+                            <div className="card-input-group">
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Status</label>
+                                <select 
+                                    value={zoneForm.status}
+                                    onChange={(e) => setZoneForm({ ...zoneForm, status: e.target.value })}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                >
+                                    <option value="Ativo">Ativo</option>
+                                    <option value="Inativo">Inativo</option>
+                                </select>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                                <button 
+                                    type="button" 
+                                    className="btn-secondary" 
+                                    onClick={() => setShowZoneModal(false)}
+                                    style={{ flex: 1, padding: '0.75rem' }}
+                                >
+                                    CANCELAR
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="btn-header-action" 
+                                    style={{ flex: 1, padding: '0.75rem', background: 'var(--accent-blue)', borderColor: 'var(--accent-blue)', margin: 0, justifyContent: 'center' }}
+                                >
+                                    SALVAR
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* =============================================
+                MODAL: GERADOR EM LOTE DE ENDEREÇOS (WMS)
+            ============================================= */}
+            {showBatchLocationModal && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '550px', width: '90%', padding: '2rem' }}>
+                        <button className="btn-close-modal" onClick={() => setShowBatchLocationModal(false)}><X size={18} /></button>
+                        
+                        <form onSubmit={handleGenerateLocationsBatch} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                            <h3 style={{ fontSize: '1.4rem', color: 'var(--accent-blue)', textTransform: 'uppercase', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Shuffle size={20} /> Gerar Endereços em Lote
+                            </h3>
+                            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                                Configure os intervalos abaixo para gerar automaticamente múltiplas coordenadas para a zona <strong style={{ color: 'var(--text-primary)' }}>{selectedZone?.name}</strong>.
+                            </p>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Rua/Corredor (Início)</label>
+                                    <input 
+                                        type="text" required placeholder="Ex: 1 ou A"
+                                        value={batchLocationForm.aisleStart}
+                                        onChange={(e) => setBatchLocationForm({ ...batchLocationForm, aisleStart: e.target.value })}
+                                        style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Rua/Corredor (Fim)</label>
+                                    <input 
+                                        type="text" required placeholder="Ex: 3 ou C"
+                                        value={batchLocationForm.aisleEnd}
+                                        onChange={(e) => setBatchLocationForm({ ...batchLocationForm, aisleEnd: e.target.value })}
+                                        style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Fileira/Módulo (Início)</label>
+                                    <input 
+                                        type="text" required placeholder="Ex: A ou 1"
+                                        value={batchLocationForm.rowStart}
+                                        onChange={(e) => setBatchLocationForm({ ...batchLocationForm, rowStart: e.target.value })}
+                                        style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Fileira/Módulo (Fim)</label>
+                                    <input 
+                                        type="text" required placeholder="Ex: C ou 5"
+                                        value={batchLocationForm.rowEnd}
+                                        onChange={(e) => setBatchLocationForm({ ...batchLocationForm, rowEnd: e.target.value })}
+                                        style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Prateleira/Nível (Início)</label>
+                                    <input 
+                                        type="text" required placeholder="Ex: 1"
+                                        value={batchLocationForm.shelfStart}
+                                        onChange={(e) => setBatchLocationForm({ ...batchLocationForm, shelfStart: e.target.value })}
+                                        style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Prateleira/Nível (Fim)</label>
+                                    <input 
+                                        type="text" required placeholder="Ex: 4"
+                                        value={batchLocationForm.shelfEnd}
+                                        onChange={(e) => setBatchLocationForm({ ...batchLocationForm, shelfEnd: e.target.value })}
+                                        style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Posição/Box (Início - Opcional)</label>
+                                    <input 
+                                        type="text" placeholder="Ex: 1"
+                                        value={batchLocationForm.positionStart}
+                                        onChange={(e) => setBatchLocationForm({ ...batchLocationForm, positionStart: e.target.value })}
+                                        style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Posição/Box (Fim - Opcional)</label>
+                                    <input 
+                                        type="text" placeholder="Ex: 2"
+                                        value={batchLocationForm.positionEnd}
+                                        onChange={(e) => setBatchLocationForm({ ...batchLocationForm, positionEnd: e.target.value })}
+                                        style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Live calculation and summary */}
+                            {(() => {
+                                const aisles = getRange(batchLocationForm.aisleStart, batchLocationForm.aisleEnd);
+                                const rows = getRange(batchLocationForm.rowStart, batchLocationForm.rowEnd);
+                                const shelves = getRange(batchLocationForm.shelfStart, batchLocationForm.shelfEnd);
+                                const positions = batchLocationForm.positionStart && batchLocationForm.positionEnd 
+                                    ? getRange(batchLocationForm.positionStart, batchLocationForm.positionEnd) 
+                                    : [];
+                                const count = aisles.length * rows.length * shelves.length * (positions.length || 1);
+
+                                const isValid = count > 0 && aisles[0] !== '' && rows[0] !== '' && shelves[0] !== '';
+                                
+                                return (
+                                    <div style={{
+                                        background: isValid ? 'rgba(59, 130, 246, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                                        border: isValid ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
+                                        borderRadius: '8px',
+                                        padding: '1rem',
+                                        fontSize: '0.85rem',
+                                        color: isValid ? 'var(--text-primary)' : 'var(--accent-red)'
+                                    }}>
+                                        {isValid ? (
+                                            <>
+                                                <strong>Resumo da Geração:</strong>
+                                                <div style={{ marginTop: '0.25rem', color: 'var(--text-secondary)' }}>
+                                                    Serão inseridos <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{count}</span> novos endereços físicos.
+                                                </div>
+                                                <div style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                    Exemplo de endereço gerado: <code style={{ color: 'var(--accent-green)', background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>
+                                                        {formatAddressVisual(
+                                                            selectedZone?.addressMask, 
+                                                            selectedZone?.name, 
+                                                            aisles[0], 
+                                                            rows[0], 
+                                                            shelves[0], 
+                                                            positions[0] || null
+                                                        )}
+                                                    </code>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div>
+                                                <strong>Atenção:</strong> Os intervalos informados são inválidos ou incompletos. A contagem de geração é 0.
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                                <button 
+                                    type="button" 
+                                    className="btn-secondary" 
+                                    onClick={() => setShowBatchLocationModal(false)}
+                                    style={{ flex: 1, padding: '0.75rem' }}
+                                >
+                                    CANCELAR
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    className="btn-header-action" 
+                                    style={{ flex: 1, padding: '0.75rem', background: 'var(--accent-blue)', borderColor: 'var(--accent-blue)', margin: 0, justifyContent: 'center' }}
+                                >
+                                    GERAR ENDEREÇOS
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             , document.body)}
