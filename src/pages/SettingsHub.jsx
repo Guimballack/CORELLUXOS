@@ -670,9 +670,8 @@ export default function SettingsHub() {
         const insertPromises = newLocs.map(l => DbService.saveWmsLocation(l));
         await Promise.all(insertPromises);
 
-        // 3. Recarrega localizações da zona
-        const updatedLocs = await DbService.getWmsLocations(selectedZone.id);
-        if (updatedLocs.success) setWmsLocations(updatedLocs.data || []);
+        // 3. Recarrega localizações da zona (getWmsLocations retorna array direto, não {success, data})
+        await loadZoneLocations(selectedZone.id);
 
         setLoading(false);
         setEditCellModal(null);
