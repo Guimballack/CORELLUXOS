@@ -1800,6 +1800,13 @@ export const DbService = {
 
     async saveWmsLocationsBatch(zoneId, locations) {
         try {
+            // Primeiro exclui todos os endereços existentes daquela zona para reiniciar a configuração
+            const { error: deleteError } = await supabase
+                .from('wms_locations')
+                .delete()
+                .eq('zone_id', zoneId);
+            if (deleteError) throw deleteError;
+
             const snakeLocations = locations.map(l => toSnakeCase({ ...l, zoneId }));
             const { data, error } = await supabase
                 .from('wms_locations')
@@ -1808,32 +1815,29 @@ export const DbService = {
             if (error) throw error;
             const savedList = toCamelCase(data);
 
-            // Sync local
+            // Sincroniza local (remove antigos daquela zona e insere os novos)
             const local = localStorage.getItem('corellux_wms_locations');
             let list = local ? JSON.parse(local) : [];
+            let filteredList = list.filter(l => String(l.zoneId) !== String(zoneId));
             savedList.forEach(saved => {
-                const idx = list.findIndex(l => String(l.id) === String(saved.id));
-                if (idx !== -1) {
-                    list[idx] = saved;
-                } else {
-                    list.push(saved);
-                }
+                filteredList.push(saved);
             });
-            localStorage.setItem('corellux_wms_locations', JSON.stringify(list));
+            localStorage.setItem('corellux_wms_locations', JSON.stringify(filteredList));
             return { success: true, data: savedList };
         } catch (e) {
             console.warn('[DbService] Erro ao salvar endereços em lote no Supabase. Gravando localmente:', e.message || e);
             const local = localStorage.getItem('corellux_wms_locations');
             let list = local ? JSON.parse(local) : [];
+            let filteredList = list.filter(l => String(l.zoneId) !== String(zoneId));
             const savedList = locations.map(l => ({
                 ...l,
                 zoneId,
                 id: l.id || Date.now() + Math.floor(Math.random() * 100000) + Math.floor(Math.random() * 1000)
             }));
             savedList.forEach(newLoc => {
-                list.push(newLoc);
+                filteredList.push(newLoc);
             });
-            localStorage.setItem('corellux_wms_locations', JSON.stringify(list));
+            localStorage.setItem('corellux_wms_locations', JSON.stringify(filteredList));
             return { success: true, data: savedList };
         }
     }

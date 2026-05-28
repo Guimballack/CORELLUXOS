@@ -518,6 +518,13 @@ export default function SettingsHub() {
         e.preventDefault();
         if (!selectedZone) return;
 
+        if (wmsLocations.length > 0) {
+            const confirmReset = window.confirm(
+                'Atenção: Esta zona já possui endereços cadastrados. A geração em lote irá apagar todos os endereços existentes nesta zona e reiniciar com esta nova configuração. Deseja prosseguir?'
+            );
+            if (!confirmReset) return;
+        }
+
         const aisles = getRange(batchLocationForm.aisleStart, batchLocationForm.aisleEnd);
         const rows = getRange(batchLocationForm.rowStart, batchLocationForm.rowEnd);
         const shelves = getRange(batchLocationForm.shelfStart, batchLocationForm.shelfEnd);
