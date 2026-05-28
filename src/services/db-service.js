@@ -1544,10 +1544,10 @@ export const DbService = {
             if (error) throw error;
 
             const defaultZones = [
-                { id: 1, warehouseId: 1, name: 'Câmara Fria A', type: 'Resfriado', description: 'Armazenamento de laticínios e verduras.', status: 'Ativo', addressMask: '{zone}-{aisle}-{row}-{shelf}' },
-                { id: 2, warehouseId: 1, name: 'Câmara Fria B', type: 'Congelado', description: 'Armazenamento de carnes e congelados.', status: 'Ativo', addressMask: '{zone}-{aisle}-{row}-{shelf}' },
-                { id: 3, warehouseId: 1, name: 'Estoque Seco A', type: 'Seco', description: 'Armazenamento de massas, grãos e enlatados.', status: 'Ativo', addressMask: '{zone}/{aisle}{row}{shelf}' },
-                { id: 4, warehouseId: 1, name: 'Estoque Seco B', type: 'Seco', description: 'Armazenamento de temperos e embalagens.', status: 'Ativo', addressMask: '{zone}-{aisle}.{row}.{shelf}' }
+                { id: 1, warehouseId: 1, name: 'Câmara Fria A', type: 'Resfriado', description: 'Armazenamento de laticínios e verduras.', status: 'Ativo', addressSeparator: '-', includeZonePrefix: true, includeAislePrefix: false, includeRowPrefix: false, includeShelfPrefix: false },
+                { id: 2, warehouseId: 1, name: 'Câmara Fria B', type: 'Congelado', description: 'Armazenamento de carnes e congelados.', status: 'Ativo', addressSeparator: '-', includeZonePrefix: true, includeAislePrefix: false, includeRowPrefix: false, includeShelfPrefix: false },
+                { id: 3, warehouseId: 1, name: 'Estoque Seco A', type: 'Seco', description: 'Armazenamento de massas, grãos e enlatados.', status: 'Ativo', addressSeparator: '/', includeZonePrefix: true, includeAislePrefix: false, includeRowPrefix: false, includeShelfPrefix: false },
+                { id: 4, warehouseId: 1, name: 'Estoque Seco B', type: 'Seco', description: 'Armazenamento de temperos e embalagens.', status: 'Ativo', addressSeparator: '-', includeZonePrefix: true, includeAislePrefix: false, includeRowPrefix: false, includeShelfPrefix: false }
             ];
 
             if (!data || data.length === 0) {
@@ -1576,10 +1576,10 @@ export const DbService = {
         } catch (e) {
             console.warn('[DbService] Erro ao carregar zonas no Supabase. Fallback local:', e.message || e);
             const defaultZones = [
-                { id: 1, warehouseId: 1, name: 'Câmara Fria A', type: 'Resfriado', description: 'Armazenamento de laticínios e verduras.', status: 'Ativo', addressMask: '{zone}-{aisle}-{row}-{shelf}' },
-                { id: 2, warehouseId: 1, name: 'Câmara Fria B', type: 'Congelado', description: 'Armazenamento de carnes e congelados.', status: 'Ativo', addressMask: '{zone}-{aisle}-{row}-{shelf}' },
-                { id: 3, warehouseId: 1, name: 'Estoque Seco A', type: 'Seco', description: 'Armazenamento de massas, grãos e enlatados.', status: 'Ativo', addressMask: '{zone}/{aisle}{row}{shelf}' },
-                { id: 4, warehouseId: 1, name: 'Estoque Seco B', type: 'Seco', description: 'Armazenamento de temperos e embalagens.', status: 'Ativo', addressMask: '{zone}-{aisle}.{row}.{shelf}' }
+                { id: 1, warehouseId: 1, name: 'Câmara Fria A', type: 'Resfriado', description: 'Armazenamento de laticínios e verduras.', status: 'Ativo', addressSeparator: '-', includeZonePrefix: true, includeAislePrefix: false, includeRowPrefix: false, includeShelfPrefix: false },
+                { id: 2, warehouseId: 1, name: 'Câmara Fria B', type: 'Congelado', description: 'Armazenamento de carnes e congelados.', status: 'Ativo', addressSeparator: '-', includeZonePrefix: true, includeAislePrefix: false, includeRowPrefix: false, includeShelfPrefix: false },
+                { id: 3, warehouseId: 1, name: 'Estoque Seco A', type: 'Seco', description: 'Armazenamento de massas, grãos e enlatados.', status: 'Ativo', addressSeparator: '/', includeZonePrefix: true, includeAislePrefix: false, includeRowPrefix: false, includeShelfPrefix: false },
+                { id: 4, warehouseId: 1, name: 'Estoque Seco B', type: 'Seco', description: 'Armazenamento de temperos e embalagens.', status: 'Ativo', addressSeparator: '-', includeZonePrefix: true, includeAislePrefix: false, includeRowPrefix: false, includeShelfPrefix: false }
             ];
             const local = localStorage.getItem('corellux_wms_zones');
             if (local) {

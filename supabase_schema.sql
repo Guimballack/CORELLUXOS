@@ -194,7 +194,11 @@ CREATE TABLE wms_zones (
     type VARCHAR(50) DEFAULT 'Seco' CHECK (type IN ('Seco', 'Resfriado', 'Congelado', 'Climatizado', 'Área Externa')),
     description TEXT,
     status VARCHAR(50) DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Inativo')),
-    address_mask VARCHAR(100) DEFAULT '{zone}-{aisle}-{row}-{shelf}',
+    address_separator VARCHAR(10) DEFAULT '-',
+    include_zone_prefix BOOLEAN DEFAULT TRUE,
+    include_aisle_prefix BOOLEAN DEFAULT FALSE,
+    include_row_prefix BOOLEAN DEFAULT FALSE,
+    include_shelf_prefix BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     UNIQUE(warehouse_id, name)
 );
@@ -216,9 +220,9 @@ CREATE TABLE wms_locations (
 INSERT INTO wms_warehouses (name, description, status) VALUES
 ('Armazém Central', 'Centro de distribuição e estoque principal de insumos.', 'Ativo');
 
-INSERT INTO wms_zones (warehouse_id, name, type, description, status, address_mask) VALUES
-(1, 'Câmara Fria A', 'Resfriado', 'Armazenamento de laticínios e verduras.', 'Ativo', '{zone}-{aisle}-{row}-{shelf}'),
-(1, 'Câmara Fria B', 'Congelado', 'Armazenamento de carnes e congelados.', 'Ativo', '{zone}-{aisle}-{row}-{shelf}'),
-(1, 'Estoque Seco A', 'Seco', 'Armazenamento de massas, grãos e enlatados.', 'Ativo', '{zone}/{aisle}{row}{shelf}'),
-(1, 'Estoque Seco B', 'Seco', 'Armazenamento de temperos e embalagens.', 'Ativo', '{zone}-{aisle}.{row}.{shelf}');
+INSERT INTO wms_zones (warehouse_id, name, type, description, status, address_separator, include_zone_prefix, include_aisle_prefix, include_row_prefix, include_shelf_prefix) VALUES
+(1, 'Câmara Fria A', 'Resfriado', 'Armazenamento de laticínios e verduras.', 'Ativo', '-', true, false, false, false),
+(1, 'Câmara Fria B', 'Congelado', 'Armazenamento de carnes e congelados.', 'Ativo', '-', true, false, false, false),
+(1, 'Estoque Seco A', 'Seco', 'Armazenamento de massas, grãos e enlatados.', 'Ativo', '/', true, false, false, false),
+(1, 'Estoque Seco B', 'Seco', 'Armazenamento de temperos e embalagens.', 'Ativo', '-', true, false, false, false);
 

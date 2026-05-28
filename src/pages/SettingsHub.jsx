@@ -108,7 +108,17 @@ export default function SettingsHub() {
 
     const [showZoneModal, setShowZoneModal] = useState(false);
     const [editingZone, setEditingZone] = useState(null);
-    const [zoneForm, setZoneForm] = useState({ name: '', type: 'Seco', description: '', status: 'Ativo', addressMask: '{zone}-{aisle}-{row}-{shelf}' });
+    const [zoneForm, setZoneForm] = useState({
+        name: '',
+        type: 'Seco',
+        description: '',
+        status: 'Ativo',
+        addressSeparator: '-',
+        includeZonePrefix: true,
+        includeAislePrefix: false,
+        includeRowPrefix: false,
+        includeShelfPrefix: false
+    });
 
     const [showBatchLocationModal, setShowBatchLocationModal] = useState(false);
     const [batchLocationForm, setBatchLocationForm] = useState({
@@ -118,8 +128,8 @@ export default function SettingsHub() {
         rowEnd: 'C',
         shelfStart: '1',
         shelfEnd: '4',
-        positionStart: '',
-        positionEnd: ''
+        subdivisionType: 'Nenhuma', // Nenhuma, AB, ABC, Customizado
+        subdivisionCustom: ''
     });
 
     // Tab control
@@ -397,7 +407,17 @@ export default function SettingsHub() {
     // Zone CRUD Handlers
     const openZoneModalForCreate = () => {
         setEditingZone(null);
-        setZoneForm({ name: '', type: 'Seco', description: '', status: 'Ativo', addressMask: '{zone}-{aisle}-{row}-{shelf}' });
+        setZoneForm({
+            name: '',
+            type: 'Seco',
+            description: '',
+            status: 'Ativo',
+            addressSeparator: '-',
+            includeZonePrefix: true,
+            includeAislePrefix: false,
+            includeRowPrefix: false,
+            includeShelfPrefix: false
+        });
         setShowZoneModal(true);
     };
 
@@ -406,9 +426,13 @@ export default function SettingsHub() {
         setZoneForm({
             name: zone.name,
             type: zone.type || 'Seco',
-            description: zone.description || '',
+            description: zone.description || zone.desc || '',
             status: zone.status || 'Ativo',
-            addressMask: zone.addressMask || '{zone}-{aisle}-{row}-{shelf}'
+            addressSeparator: zone.addressSeparator !== undefined ? zone.addressSeparator : '-',
+            includeZonePrefix: zone.includeZonePrefix !== undefined ? zone.includeZonePrefix : true,
+            includeAislePrefix: zone.includeAislePrefix !== undefined ? zone.includeAislePrefix : false,
+            includeRowPrefix: zone.includeRowPrefix !== undefined ? zone.includeRowPrefix : false,
+            includeShelfPrefix: zone.includeShelfPrefix !== undefined ? zone.includeShelfPrefix : false
         });
         setShowZoneModal(true);
     };
@@ -497,9 +521,17 @@ export default function SettingsHub() {
         const aisles = getRange(batchLocationForm.aisleStart, batchLocationForm.aisleEnd);
         const rows = getRange(batchLocationForm.rowStart, batchLocationForm.rowEnd);
         const shelves = getRange(batchLocationForm.shelfStart, batchLocationForm.shelfEnd);
-        const positions = batchLocationForm.positionStart && batchLocationForm.positionEnd 
-            ? getRange(batchLocationForm.positionStart, batchLocationForm.positionEnd) 
-            : [];
+        
+        let positions = [];
+        if (batchLocationForm.subdivisionType === 'AB') {
+            positions = ['Lado A', 'Lado B'];
+        } else if (batchLocationForm.subdivisionType === 'ABC') {
+            positions = ['Lado A', 'Lado B', 'Lado C'];
+        } else if (batchLocationForm.subdivisionType === 'Customizado') {
+            positions = batchLocationForm.subdivisionCustom
+                ? batchLocationForm.subdivisionCustom.split(';').map(p => p.trim()).filter(Boolean).map(p => p.startsWith('Lado ') ? p : `Lado ${p}`)
+                : [];
+        }
 
         if (aisles.length === 0 || rows.length === 0 || shelves.length === 0) {
             showToast('Intervalos inválidos. Verifique os valores.', 'error');
@@ -569,14 +601,31 @@ export default function SettingsHub() {
         }
     };
 
-    const formatAddressVisual = (mask, zoneName, aisle, row, shelf, position) => {
-        let m = mask || '{zone}-{aisle}-{row}-{shelf}';
-        return m
-            .replace('{zone}', zoneName || '')
-            .replace('{aisle}', aisle || '')
-            .replace('{row}', row || '')
-            .replace('{shelf}', shelf || '')
-            .replace('{position}', position || '');
+    const formatAddressVisual = (zone, aisle, row, shelf, position) => {
+        if (!zone) return [aisle, row, shelf, position].filter(Boolean).join('-');
+        
+        const parts = [];
+        const sep = zone.addressSeparator !== undefined ? zone.addressSeparator : '-';
+        
+        if (zone.includeZonePrefix && zone.name) {
+            parts.push(zone.name);
+        }
+        if (aisle) {
+            parts.push(zone.includeAislePrefix ? `Rua ${aisle}` : aisle);
+        }
+        if (row) {
+            parts.push(zone.includeRowPrefix ? `Fil. ${row}` : row);
+        }
+        if (shelf) {
+            parts.push(zone.includeShelfPrefix ? `Prat. ${shelf}` : shelf);
+        }
+        if (position) {
+            parts.push(position);
+        }
+        
+        if (sep === '') return parts.join('');
+        if (sep === ' ') return parts.join(' ');
+        return parts.join(` ${sep} `);
     };
 
 
@@ -2823,7 +2872,7 @@ export default function SettingsHub() {
                                                                                         </div>
                                                                                     </div>
                                                                                     <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-secondary)', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-                                                                                        {zone.description || 'Sem descrição.'}
+                                                                                        {zone.description || zone.desc || 'Sem descrição.'}
                                                                                     </p>
                                                                                 </div>
                                                                                 <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
@@ -2833,7 +2882,9 @@ export default function SettingsHub() {
                                                                                             {zone.type}
                                                                                         </span>
                                                                                         <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-                                                                                            Mask: <code style={{ color: 'var(--text-primary)', background: 'rgba(0,0,0,0.3)', padding: '2px 4px', borderRadius: '3px' }}>{zone.addressMask}</code>
+                                                                                            Ex: <code style={{ color: 'var(--text-primary)', background: 'rgba(0,0,0,0.3)', padding: '2px 4px', borderRadius: '3px' }}>
+                                                                                                {formatAddressVisual(zone, '01', 'A', '03', null)}
+                                                                                            </code>
                                                                                         </span>
                                                                                     </div>
                                                                                 </div>
@@ -2937,7 +2988,7 @@ export default function SettingsHub() {
                                                                                             wmsLocations.map(loc => (
                                                                                                 <tr key={loc.id}>
                                                                                                     <td style={{ fontWeight: '700', color: 'var(--accent-blue)' }}>
-                                                                                                        {formatAddressVisual(selectedZone?.addressMask, selectedZone?.name, loc.aisle, loc.row, loc.shelf, loc.position)}
+                                                                                                        {formatAddressVisual(selectedZone, loc.aisle, loc.row, loc.shelf, loc.position)}
                                                                                                     </td>
                                                                                                     <td>{loc.aisle}</td>
                                                                                                     <td>{loc.row}</td>
@@ -3055,7 +3106,7 @@ export default function SettingsHub() {
                                                                                                                             return <div key={row} style={{ flex: 1, height: '48px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', border: '1px dashed rgba(255,255,255,0.02)' }} />;
                                                                                                                         }
 
-                                                                                                                        const displayAddress = formatAddressVisual(selectedZone?.addressMask, selectedZone?.name, loc.aisle, loc.row, loc.shelf, loc.position);
+                                                                                                                        const displayAddress = formatAddressVisual(selectedZone, loc.aisle, loc.row, loc.shelf, loc.position);
                                                                                                                         const isAtivo = loc.status === 'Ativo';
 
                                                                                                                         return (
@@ -5569,21 +5620,88 @@ export default function SettingsHub() {
                                 </select>
                             </div>
 
-                            <div className="card-input-group">
-                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Máscara de Visualização do Endereço</label>
-                                <input 
-                                    type="text" 
-                                    required
-                                    value={zoneForm.addressMask}
-                                    onChange={(e) => setZoneForm({ ...zoneForm, addressMask: e.target.value })}
-                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', fontFamily: 'monospace' }}
-                                />
-                                <small style={{ color: 'var(--text-secondary)', display: 'block', marginTop: '0.25rem', fontSize: '0.75rem' }}>
-                                    Tags válidas: <code>{`{zone}`}</code>, <code>{`{aisle}`}</code>, <code>{`{row}`}</code>, <code>{`{shelf}`}</code>, <code>{`{position}`}</code>.
-                                    <br />
-                                    Ex: <code>{`{zone}-{aisle}-{row}-{shelf}`}</code> ou <code>{`{zone}/{aisle}{row}{shelf}`}</code>
-                                </small>
-                            </div>
+                            <div className="card-input-group" style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                 <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--accent-blue)', margin: 0 }}>Visualização do Endereço</label>
+                                 
+                                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                                     <div style={{ flex: 1 }}>
+                                         <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Separador</label>
+                                         <select 
+                                             value={zoneForm.addressSeparator}
+                                             onChange={(e) => setZoneForm({ ...zoneForm, addressSeparator: e.target.value })}
+                                             style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                         >
+                                             <option value="-">Hífen (-)</option>
+                                             <option value="/">Barra (/)</option>
+                                             <option value=".">Ponto (.)</option>
+                                             <option value=" ">Espaço ( )</option>
+                                             <option value="">Nenhum (Sem separador)</option>
+                                         </select>
+                                     </div>
+                                 </div>
+
+                                 <div>
+                                     <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Prefixos e Textos de Apoio</label>
+                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
+                                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                                             <input 
+                                                 type="checkbox"
+                                                 checked={zoneForm.includeZonePrefix}
+                                                 onChange={(e) => setZoneForm({ ...zoneForm, includeZonePrefix: e.target.checked })}
+                                                 style={{ cursor: 'pointer' }}
+                                             />
+                                             Nome da Zona
+                                         </label>
+                                         
+                                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                                             <input 
+                                                 type="checkbox"
+                                                 checked={zoneForm.includeAislePrefix}
+                                                 onChange={(e) => setZoneForm({ ...zoneForm, includeAislePrefix: e.target.checked })}
+                                                 style={{ cursor: 'pointer' }}
+                                             />
+                                             Rua (ex: Rua 01)
+                                         </label>
+                                         
+                                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                                             <input 
+                                                 type="checkbox"
+                                                 checked={zoneForm.includeRowPrefix}
+                                                 onChange={(e) => setZoneForm({ ...zoneForm, includeRowPrefix: e.target.checked })}
+                                                 style={{ cursor: 'pointer' }}
+                                             />
+                                             Fil. (ex: Fil. A)
+                                         </label>
+                                         
+                                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
+                                             <input 
+                                                 type="checkbox"
+                                                 checked={zoneForm.includeShelfPrefix}
+                                                 onChange={(e) => setZoneForm({ ...zoneForm, includeShelfPrefix: e.target.checked })}
+                                                 style={{ cursor: 'pointer' }}
+                                             />
+                                             Prat. (ex: Prat. 03)
+                                         </label>
+                                     </div>
+                                 </div>
+
+                                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.6rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', marginTop: '0.2rem' }}>
+                                     <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.15rem' }}>Pré-visualização:</span>
+                                     <code style={{ fontSize: '0.85rem', color: 'var(--accent-green)', fontWeight: 'bold', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                                         {formatAddressVisual(
+                                             {
+                                                 name: zoneForm.name || 'ZONA',
+                                                 addressSeparator: zoneForm.addressSeparator,
+                                                 includeZonePrefix: zoneForm.includeZonePrefix,
+                                                 includeAislePrefix: zoneForm.includeAislePrefix,
+                                                 includeRowPrefix: zoneForm.includeRowPrefix,
+                                                 includeShelfPrefix: zoneForm.includeShelfPrefix
+                                             },
+                                             '01', 'A', '03', 'Lado A'
+                                         )}
+                                     </code>
+                                 </div>
+                             </div>
 
                             <div className="card-input-group">
                                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Descrição</label>
@@ -5709,75 +5827,93 @@ export default function SettingsHub() {
                                 </div>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div className="card-input-group">
-                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Posição/Box (Início - Opcional)</label>
-                                    <input 
-                                        type="text" placeholder="Ex: 1"
-                                        value={batchLocationForm.positionStart}
-                                        onChange={(e) => setBatchLocationForm({ ...batchLocationForm, positionStart: e.target.value })}
-                                        style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
-                                    />
-                                </div>
-                                <div className="card-input-group">
-                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Posição/Box (Fim - Opcional)</label>
-                                    <input 
-                                        type="text" placeholder="Ex: 2"
-                                        value={batchLocationForm.positionEnd}
-                                        onChange={(e) => setBatchLocationForm({ ...batchLocationForm, positionEnd: e.target.value })}
-                                        style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
-                                    />
-                                </div>
-                            </div>
+                                 <div className="card-input-group">
+                                     <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Subdivisão Interna da Prateleira (Lados)</label>
+                                     <select 
+                                         value={batchLocationForm.subdivisionType}
+                                         onChange={(e) => setBatchLocationForm({ ...batchLocationForm, subdivisionType: e.target.value })}
+                                         style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                     >
+                                         <option value="Nenhuma">Nenhuma subdivisão (Rua-Fileira-Prateleira)</option>
+                                         <option value="AB">Lados A e B (ex: Lado A, Lado B)</option>
+                                         <option value="ABC">Lados A, B e C (ex: Lado A, Lado B, Lado C)</option>
+                                         <option value="Customizado">Personalizado (separado por ponto e vírgula)</option>
+                                     </select>
+                                 </div>
 
-                            {/* Live calculation and summary */}
-                            {(() => {
-                                const aisles = getRange(batchLocationForm.aisleStart, batchLocationForm.aisleEnd);
-                                const rows = getRange(batchLocationForm.rowStart, batchLocationForm.rowEnd);
-                                const shelves = getRange(batchLocationForm.shelfStart, batchLocationForm.shelfEnd);
-                                const positions = batchLocationForm.positionStart && batchLocationForm.positionEnd 
-                                    ? getRange(batchLocationForm.positionStart, batchLocationForm.positionEnd) 
-                                    : [];
-                                const count = aisles.length * rows.length * shelves.length * (positions.length || 1);
+                                 {batchLocationForm.subdivisionType === 'Customizado' && (
+                                     <div className="card-input-group">
+                                         <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Lados/Compartimentos Personalizados (Separe por ;)</label>
+                                         <input 
+                                             type="text" 
+                                             required
+                                             placeholder="Ex: Esquerda;Centro;Direita ou A;B;C;D"
+                                             value={batchLocationForm.subdivisionCustom}
+                                             onChange={(e) => setBatchLocationForm({ ...batchLocationForm, subdivisionCustom: e.target.value })}
+                                             style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                         />
+                                         <small style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                             Insira cada lado desejado separado por ponto e vírgula (ex: <code>Esq;Dir</code>).
+                                         </small>
+                                     </div>
+                                 )}
 
-                                const isValid = count > 0 && aisles[0] !== '' && rows[0] !== '' && shelves[0] !== '';
-                                
-                                return (
-                                    <div style={{
-                                        background: isValid ? 'rgba(59, 130, 246, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                                        border: isValid ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
-                                        borderRadius: '8px',
-                                        padding: '1rem',
-                                        fontSize: '0.85rem',
-                                        color: isValid ? 'var(--text-primary)' : 'var(--accent-red)'
-                                    }}>
-                                        {isValid ? (
-                                            <>
-                                                <strong>Resumo da Geração:</strong>
-                                                <div style={{ marginTop: '0.25rem', color: 'var(--text-secondary)' }}>
-                                                    Serão inseridos <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{count}</span> novos endereços físicos.
-                                                </div>
-                                                <div style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                    Exemplo de endereço gerado: <code style={{ color: 'var(--accent-green)', background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>
-                                                        {formatAddressVisual(
-                                                            selectedZone?.addressMask, 
-                                                            selectedZone?.name, 
-                                                            aisles[0], 
-                                                            rows[0], 
-                                                            shelves[0], 
-                                                            positions[0] || null
-                                                        )}
-                                                    </code>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <div>
-                                                <strong>Atenção:</strong> Os intervalos informados são inválidos ou incompletos. A contagem de geração é 0.
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })()}
+                                 {/* Live calculation and summary */}
+                                 {(() => {
+                                     const aisles = getRange(batchLocationForm.aisleStart, batchLocationForm.aisleEnd);
+                                     const rows = getRange(batchLocationForm.rowStart, batchLocationForm.rowEnd);
+                                     const shelves = getRange(batchLocationForm.shelfStart, batchLocationForm.shelfEnd);
+                                     
+                                     let positions = [];
+                                     if (batchLocationForm.subdivisionType === 'AB') {
+                                         positions = ['Lado A', 'Lado B'];
+                                     } else if (batchLocationForm.subdivisionType === 'ABC') {
+                                         positions = ['Lado A', 'Lado B', 'Lado C'];
+                                     } else if (batchLocationForm.subdivisionType === 'Customizado') {
+                                         positions = batchLocationForm.subdivisionCustom
+                                             ? batchLocationForm.subdivisionCustom.split(';').map(p => p.trim()).filter(Boolean).map(p => p.startsWith('Lado ') ? p : `Lado ${p}`)
+                                             : [];
+                                     }
+                                     
+                                     const count = aisles.length * rows.length * shelves.length * (positions.length || 1);
+
+                                     const isValid = count > 0 && aisles[0] !== '' && rows[0] !== '' && shelves[0] !== '' && (batchLocationForm.subdivisionType !== 'Customizado' || positions.length > 0);
+                                     
+                                     return (
+                                         <div style={{
+                                             background: isValid ? 'rgba(59, 130, 246, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                                             border: isValid ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)',
+                                             borderRadius: '8px',
+                                             padding: '1rem',
+                                             fontSize: '0.85rem',
+                                             color: isValid ? 'var(--text-primary)' : 'var(--accent-red)'
+                                         }}>
+                                             {isValid ? (
+                                                 <>
+                                                     <strong>Resumo da Geração:</strong>
+                                                     <div style={{ marginTop: '0.25rem', color: 'var(--text-secondary)' }}>
+                                                         Serão inseridos <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{count}</span> novos endereços físicos.
+                                                     </div>
+                                                     <div style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                         Exemplo de endereço gerado: <code style={{ color: 'var(--accent-green)', background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px', fontFamily: 'monospace' }}>
+                                                             {formatAddressVisual(
+                                                                 selectedZone, 
+                                                                 aisles[0], 
+                                                                 rows[0], 
+                                                                 shelves[0], 
+                                                                 positions[0] || null
+                                                             )}
+                                                         </code>
+                                                     </div>
+                                                 </>
+                                             ) : (
+                                                 <div>
+                                                     <strong>Atenção:</strong> Os intervalos ou subdivisões informadas são inválidos ou incompletos. A contagem de geração é 0.
+                                                 </div>
+                                             )}
+                                         </div>
+                                     );
+                                 })()}
 
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                                 <button 
