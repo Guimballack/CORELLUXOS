@@ -129,6 +129,7 @@ export default function SettingsHub() {
     const [batchLocationForm, setBatchLocationForm] = useState({
         aisleStart: '1',
         aisleEnd: '3',
+        onlyRowAAisles: '',
         // rows are always fixed: A (esquerdo) e B (direito) — os 2 lados de cada corredor
         shelfStart: '1',
         shelfEnd: '5',
@@ -548,9 +549,13 @@ export default function SettingsHub() {
         }
 
         const aisles = getRange(batchLocationForm.aisleStart, batchLocationForm.aisleEnd);
-        const rows = ['A', 'B']; // sempre fixo: A = esquerdo, B = direito
         const shelves = getRange(batchLocationForm.shelfStart, batchLocationForm.shelfEnd);
         const heights = getRange(batchLocationForm.shelfHeightStart, batchLocationForm.shelfHeightEnd);
+        
+        // Parse rules for aisles that only have row A (e.g. "5;8;12")
+        const onlyRowAAislesList = batchLocationForm.onlyRowAAisles
+            ? batchLocationForm.onlyRowAAisles.split(';').map(x => x.trim()).filter(Boolean)
+            : [];
         
         let positions = [];
         if (batchLocationForm.subdivisionType === 'AB') {
@@ -581,7 +586,8 @@ export default function SettingsHub() {
 
         const combinations = [];
         for (const aisle of aisles) {
-            for (const row of rows) {
+            const currentRows = onlyRowAAislesList.includes(String(aisle)) ? ['A'] : ['A', 'B'];
+            for (const row of currentRows) {
                 for (const shelf of shelves) {
                     for (const height of heights) {
                         // shelf stored as "shelf+height" compound e.g. "5D"
@@ -3070,7 +3076,17 @@ export default function SettingsHub() {
                                                                             <button 
                                                                                 className="btn-header-action"
                                                                                 onClick={() => {
-                                                                                    setBatchLocationForm({ aisleStart: '1', aisleEnd: '3', rowStart: 'A', rowEnd: 'C', shelfStart: '1', shelfEnd: '4', positionStart: '', positionEnd: '' });
+                                                                                    setBatchLocationForm({ 
+                                                                                        aisleStart: '1', 
+                                                                                        aisleEnd: '3', 
+                                                                                        onlyRowAAisles: '', 
+                                                                                        shelfStart: '1', 
+                                                                                        shelfEnd: '5', 
+                                                                                        shelfHeightStart: 'A', 
+                                                                                        shelfHeightEnd: 'D', 
+                                                                                        subdivisionType: 'Nenhuma', 
+                                                                                        subdivisionCustom: '' 
+                                                                                    });
                                                                                     setShowBatchLocationModal(true);
                                                                                 }}
                                                                                 style={{ margin: 0, padding: '0.5rem 1rem', fontSize: '0.8rem' }}
@@ -6240,6 +6256,20 @@ export default function SettingsHub() {
                                 </div>
                             </div>
 
+                            <div className="card-input-group">
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Ruas com somente Fileira A (opcional)</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Ex: 5;8;12 (separe por ponto e vírgula)"
+                                    value={batchLocationForm.onlyRowAAisles}
+                                    onChange={(e) => setBatchLocationForm({ ...batchLocationForm, onlyRowAAisles: e.target.value })}
+                                    style={{ width: '100%', padding: '0.6rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                />
+                                <small style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                    Essas ruas terão apenas a Fileira A gerada (ex: encostadas na parede). Outras ruas terão A e B.
+                                </small>
+                            </div>
+
                             {/* Prateleira (número) */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                 <div className="card-input-group">
@@ -6321,10 +6351,14 @@ export default function SettingsHub() {
                                  {/* Live calculation and summary */}
                                  {(() => {
                                      const aisles = getRange(batchLocationForm.aisleStart, batchLocationForm.aisleEnd);
-                                     const rows = ['A', 'B']; // sempre fixo
                                      const shelves = getRange(batchLocationForm.shelfStart, batchLocationForm.shelfEnd);
                                      const heights = getRange(batchLocationForm.shelfHeightStart, batchLocationForm.shelfHeightEnd);
                                      
+                                     // Parse rules for aisles that only have row A
+                                     const onlyRowAAislesList = batchLocationForm.onlyRowAAisles
+                                         ? batchLocationForm.onlyRowAAisles.split(';').map(x => x.trim()).filter(Boolean)
+                                         : [];
+
                                      let positions = [];
                                      if (batchLocationForm.subdivisionType === 'AB') {
                                          positions = ['A', 'B'];
@@ -6336,7 +6370,12 @@ export default function SettingsHub() {
                                              : [];
                                      }
                                      
-                                     const count = aisles.length * rows.length * shelves.length * heights.length * (positions.length || 1);
+                                     let count = 0;
+                                     for (const aisle of aisles) {
+                                         const currentRows = onlyRowAAislesList.includes(String(aisle)) ? ['A'] : ['A', 'B'];
+                                         count += currentRows.length * shelves.length * heights.length * (positions.length || 1);
+                                     }
+                                     
                                      const previewShelf = shelves[0] && heights[0] ? `${shelves[0]}${heights[0]}` : (shelves[0] || '');
 
                                      const isValid = count > 0 && aisles[0] !== '' && shelves[0] !== '' && heights[0] !== '' && (batchLocationForm.subdivisionType !== 'Customizado' || positions.length > 0);
@@ -6361,7 +6400,7 @@ export default function SettingsHub() {
                                                              {formatAddressVisual(
                                                                  selectedZone, 
                                                                  aisles[0], 
-                                                                 rows[0], 
+                                                                 'A', 
                                                                  previewShelf, 
                                                                  positions[0] || null
                                                              )}
