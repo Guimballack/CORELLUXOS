@@ -55,9 +55,9 @@ function toSnakeCase(obj) {
 // SERVIÇOS DE BANCO DE DADOS
 // =============================================
 
-// Migração automática de local storage para o novo conjunto de dados v3 (incluindo logs realistas)
+// Migração automática de local storage para o novo conjunto de dados v4 (incluindo logs realistas com anomalias induzidas)
 try {
-    const dbVersion = localStorage.getItem('corellux_db_version_v3');
+    const dbVersion = localStorage.getItem('corellux_db_version_v4');
     if (dbVersion !== 'true') {
         localStorage.removeItem('corellux_products');
         localStorage.removeItem('corellux_categories');
@@ -75,7 +75,18 @@ try {
 
             productsList.forEach(p => {
                 const baseAvg = Math.max(0.5, (p.avgStock || 10) / 8);
-                const qty = parseFloat((baseAvg * (0.75 + Math.random() * 0.5)).toFixed(2));
+                let qty = parseFloat((baseAvg * (0.75 + Math.random() * 0.5)).toFixed(2));
+                
+                // Induzir anomalias reais em dias específicos do histórico:
+                // Há 3 dias atrás (offset 3), simula-se um pico massivo de consumo fora do padrão
+                if (dayOffset === 3) {
+                    qty = parseFloat((baseAvg * (4.2 + Math.random() * 1.5)).toFixed(2));
+                }
+                // Há 10 dias atrás (offset 10), simula-se outro pico para metade dos itens
+                else if (dayOffset === 10 && (p.sku.charCodeAt(p.sku.length - 1) % 2 === 0)) {
+                    qty = parseFloat((baseAvg * (3.8 + Math.random() * 1.2)).toFixed(2));
+                }
+
                 initialLogs.push({
                     id: 'mov_init_' + dayOffset + '_' + p.sku,
                     sku: p.sku,
@@ -86,6 +97,7 @@ try {
             });
         }
         localStorage.setItem('corellux_movement_logs', JSON.stringify(initialLogs));
+        localStorage.setItem('corellux_db_version_v4', 'true');
         localStorage.setItem('corellux_db_version_v3', 'true');
         localStorage.setItem('corellux_db_version_v2', 'true');
     }

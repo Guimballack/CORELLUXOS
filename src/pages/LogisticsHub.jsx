@@ -119,36 +119,6 @@ export default function LogisticsHub() {
     const [scSearch, setScSearch] = useState('');
     const [scRecalcKey, setScRecalcKey] = useState(0);
     const [resolvedAnomalies, setResolvedAnomalies] = useState([]);
-
-    const handleSimulateAnomalies = () => {
-        setResolvedAnomalies([]);
-        const logsRaw = localStorage.getItem('corellux_movement_logs');
-        let logs = logsRaw ? JSON.parse(logsRaw) : [];
-        const activeProducts = products.filter(p => p.status === 'Ativo');
-        if (activeProducts.length === 0) return;
-        const todayStr = new Date().toISOString().split('T')[0];
-        
-        // Simular pico de consumo em 3 produtos aleatórios
-        const selected = [...activeProducts].sort(() => 0.5 - Math.random()).slice(0, 3);
-        selected.forEach(p => {
-            const baseAvg = Math.max(2, (p.avgStock || 10) / 8);
-            const qtySpike = parseFloat((baseAvg * (4.5 + Math.random() * 2.0)).toFixed(2));
-            
-            // Remove registros existentes para este produto na mesma data
-            logs = logs.filter(l => !(l.sku === p.sku && l.date === todayStr));
-            
-            logs.push({
-                id: 'mov_spike_' + Date.now() + '_' + p.sku,
-                sku: p.sku,
-                date: todayStr,
-                qty: qtySpike,
-                dayOfWeek: new Date().getDay()
-            });
-        });
-        
-        localStorage.setItem('corellux_movement_logs', JSON.stringify(logs));
-        setScRecalcKey(prev => prev + 1);
-    };
     const [scSettingSaving, setScSettingSaving] = useState(false);
     const [scHelpPopup, setScHelpPopup] = useState(null); // id da aba ou null
 
@@ -2900,32 +2870,9 @@ export default function LogisticsHub() {
                                     {scSubTab === 'anomalies' && (
                                         <div>
                                             {unresolvedAnomalies.length === 0 ? (
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'flex-start' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '1.5rem', background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '12px', width: '100%' }}>
-                                                        <CheckCircle2 size={20} style={{ color: '#4ade80' }} />
-                                                        <span style={{ color: '#4ade80', fontWeight: '600' }}>Nenhuma anomalia de consumo pendente.</span>
-                                                    </div>
-                                                    <button
-                                                        onClick={handleSimulateAnomalies}
-                                                        style={{
-                                                            background: 'rgba(243, 107, 29, 0.15)',
-                                                            color: 'var(--accent-orange)',
-                                                            border: '1px solid var(--accent-orange)',
-                                                            borderRadius: '8px',
-                                                            padding: '0.6rem 1.2rem',
-                                                            fontSize: '0.85rem',
-                                                            cursor: 'pointer',
-                                                            fontWeight: '600',
-                                                            transition: 'all 0.2s',
-                                                            display: 'inline-flex',
-                                                            alignItems: 'center',
-                                                            gap: '0.4rem'
-                                                        }}
-                                                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(243, 107, 29, 0.25)'}
-                                                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(243, 107, 29, 0.15)'}
-                                                    >
-                                                        ⚡ Simular Novas Anomalias de Teste
-                                                    </button>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '1.5rem', background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: '12px' }}>
+                                                    <CheckCircle2 size={20} style={{ color: '#4ade80' }} />
+                                                    <span style={{ color: '#4ade80', fontWeight: '600' }}>Nenhuma anomalia de consumo pendente.</span>
                                                 </div>
                                             ) : (
                                                 <div className="sc-table-container">
