@@ -1409,7 +1409,7 @@ export const DbService = {
                 const local = localStorage.getItem('corellux_wms_warehouses');
                 if (local) return JSON.parse(local);
                 const defaultW = [
-                    { id: 1, name: 'Armazém Central', description: 'Centro de distribuição e estoque principal de insumos.', status: 'Ativo' }
+                    { id: 1, name: 'Armazém Central', acronym: 'AC', description: 'Centro de distribuição e estoque principal de insumos.', status: 'Ativo' }
                 ];
                 localStorage.setItem('corellux_wms_warehouses', JSON.stringify(defaultW));
                 return defaultW;
@@ -1422,7 +1422,7 @@ export const DbService = {
             const local = localStorage.getItem('corellux_wms_warehouses');
             if (local) return JSON.parse(local);
             const defaultW = [
-                { id: 1, name: 'Armazém Central', description: 'Centro de distribuição e estoque principal de insumos.', status: 'Ativo' }
+                { id: 1, name: 'Armazém Central', acronym: 'AC', description: 'Centro de distribuição e estoque principal de insumos.', status: 'Ativo' }
             ];
             localStorage.setItem('corellux_wms_warehouses', JSON.stringify(defaultW));
             return defaultW;

@@ -181,6 +181,7 @@ DROP TABLE IF EXISTS wms_warehouses CASCADE;
 CREATE TABLE wms_warehouses (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL UNIQUE,
+    acronym VARCHAR(2) NOT NULL UNIQUE,
     description TEXT,
     status VARCHAR(50) DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Inativo')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
@@ -192,7 +193,7 @@ CREATE TABLE wms_zones (
     warehouse_id INTEGER REFERENCES wms_warehouses(id) ON DELETE CASCADE NOT NULL,
     name VARCHAR(3) NOT NULL,
     acronym_description TEXT,
-    type VARCHAR(50) DEFAULT 'Seco' CHECK (type IN ('Seco', 'Resfriado', 'Congelado', 'Climatizado', 'Área Externa')),
+    type VARCHAR(50) DEFAULT 'Seco' CHECK (type IN ('Seco', 'Resfriado', 'Congelado', 'Climatizado')),
     description TEXT,
     status VARCHAR(50) DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Inativo')),
     temp_min INTEGER,
@@ -217,8 +218,8 @@ CREATE TABLE wms_locations (
 );
 
 -- Inserir dados iniciais do WMS para testes
-INSERT INTO wms_warehouses (name, description, status) VALUES
-('Armazém Central', 'Centro de distribuição e estoque principal de insumos.', 'Ativo');
+INSERT INTO wms_warehouses (name, acronym, description, status) VALUES
+('Armazém Central', 'AC', 'Centro de distribuição e estoque principal de insumos.', 'Ativo');
 
 INSERT INTO wms_zones (warehouse_id, name, acronym_description, type, description, status, temp_min, temp_max, is_ambient, ambient_type) VALUES
 (1, 'CFA', 'Câmara Fria A', 'Resfriado', 'Armazenamento de laticínios e verduras.', 'Ativo', 2, 8, false, null),

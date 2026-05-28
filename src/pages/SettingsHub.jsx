@@ -104,7 +104,7 @@ export default function SettingsHub() {
     // WMS Modals & Forms
     const [showWarehouseModal, setShowWarehouseModal] = useState(false);
     const [editingWarehouse, setEditingWarehouse] = useState(null);
-    const [warehouseForm, setWarehouseForm] = useState({ name: '', description: '', status: 'Ativo' });
+    const [warehouseForm, setWarehouseForm] = useState({ name: '', acronym: '', description: '', status: 'Ativo' });
 
     const [showZoneModal, setShowZoneModal] = useState(false);
     const [editingZone, setEditingZone] = useState(null);
@@ -355,13 +355,13 @@ export default function SettingsHub() {
     // Warehouse CRUD Handlers
     const openWarehouseModalForCreate = () => {
         setEditingWarehouse(null);
-        setWarehouseForm({ name: '', description: '', status: 'Ativo' });
+        setWarehouseForm({ name: '', acronym: '', description: '', status: 'Ativo' });
         setShowWarehouseModal(true);
     };
 
     const openWarehouseModalForEdit = (wh) => {
         setEditingWarehouse(wh);
-        setWarehouseForm({ name: wh.name, description: wh.description || '', status: wh.status || 'Ativo' });
+        setWarehouseForm({ name: wh.name, acronym: wh.acronym || '', description: wh.description || '', status: wh.status || 'Ativo' });
         setShowWarehouseModal(true);
     };
 
@@ -371,9 +371,15 @@ export default function SettingsHub() {
             showToast('O nome do armazém é obrigatório.', 'error');
             return;
         }
+        const acroVal = warehouseForm.acronym.trim().toUpperCase();
+        if (acroVal.length !== 2 || !/^[A-Z]{2}$/.test(acroVal)) {
+            showToast('A sigla do armazém deve conter exatamente 2 letras (A-Z).', 'error');
+            return;
+        }
         const payload = {
             ...warehouseForm,
-            name: warehouseForm.name.trim()
+            name: warehouseForm.name.trim(),
+            acronym: acroVal
         };
         if (editingWarehouse) {
             payload.id = editingWarehouse.id;
@@ -541,12 +547,12 @@ export default function SettingsHub() {
         
         let positions = [];
         if (batchLocationForm.subdivisionType === 'AB') {
-            positions = ['Lado A', 'Lado B'];
+            positions = ['A', 'B'];
         } else if (batchLocationForm.subdivisionType === 'ABC') {
-            positions = ['Lado A', 'Lado B', 'Lado C'];
+            positions = ['A', 'B', 'C'];
         } else if (batchLocationForm.subdivisionType === 'Customizado') {
             positions = batchLocationForm.subdivisionCustom
-                ? batchLocationForm.subdivisionCustom.split(';').map(p => p.trim()).filter(Boolean).map(p => p.startsWith('Lado ') ? p : `Lado ${p}`)
+                ? batchLocationForm.subdivisionCustom.split(';').map(p => p.trim()).filter(Boolean)
                 : [];
         }
 
@@ -619,10 +625,12 @@ export default function SettingsHub() {
     };
 
     const formatAddressVisual = (zone, aisle, row, shelf, position) => {
-        const zoneName = (zone?.name || 'ZON').substring(0, 3).toUpperCase();
-        const parts = [zoneName];
-        if (aisle) parts.push(aisle);
-        if (row) parts.push(row);
+        const whAcronym = (selectedWarehouse?.acronym || 'BC').substring(0, 2).toUpperCase();
+        const zoneName = (zone?.name || 'EMC').substring(0, 3).toUpperCase();
+        const parts = [`${whAcronym}-${zoneName}`];
+        if (aisle || row) {
+            parts.push(`${aisle || ''}${row || ''}`);
+        }
         if (shelf) parts.push(shelf);
         if (position) parts.push(position);
         return parts.join('-');
@@ -2679,7 +2687,14 @@ export default function SettingsHub() {
                                                     >
                                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                                                             <div style={{ flex: 1 }}>
-                                                                <h4 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1rem' }}>{wh.name}</h4>
+                                                                <h4 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                                    {wh.name}
+                                                                    {wh.acronym && (
+                                                                        <span style={{ fontSize: '0.75rem', background: 'rgba(59, 130, 246, 0.2)', color: 'var(--accent-blue)', padding: '1px 5px', borderRadius: '4px', fontWeight: 'bold' }}>
+                                                                            {wh.acronym}
+                                                                        </span>
+                                                                    )}
+                                                                </h4>
                                                                 <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-secondary)', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                                                                     {wh.description || 'Sem descrição.'}
                                                                 </p>
@@ -2743,8 +2758,13 @@ export default function SettingsHub() {
                                                     alignItems: 'center',
                                                     flexShrink: 0
                                                 }}>
-                                                    <h3 style={{ fontSize: '1.1rem', margin: '0 1.5rem 0 0', color: 'var(--accent-blue)', fontWeight: '700' }}>
+                                                    <h3 style={{ fontSize: '1.1rem', margin: '0 1.5rem 0 0', color: 'var(--accent-blue)', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '6px' }}>
                                                         {selectedWarehouse.name}
+                                                        {selectedWarehouse.acronym && (
+                                                            <span style={{ fontSize: '0.75rem', background: 'rgba(59, 130, 246, 0.2)', color: 'var(--accent-blue)', padding: '1px 5px', borderRadius: '4px', fontWeight: 'bold' }}>
+                                                                {selectedWarehouse.acronym}
+                                                            </span>
+                                                        )}
                                                     </h3>
                                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                                                         {[
@@ -5567,6 +5587,19 @@ export default function SettingsHub() {
                             </div>
 
                             <div className="card-input-group">
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Sigla do Armazém (2 Letras)</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    maxLength={2}
+                                    placeholder="Ex: BC"
+                                    value={warehouseForm.acronym}
+                                    onChange={(e) => setWarehouseForm({ ...warehouseForm, acronym: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') })}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textTransform: 'uppercase' }}
+                                />
+                            </div>
+
+                            <div className="card-input-group">
                                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Descrição</label>
                                 <textarea 
                                     placeholder="Descrição ou observações..."
@@ -5653,14 +5686,22 @@ export default function SettingsHub() {
                                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Tipo de Armazenamento</label>
                                 <select 
                                     value={zoneForm.type}
-                                    onChange={(e) => setZoneForm({ ...zoneForm, type: e.target.value })}
+                                    onChange={(e) => {
+                                        const newType = e.target.value;
+                                        const isCold = newType === 'Resfriado' || newType === 'Congelado';
+                                        setZoneForm({ 
+                                            ...zoneForm, 
+                                            type: newType,
+                                            isAmbient: isCold ? false : zoneForm.isAmbient,
+                                            ambientType: isCold ? null : zoneForm.ambientType
+                                        });
+                                    }}
                                     style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
                                 >
                                     <option value="Seco">Seco</option>
                                     <option value="Resfriado">Resfriado</option>
                                     <option value="Congelado">Congelado</option>
                                     <option value="Climatizado">Climatizado</option>
-                                    <option value="Área Externa">Área Externa</option>
                                 </select>
                             </div>
 
@@ -5690,9 +5731,19 @@ export default function SettingsHub() {
 
                             {/* Temperatura Ambiente */}
                             <div className="card-input-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: '600' }}>
+                                <label style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '0.5rem', 
+                                    fontSize: '0.9rem', 
+                                    color: (zoneForm.type === 'Resfriado' || zoneForm.type === 'Congelado') ? 'var(--text-muted)' : 'var(--text-primary)', 
+                                    cursor: (zoneForm.type === 'Resfriado' || zoneForm.type === 'Congelado') ? 'not-allowed' : 'pointer', 
+                                    fontWeight: '600',
+                                    opacity: (zoneForm.type === 'Resfriado' || zoneForm.type === 'Congelado') ? 0.5 : 1
+                                }}>
                                     <input 
                                         type="checkbox"
+                                        disabled={zoneForm.type === 'Resfriado' || zoneForm.type === 'Congelado'}
                                         checked={zoneForm.isAmbient}
                                         onChange={(e) => {
                                             const checked = e.target.checked;
@@ -5702,7 +5753,7 @@ export default function SettingsHub() {
                                                 ambientType: checked ? (zoneForm.ambientType || 'fechada') : null 
                                             });
                                         }}
-                                        style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                        style={{ cursor: (zoneForm.type === 'Resfriado' || zoneForm.type === 'Congelado') ? 'not-allowed' : 'pointer', width: '16px', height: '16px' }}
                                     />
                                     Temperatura Ambiente
                                 </label>
@@ -5806,7 +5857,7 @@ export default function SettingsHub() {
                                             {
                                                 name: zoneForm.name || 'EMC',
                                             },
-                                            '01', 'A', '03', 'Lado A'
+                                            '2', 'B', '5D', 'D'
                                         )}
                                     </code>
                                 </div>
