@@ -3101,51 +3101,64 @@ export default function SettingsHub() {
                                                                                                                 {/* Grid locations */}
                                                                                                                 <div style={{ display: 'flex', gap: '4px', flex: 1 }}>
                                                                                                                     {rows.map(row => {
-                                                                                                                        const loc = filtered.find(l => l.row === row && l.shelf === shelf);
-                                                                                                                        if (!loc) {
-                                                                                                                            return <div key={row} style={{ flex: 1, height: '48px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', border: '1px dashed rgba(255,255,255,0.02)' }} />;
-                                                                                                                        }
+                                                            const locs = filtered
+                                                                .filter(l => l.row === row && l.shelf === shelf)
+                                                                .sort((a, b) => (a.position || '').localeCompare(b.position || ''));
+                                                                
+                                                            if (locs.length === 0) {
+                                                                return <div key={row} style={{ flex: 1, height: '52px', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', border: '1px dashed rgba(255,255,255,0.02)' }} />;
+                                                            }
 
-                                                                                                                        const displayAddress = formatAddressVisual(selectedZone, loc.aisle, loc.row, loc.shelf, loc.position);
-                                                                                                                        const isAtivo = loc.status === 'Ativo';
+                                                            return (
+                                                                <div key={row} style={{ flex: 1, display: 'flex', gap: '3px', height: '52px' }}>
+                                                                    {locs.map(loc => {
+                                                                        const displayAddress = formatAddressVisual(selectedZone, loc.aisle, loc.row, loc.shelf, loc.position);
+                                                                        const isAtivo = loc.status === 'Ativo';
 
-                                                                                                                        return (
-                                                                                                                            <div 
-                                                                                                                                key={row}
-                                                                                                                                onClick={() => handleToggleLocationStatus(loc)}
-                                                                                                                                title={`Endereço: ${displayAddress} | Clique para alterar status (Ativo/Bloqueado)`}
-                                                                                                                                style={{
-                                                                                                                                    flex: 1,
-                                                                                                                                    height: '52px',
-                                                                                                                                    borderRadius: '6px',
-                                                                                                                                    border: isAtivo ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)',
-                                                                                                                                    background: isAtivo ? 'rgba(34, 197, 94, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                                                                                                                                    display: 'flex',
-                                                                                                                                    flexDirection: 'column',
-                                                                                                                                    justifyContent: 'center',
-                                                                                                                                    alignItems: 'center',
-                                                                                                                                    cursor: 'pointer',
-                                                                                                                                    transition: 'all 0.15s',
-                                                                                                                                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02)'
-                                                                                                                                }}
-                                                                                                                                onMouseEnter={(e) => {
-                                                                                                                                    e.currentTarget.style.transform = 'scale(1.02)';
-                                                                                                                                    e.currentTarget.style.background = isAtivo ? 'rgba(34, 197, 94, 0.18)' : 'rgba(239, 68, 68, 0.18)';
-                                                                                                                                }}
-                                                                                                                                onMouseLeave={(e) => {
-                                                                                                                                    e.currentTarget.style.transform = 'none';
-                                                                                                                                    e.currentTarget.style.background = isAtivo ? 'rgba(34, 197, 94, 0.08)' : 'rgba(239, 68, 68, 0.08)';
-                                                                                                                                }}
-                                                                                                                            >
-                                                                                                                                <span style={{ fontSize: '0.75rem', fontWeight: '700', color: isAtivo ? 'var(--accent-green)' : 'var(--accent-red)' }}>
-                                                                                                                                    {row}-{shelf}
-                                                                                                                                </span>
-                                                                                                                                <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '90%' }}>
-                                                                                                                                    {displayAddress}
-                                                                                                                                </span>
-                                                                                                                            </div>
-                                                                                                                        );
-                                                                                                                    })}
+                                                                        return (
+                                                                            <div 
+                                                                                key={loc.id}
+                                                                                onClick={() => handleToggleLocationStatus(loc)}
+                                                                                title={`Endereço: ${displayAddress} | Clique para alterar status (Ativo/Bloqueado)`}
+                                                                                style={{
+                                                                                    flex: 1,
+                                                                                    height: '100%',
+                                                                                    borderRadius: '6px',
+                                                                                    border: isAtivo ? '1px solid rgba(34, 197, 94, 0.4)' : '1px solid rgba(239, 68, 68, 0.4)',
+                                                                                    background: isAtivo ? 'rgba(34, 197, 94, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                                                                                    display: 'flex',
+                                                                                    flexDirection: 'column',
+                                                                                    justifyContent: 'center',
+                                                                                    alignItems: 'center',
+                                                                                    cursor: 'pointer',
+                                                                                    transition: 'all 0.15s',
+                                                                                    boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.02)',
+                                                                                    padding: '2px',
+                                                                                    minWidth: '0'
+                                                                                }}
+                                                                                onMouseEnter={(e) => {
+                                                                                    e.currentTarget.style.transform = 'scale(1.02)';
+                                                                                    e.currentTarget.style.background = isAtivo ? 'rgba(34, 197, 94, 0.18)' : 'rgba(239, 68, 68, 0.18)';
+                                                                                }}
+                                                                                onMouseLeave={(e) => {
+                                                                                    e.currentTarget.style.transform = 'none';
+                                                                                    e.currentTarget.style.background = isAtivo ? 'rgba(34, 197, 94, 0.08)' : 'rgba(239, 68, 68, 0.08)';
+                                                                                }}
+                                                                            >
+                                                                                <span style={{ fontSize: '0.7rem', fontWeight: '700', color: isAtivo ? 'var(--accent-green)' : 'var(--accent-red)', whiteSpace: 'nowrap' }}>
+                                                                                    {row}-{shelf}
+                                                                                </span>
+                                                                                {loc.position && (
+                                                                                    <span style={{ fontSize: '0.55rem', fontWeight: '600', color: 'var(--text-secondary)', marginTop: '1px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+                                                                                        {loc.position.replace('Lado ', '')}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            );
+                                                        })}
                                                                                                                 </div>
                                                                                                             </div>
                                                                                                         ))}
