@@ -109,15 +109,15 @@ export default function SettingsHub() {
     const [showZoneModal, setShowZoneModal] = useState(false);
     const [editingZone, setEditingZone] = useState(null);
     const [zoneForm, setZoneForm] = useState({
-        name: '',
+        name: '', // Sigla (3 letras)
+        acronymDescription: '', // Descrição da sigla
         type: 'Seco',
         description: '',
         status: 'Ativo',
-        addressSeparator: '-',
-        includeZonePrefix: true,
-        includeAislePrefix: false,
-        includeRowPrefix: false,
-        includeShelfPrefix: false
+        tempMin: 0,
+        tempMax: 30,
+        isAmbient: false,
+        ambientType: 'fechada' // fechada, externa_aberta, externa_coberta
     });
 
     const [showBatchLocationModal, setShowBatchLocationModal] = useState(false);
@@ -409,14 +409,14 @@ export default function SettingsHub() {
         setEditingZone(null);
         setZoneForm({
             name: '',
+            acronymDescription: '',
             type: 'Seco',
             description: '',
             status: 'Ativo',
-            addressSeparator: '-',
-            includeZonePrefix: true,
-            includeAislePrefix: false,
-            includeRowPrefix: false,
-            includeShelfPrefix: false
+            tempMin: 0,
+            tempMax: 30,
+            isAmbient: false,
+            ambientType: 'fechada'
         });
         setShowZoneModal(true);
     };
@@ -424,15 +424,15 @@ export default function SettingsHub() {
     const openZoneModalForEdit = (zone) => {
         setEditingZone(zone);
         setZoneForm({
-            name: zone.name,
+            name: zone.name || '',
+            acronymDescription: zone.acronymDescription || '',
             type: zone.type || 'Seco',
             description: zone.description || zone.desc || '',
             status: zone.status || 'Ativo',
-            addressSeparator: zone.addressSeparator !== undefined ? zone.addressSeparator : '-',
-            includeZonePrefix: zone.includeZonePrefix !== undefined ? zone.includeZonePrefix : true,
-            includeAislePrefix: zone.includeAislePrefix !== undefined ? zone.includeAislePrefix : false,
-            includeRowPrefix: zone.includeRowPrefix !== undefined ? zone.includeRowPrefix : false,
-            includeShelfPrefix: zone.includeShelfPrefix !== undefined ? zone.includeShelfPrefix : false
+            tempMin: zone.tempMin !== undefined ? zone.tempMin : 0,
+            tempMax: zone.tempMax !== undefined ? zone.tempMax : 30,
+            isAmbient: zone.isAmbient !== undefined ? zone.isAmbient : false,
+            ambientType: zone.ambientType || 'fechada'
         });
         setShowZoneModal(true);
     };
@@ -440,18 +440,28 @@ export default function SettingsHub() {
     const handleSaveZone = async (e) => {
         e.preventDefault();
         if (!selectedWarehouse) return;
-        if (!zoneForm.name.trim()) {
-            showToast('O nome da zona é obrigatório.', 'error');
+        
+        const nameVal = zoneForm.name.trim().toUpperCase();
+        if (nameVal.length !== 3 || !/^[A-Z]{3}$/.test(nameVal)) {
+            showToast('A sigla da zona deve conter exatamente 3 letras (A-Z).', 'error');
             return;
         }
+
         const payload = {
             ...zoneForm,
             warehouseId: selectedWarehouse.id,
-            name: zoneForm.name.trim()
+            name: nameVal,
+            acronymDescription: zoneForm.acronymDescription.trim(),
+            tempMin: zoneForm.tempMin !== '' && zoneForm.tempMin !== null && zoneForm.tempMin !== undefined ? parseInt(zoneForm.tempMin, 10) : null,
+            tempMax: zoneForm.tempMax !== '' && zoneForm.tempMax !== null && zoneForm.tempMax !== undefined ? parseInt(zoneForm.tempMax, 10) : null,
+            isAmbient: zoneForm.isAmbient,
+            ambientType: zoneForm.isAmbient ? zoneForm.ambientType : null
         };
+        
         if (editingZone) {
             payload.id = editingZone.id;
         }
+        
         const result = await DbService.saveWmsZone(payload);
         if (result.success) {
             showToast('Zona gravada com sucesso!', 'success');
@@ -609,30 +619,13 @@ export default function SettingsHub() {
     };
 
     const formatAddressVisual = (zone, aisle, row, shelf, position) => {
-        if (!zone) return [aisle, row, shelf, position].filter(Boolean).join('-');
-        
-        const parts = [];
-        const sep = zone.addressSeparator !== undefined ? zone.addressSeparator : '-';
-        
-        if (zone.includeZonePrefix && zone.name) {
-            parts.push(zone.name);
-        }
-        if (aisle) {
-            parts.push(zone.includeAislePrefix ? `Rua ${aisle}` : aisle);
-        }
-        if (row) {
-            parts.push(zone.includeRowPrefix ? `Fil. ${row}` : row);
-        }
-        if (shelf) {
-            parts.push(zone.includeShelfPrefix ? `Prat. ${shelf}` : shelf);
-        }
-        if (position) {
-            parts.push(position);
-        }
-        
-        if (sep === '') return parts.join('');
-        if (sep === ' ') return parts.join(' ');
-        return parts.join(` ${sep} `);
+        const zoneName = (zone?.name || 'ZON').substring(0, 3).toUpperCase();
+        const parts = [zoneName];
+        if (aisle) parts.push(aisle);
+        if (row) parts.push(row);
+        if (shelf) parts.push(shelf);
+        if (position) parts.push(position);
+        return parts.join('-');
     };
 
 
@@ -2867,7 +2860,7 @@ export default function SettingsHub() {
                                                                                 onClick={() => handleSelectZone(zone)}
                                                                             >
                                                                                 <div>
-                                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.25rem' }}>
                                                                                         <h4 style={{ margin: 0, color: 'var(--text-primary)', fontSize: '1.05rem', fontWeight: '700' }}>{zone.name}</h4>
                                                                                         <div style={{ display: 'flex', gap: '0.3rem' }}>
                                                                                             <button onClick={(e) => { e.stopPropagation(); openZoneModalForEdit(zone); }} style={{ background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '2px' }} title="Editar">
@@ -2878,9 +2871,27 @@ export default function SettingsHub() {
                                                                                             </button>
                                                                                         </div>
                                                                                     </div>
+                                                                                    {zone.acronymDescription && (
+                                                                                        <div style={{ fontSize: '0.8rem', color: 'var(--accent-blue)', fontWeight: '600', marginBottom: '0.5rem' }}>
+                                                                                            {zone.acronymDescription}
+                                                                                        </div>
+                                                                                    )}
                                                                                     <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-secondary)', fontSize: '0.8rem', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                                                                                         {zone.description || zone.desc || 'Sem descrição.'}
                                                                                     </p>
+                                                                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '2px', marginBottom: '0.75rem' }}>
+                                                                                        {zone.isAmbient ? (
+                                                                                            <span style={{ color: 'var(--accent-green)', fontWeight: '600' }}>
+                                                                                                Temp. Ambiente ({zone.ambientType === 'fechada' ? 'Área Fechada' : zone.ambientType === 'externa_aberta' ? 'Externa Aberta' : 'Externa Coberta'})
+                                                                                            </span>
+                                                                                        ) : (
+                                                                                            (zone.tempMin !== null || zone.tempMax !== null) && (
+                                                                                                <span>
+                                                                                                    Temperatura: <strong style={{ color: 'var(--text-primary)' }}>{zone.tempMin ?? '?'}°C a {zone.tempMax ?? '?'}°C</strong>
+                                                                                                </span>
+                                                                                            )
+                                                                                        )}
+                                                                                    </div>
                                                                                 </div>
                                                                                 <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                                                                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -5614,13 +5625,26 @@ export default function SettingsHub() {
                             </h3>
                             
                             <div className="card-input-group">
-                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Nome da Zona</label>
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Nome da Zona (Sigla de 3 Letras)</label>
                                 <input 
                                     type="text" 
                                     required
-                                    placeholder="Ex: Câmara Fria A, Estoque Seco B"
+                                    maxLength={3}
+                                    placeholder="Ex: EMC"
                                     value={zoneForm.name}
-                                    onChange={(e) => setZoneForm({ ...zoneForm, name: e.target.value })}
+                                    onChange={(e) => setZoneForm({ ...zoneForm, name: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') })}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textTransform: 'uppercase' }}
+                                />
+                            </div>
+
+                            <div className="card-input-group">
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Descrição da Sigla</label>
+                                <input 
+                                    type="text" 
+                                    required
+                                    placeholder="Ex: Estoque Manutenção Circular"
+                                    value={zoneForm.acronymDescription}
+                                    onChange={(e) => setZoneForm({ ...zoneForm, acronymDescription: e.target.value })}
                                     style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
                                 />
                             </div>
@@ -5640,88 +5664,153 @@ export default function SettingsHub() {
                                 </select>
                             </div>
 
-                            <div className="card-input-group" style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                                 <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--accent-blue)', margin: 0 }}>Visualização do Endereço</label>
-                                 
-                                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                                     <div style={{ flex: 1 }}>
-                                         <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Separador</label>
-                                         <select 
-                                             value={zoneForm.addressSeparator}
-                                             onChange={(e) => setZoneForm({ ...zoneForm, addressSeparator: e.target.value })}
-                                             style={{ width: '100%', padding: '0.5rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
-                                         >
-                                             <option value="-">Hífen (-)</option>
-                                             <option value="/">Barra (/)</option>
-                                             <option value=".">Ponto (.)</option>
-                                             <option value=" ">Espaço ( )</option>
-                                             <option value="">Nenhum (Sem separador)</option>
-                                         </select>
-                                     </div>
-                                 </div>
+                            {/* Temperatura Mínima & Máxima */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Temp. Mínima (°C)</label>
+                                    <input 
+                                        type="number" 
+                                        placeholder="Ex: -18"
+                                        value={zoneForm.tempMin === null || zoneForm.tempMin === undefined ? '' : zoneForm.tempMin}
+                                        onChange={(e) => setZoneForm({ ...zoneForm, tempMin: e.target.value === '' ? null : parseInt(e.target.value, 10) })}
+                                        style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Temp. Máxima (°C)</label>
+                                    <input 
+                                        type="number" 
+                                        placeholder="Ex: 8"
+                                        value={zoneForm.tempMax === null || zoneForm.tempMax === undefined ? '' : zoneForm.tempMax}
+                                        onChange={(e) => setZoneForm({ ...zoneForm, tempMax: e.target.value === '' ? null : parseInt(e.target.value, 10) })}
+                                        style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                            </div>
 
-                                 <div>
-                                     <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Prefixos e Textos de Apoio</label>
-                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.6rem' }}>
-                                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
-                                             <input 
-                                                 type="checkbox"
-                                                 checked={zoneForm.includeZonePrefix}
-                                                 onChange={(e) => setZoneForm({ ...zoneForm, includeZonePrefix: e.target.checked })}
-                                                 style={{ cursor: 'pointer' }}
-                                             />
-                                             Nome da Zona
-                                         </label>
-                                         
-                                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
-                                             <input 
-                                                 type="checkbox"
-                                                 checked={zoneForm.includeAislePrefix}
-                                                 onChange={(e) => setZoneForm({ ...zoneForm, includeAislePrefix: e.target.checked })}
-                                                 style={{ cursor: 'pointer' }}
-                                             />
-                                             Rua (ex: Rua 01)
-                                         </label>
-                                         
-                                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
-                                             <input 
-                                                 type="checkbox"
-                                                 checked={zoneForm.includeRowPrefix}
-                                                 onChange={(e) => setZoneForm({ ...zoneForm, includeRowPrefix: e.target.checked })}
-                                                 style={{ cursor: 'pointer' }}
-                                             />
-                                             Fil. (ex: Fil. A)
-                                         </label>
-                                         
-                                         <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-primary)', cursor: 'pointer' }}>
-                                             <input 
-                                                 type="checkbox"
-                                                 checked={zoneForm.includeShelfPrefix}
-                                                 onChange={(e) => setZoneForm({ ...zoneForm, includeShelfPrefix: e.target.checked })}
-                                                 style={{ cursor: 'pointer' }}
-                                             />
-                                             Prat. (ex: Prat. 03)
-                                         </label>
-                                     </div>
-                                 </div>
+                            {/* Temperatura Ambiente */}
+                            <div className="card-input-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: '600' }}>
+                                    <input 
+                                        type="checkbox"
+                                        checked={zoneForm.isAmbient}
+                                        onChange={(e) => {
+                                            const checked = e.target.checked;
+                                            setZoneForm({ 
+                                                ...zoneForm, 
+                                                isAmbient: checked,
+                                                ambientType: checked ? (zoneForm.ambientType || 'fechada') : null 
+                                            });
+                                        }}
+                                        style={{ cursor: 'pointer', width: '16px', height: '16px' }}
+                                    />
+                                    Temperatura Ambiente
+                                </label>
 
-                                 <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.6rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', marginTop: '0.2rem' }}>
-                                     <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.15rem' }}>Pré-visualização:</span>
-                                     <code style={{ fontSize: '0.85rem', color: 'var(--accent-green)', fontWeight: 'bold', fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                                         {formatAddressVisual(
-                                             {
-                                                 name: zoneForm.name || 'ZONA',
-                                                 addressSeparator: zoneForm.addressSeparator,
-                                                 includeZonePrefix: zoneForm.includeZonePrefix,
-                                                 includeAislePrefix: zoneForm.includeAislePrefix,
-                                                 includeRowPrefix: zoneForm.includeRowPrefix,
-                                                 includeShelfPrefix: zoneForm.includeShelfPrefix
-                                             },
-                                             '01', 'A', '03', 'Lado A'
-                                         )}
-                                     </code>
-                                 </div>
-                             </div>
+                                {zoneForm.isAmbient && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '8px', marginTop: '0.2rem' }}>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Ambiente da Zona:</span>
+                                        
+                                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setZoneForm({ ...zoneForm, ambientType: 'fechada' })}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '0.6rem',
+                                                    background: zoneForm.ambientType === 'fechada' ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                                                    border: zoneForm.ambientType === 'fechada' ? '1px solid var(--accent-blue)' : '1px solid var(--border-color)',
+                                                    borderRadius: '6px',
+                                                    color: zoneForm.ambientType === 'fechada' ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                Área Fechada
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setZoneForm({ ...zoneForm, ambientType: zoneForm.ambientType && zoneForm.ambientType.startsWith('externa') ? zoneForm.ambientType : 'externa_aberta' })}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '0.6rem',
+                                                    background: zoneForm.ambientType && zoneForm.ambientType.startsWith('externa') ? 'rgba(59, 130, 246, 0.15)' : 'transparent',
+                                                    border: zoneForm.ambientType && zoneForm.ambientType.startsWith('externa') ? '1px solid var(--accent-blue)' : '1px solid var(--border-color)',
+                                                    borderRadius: '6px',
+                                                    color: zoneForm.ambientType && zoneForm.ambientType.startsWith('externa') ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: '600',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                Área Externa
+                                            </button>
+                                        </div>
+
+                                        {zoneForm.ambientType && zoneForm.ambientType.startsWith('externa') && (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.8rem', marginTop: '0.2rem' }}>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Tipo de Área Externa:</span>
+                                                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setZoneForm({ ...zoneForm, ambientType: 'externa_aberta' })}
+                                                        style={{
+                                                            flex: 1,
+                                                            padding: '0.5rem',
+                                                            background: zoneForm.ambientType === 'externa_aberta' ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+                                                            border: zoneForm.ambientType === 'externa_aberta' ? '1px solid var(--accent-green)' : '1px solid var(--border-color)',
+                                                            borderRadius: '6px',
+                                                            color: zoneForm.ambientType === 'externa_aberta' ? 'var(--accent-green)' : 'var(--text-secondary)',
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: '600',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                    >
+                                                        Externa Aberta
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setZoneForm({ ...zoneForm, ambientType: 'externa_coberta' })}
+                                                        style={{
+                                                            flex: 1,
+                                                            padding: '0.5rem',
+                                                            background: zoneForm.ambientType === 'externa_coberta' ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+                                                            border: zoneForm.ambientType === 'externa_coberta' ? '1px solid var(--accent-green)' : '1px solid var(--border-color)',
+                                                            borderRadius: '6px',
+                                                            color: zoneForm.ambientType === 'externa_coberta' ? 'var(--accent-green)' : 'var(--text-secondary)',
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: '600',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                    >
+                                                        Externa Coberta
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="card-input-group" style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                <label style={{ display: 'block', fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--accent-blue)', margin: 0 }}>Pré-visualização do Endereço</label>
+                                <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.6rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)', marginTop: '0.2rem' }}>
+                                    <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.15rem' }}>Pré-visualização:</span>
+                                    <code style={{ fontSize: '0.85rem', color: 'var(--accent-green)', fontWeight: 'bold', fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                                        {formatAddressVisual(
+                                            {
+                                                name: zoneForm.name || 'EMC',
+                                            },
+                                            '01', 'A', '03', 'Lado A'
+                                        )}
+                                    </code>
+                                </div>
+                            </div>
 
                             <div className="card-input-group">
                                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Descrição</label>

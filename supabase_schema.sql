@@ -190,15 +190,15 @@ CREATE TABLE wms_warehouses (
 CREATE TABLE wms_zones (
     id SERIAL PRIMARY KEY,
     warehouse_id INTEGER REFERENCES wms_warehouses(id) ON DELETE CASCADE NOT NULL,
-    name VARCHAR(100) NOT NULL,
+    name VARCHAR(3) NOT NULL,
+    acronym_description TEXT,
     type VARCHAR(50) DEFAULT 'Seco' CHECK (type IN ('Seco', 'Resfriado', 'Congelado', 'Climatizado', 'Área Externa')),
     description TEXT,
     status VARCHAR(50) DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Inativo')),
-    address_separator VARCHAR(10) DEFAULT '-',
-    include_zone_prefix BOOLEAN DEFAULT TRUE,
-    include_aisle_prefix BOOLEAN DEFAULT FALSE,
-    include_row_prefix BOOLEAN DEFAULT FALSE,
-    include_shelf_prefix BOOLEAN DEFAULT FALSE,
+    temp_min INTEGER,
+    temp_max INTEGER,
+    is_ambient BOOLEAN DEFAULT FALSE,
+    ambient_type VARCHAR(50) CHECK (ambient_type IN ('fechada', 'externa_aberta', 'externa_coberta')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     UNIQUE(warehouse_id, name)
 );
@@ -220,9 +220,9 @@ CREATE TABLE wms_locations (
 INSERT INTO wms_warehouses (name, description, status) VALUES
 ('Armazém Central', 'Centro de distribuição e estoque principal de insumos.', 'Ativo');
 
-INSERT INTO wms_zones (warehouse_id, name, type, description, status, address_separator, include_zone_prefix, include_aisle_prefix, include_row_prefix, include_shelf_prefix) VALUES
-(1, 'Câmara Fria A', 'Resfriado', 'Armazenamento de laticínios e verduras.', 'Ativo', '-', true, false, false, false),
-(1, 'Câmara Fria B', 'Congelado', 'Armazenamento de carnes e congelados.', 'Ativo', '-', true, false, false, false),
-(1, 'Estoque Seco A', 'Seco', 'Armazenamento de massas, grãos e enlatados.', 'Ativo', '/', true, false, false, false),
-(1, 'Estoque Seco B', 'Seco', 'Armazenamento de temperos e embalagens.', 'Ativo', '-', true, false, false, false);
+INSERT INTO wms_zones (warehouse_id, name, acronym_description, type, description, status, temp_min, temp_max, is_ambient, ambient_type) VALUES
+(1, 'CFA', 'Câmara Fria A', 'Resfriado', 'Armazenamento de laticínios e verduras.', 'Ativo', 2, 8, false, null),
+(1, 'CFB', 'Câmara Fria B', 'Congelado', 'Armazenamento de carnes e congelados.', 'Ativo', -18, -10, false, null),
+(1, 'ESA', 'Estoque Seco A', 'Seco', 'Armazenamento de massas, grãos e enlatados.', 'Ativo', 15, 25, true, 'fechada'),
+(1, 'ESB', 'Estoque Seco B', 'Seco', 'Armazenamento de temperos e embalagens.', 'Ativo', 15, 25, true, 'fechada');
 

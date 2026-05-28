@@ -1544,10 +1544,10 @@ export const DbService = {
             if (error) throw error;
 
             const defaultZones = [
-                { id: 1, warehouseId: 1, name: 'Câmara Fria A', type: 'Resfriado', description: 'Armazenamento de laticínios e verduras.', status: 'Ativo', addressSeparator: '-', includeZonePrefix: true, includeAislePrefix: false, includeRowPrefix: false, includeShelfPrefix: false },
-                { id: 2, warehouseId: 1, name: 'Câmara Fria B', type: 'Congelado', description: 'Armazenamento de carnes e congelados.', status: 'Ativo', addressSeparator: '-', includeZonePrefix: true, includeAislePrefix: false, includeRowPrefix: false, includeShelfPrefix: false },
-                { id: 3, warehouseId: 1, name: 'Estoque Seco A', type: 'Seco', description: 'Armazenamento de massas, grãos e enlatados.', status: 'Ativo', addressSeparator: '/', includeZonePrefix: true, includeAislePrefix: false, includeRowPrefix: false, includeShelfPrefix: false },
-                { id: 4, warehouseId: 1, name: 'Estoque Seco B', type: 'Seco', description: 'Armazenamento de temperos e embalagens.', status: 'Ativo', addressSeparator: '-', includeZonePrefix: true, includeAislePrefix: false, includeRowPrefix: false, includeShelfPrefix: false }
+                { id: 1, warehouseId: 1, name: 'CFA', acronymDescription: 'Câmara Fria A', type: 'Resfriado', description: 'Armazenamento de laticínios e verduras.', status: 'Ativo', tempMin: 2, tempMax: 8, isAmbient: false, ambientType: null },
+                { id: 2, warehouseId: 1, name: 'CFB', acronymDescription: 'Câmara Fria B', type: 'Congelado', description: 'Armazenamento de carnes e congelados.', status: 'Ativo', tempMin: -18, tempMax: -10, isAmbient: false, ambientType: null },
+                { id: 3, warehouseId: 1, name: 'ESA', acronymDescription: 'Estoque Seco A', type: 'Seco', description: 'Armazenamento de massas, grãos e enlatados.', status: 'Ativo', tempMin: 15, tempMax: 25, isAmbient: true, ambientType: 'fechada' },
+                { id: 4, warehouseId: 1, name: 'ESB', acronymDescription: 'Estoque Seco B', type: 'Seco', description: 'Armazenamento de temperos e embalagens.', status: 'Ativo', tempMin: 15, tempMax: 25, isAmbient: true, ambientType: 'fechada' }
             ];
 
             if (!data || data.length === 0) {
@@ -1576,10 +1576,10 @@ export const DbService = {
         } catch (e) {
             console.warn('[DbService] Erro ao carregar zonas no Supabase. Fallback local:', e.message || e);
             const defaultZones = [
-                { id: 1, warehouseId: 1, name: 'Câmara Fria A', type: 'Resfriado', description: 'Armazenamento de laticínios e verduras.', status: 'Ativo', addressSeparator: '-', includeZonePrefix: true, includeAislePrefix: false, includeRowPrefix: false, includeShelfPrefix: false },
-                { id: 2, warehouseId: 1, name: 'Câmara Fria B', type: 'Congelado', description: 'Armazenamento de carnes e congelados.', status: 'Ativo', addressSeparator: '-', includeZonePrefix: true, includeAislePrefix: false, includeRowPrefix: false, includeShelfPrefix: false },
-                { id: 3, warehouseId: 1, name: 'Estoque Seco A', type: 'Seco', description: 'Armazenamento de massas, grãos e enlatados.', status: 'Ativo', addressSeparator: '/', includeZonePrefix: true, includeAislePrefix: false, includeRowPrefix: false, includeShelfPrefix: false },
-                { id: 4, warehouseId: 1, name: 'Estoque Seco B', type: 'Seco', description: 'Armazenamento de temperos e embalagens.', status: 'Ativo', addressSeparator: '-', includeZonePrefix: true, includeAislePrefix: false, includeRowPrefix: false, includeShelfPrefix: false }
+                { id: 1, warehouseId: 1, name: 'CFA', acronymDescription: 'Câmara Fria A', type: 'Resfriado', description: 'Armazenamento de laticínios e verduras.', status: 'Ativo', tempMin: 2, tempMax: 8, isAmbient: false, ambientType: null },
+                { id: 2, warehouseId: 1, name: 'CFB', acronymDescription: 'Câmara Fria B', type: 'Congelado', description: 'Armazenamento de carnes e congelados.', status: 'Ativo', tempMin: -18, tempMax: -10, isAmbient: false, ambientType: null },
+                { id: 3, warehouseId: 1, name: 'ESA', acronymDescription: 'Estoque Seco A', type: 'Seco', description: 'Armazenamento de massas, grãos e enlatados.', status: 'Ativo', tempMin: 15, tempMax: 25, isAmbient: true, ambientType: 'fechada' },
+                { id: 4, warehouseId: 1, name: 'ESB', acronymDescription: 'Estoque Seco B', type: 'Seco', description: 'Armazenamento de temperos e embalagens.', status: 'Ativo', tempMin: 15, tempMax: 25, isAmbient: true, ambientType: 'fechada' }
             ];
             const local = localStorage.getItem('corellux_wms_zones');
             if (local) {
