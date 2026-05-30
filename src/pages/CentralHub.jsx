@@ -1095,7 +1095,27 @@ export default function CentralHub() {
                 }
             `}} />
 
-
+            {/* HEADER DA TELA COM NAVEGAÇÃO DE VOLTA */}
+            {activeTab !== 'menu' && (
+                <div className="screen-header-bar" style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem', marginBottom: '1.5rem', marginTop: '1rem' }}>
+                    <button className="btn-back" onClick={() => setActiveTab('menu')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
+                        <ArrowLeft size={14} /> VOLTAR
+                    </button>
+                    <div className="category-title-area" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                        <div className={`cat-icon-area ${activeTab === 'feed' ? 'color-blue' : activeTab === 'compose' ? 'color-orange' : 'color-teal'}`} style={{ width: '45px', height: '45px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', background: activeTab === 'feed' ? 'rgba(59, 130, 246, 0.1)' : activeTab === 'compose' ? 'rgba(243, 107, 29, 0.1)' : 'rgba(20, 184, 166, 0.1)', color: activeTab === 'feed' ? 'var(--accent-blue)' : activeTab === 'compose' ? 'var(--accent-orange)' : '#2dd4bf' }}>
+                            {activeTab === 'feed' ? <Bell size={18} /> : activeTab === 'compose' ? <Send size={18} /> : <CheckSquare size={18} />}
+                        </div>
+                        <div className="category-title-text" style={{ textAlign: 'left' }}>
+                            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#fff', textTransform: 'uppercase' }}>
+                                {activeTab === 'feed' ? 'MEUS AVISOS' : activeTab === 'compose' ? 'ENVIAR NOVO AVISO' : 'CHECKLIST OPERACIONAL'}
+                            </h2>
+                            <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
+                                {activeTab === 'feed' ? 'Feed de notificações e atividades' : activeTab === 'compose' ? 'Disparar comunicação para a equipe' : 'Rotinas, vistorias, tarefas diárias e auditorias setoriais'}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* SUB-NAV SE FOR CHECKLIST */}
             {activeTab === 'checklist' && (
@@ -1228,34 +1248,50 @@ export default function CentralHub() {
                             <div style={{ textAlign: 'center', padding: '5rem 2rem', background: 'rgba(30, 41, 59, 0.1)', border: '1px dashed rgba(255,255,255,0.05)', borderRadius: '16px' }}>
                                 <AlertTriangle size={36} style={{ color: 'var(--accent-orange)', marginBottom: '1rem', opacity: 0.7 }} />
                                 <h4 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.1rem' }}>Nenhum aviso encontrado</h4>
-                                <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.88rem' }}>Não há comunicados para exibir com os filtros atuais.</p>
+                                <p style={{ margin: 0, color: 'var(--text-secondary)' }}>Não há comunicados para exibir com os filtros atuais.</p>
                             </div>
                         ) : (
-                            <div className="notif-cards-grid">
+                            <div className="notifications-list">
                                 {filteredNotifications.map((n) => {
                                     const isRead = n.readBy && n.readBy[currentUser.id];
                                     const showUnreadMarker = !isRead && n.sender !== currentUser.name;
-                                    
+                                    const senderUser = appUsers.find(u => u.name === n.sender);
+                                    const avatar = getUserAvatar(senderUser ? senderUser.img : '');
+
                                     return (
-                                        <div key={n.id} className={`notif-card ${showUnreadMarker ? 'unread' : ''} priority-${n.priority || 'normal'}`} onClick={() => handleOpenNotification(n)}>
-                                            <div className="notif-card-icon">{n.sender === 'Sistema' ? <Bell size={18} /> : <Send size={18} />}</div>
-                                            <div className="notif-card-content">
-                                                <div className="notif-card-meta">
-                                                    <span className="notif-card-sender">{n.sender === currentUser.name ? 'Você' : n.sender}{n.senderRole && <span style={{ color: 'var(--text-secondary)', fontWeight: 500, fontSize: '0.75rem', marginLeft: '0.4rem' }}>• {n.senderRole}</span>}</span>
-                                                    <span className="notif-card-time">{formatRelativeTime(n.timestamp)}</span>
+                                        <div 
+                                            key={n.id} 
+                                            className={`notif-card ${showUnreadMarker ? 'unread' : ''}`} 
+                                            onClick={() => handleOpenNotification(n)}
+                                        >
+                                            {n.attachment && (
+                                                <div className="has-attachment-icon">
+                                                    <Paperclip size={16} />
                                                 </div>
-                                                <h4 className={`notif-card-title ${n.priority === 'urgente' ? 'urgente' : ''}`}>{n.title}</h4>
-                                                <p className="notif-card-body-snippet">{n.message}</p>
-                                                <div className="notif-card-badges">
-                                                    {n.priority === 'urgente' && <span className="badge-card urgente">Urgente</span>}
-                                                    {n.attachment && <span className="badge-card attachment">Contém Anexo</span>}
-                                                    {n.sender === currentUser.name && n.targetUsers && n.targetUsers.length > 0 && (
-                                                        <span className="badge-card" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-secondary)' }}>
-                                                            {Object.keys(n.readBy || {}).length} / {n.targetUsers.length} Lidos
-                                                        </span>
-                                                    )}
+                                            )}
+                                            <img 
+                                                src={avatar} 
+                                                style={{ width: '45px', height: '45px', borderRadius: '50%', objectFit: 'cover', marginRight: '1rem' }} 
+                                                alt=""
+                                            />
+                                            <div className="notif-content">
+                                                <div className="notif-header">
+                                                    <span className="notif-title">{n.title || 'AVISO'}</span>
+                                                    <span className="notif-time">{formatRelativeTime(n.timestamp)}</span>
+                                                </div>
+                                                <div className="notif-body">
+                                                    {n.message.substring(0, 80)}{n.message.length > 80 ? '...' : ''}
+                                                </div>
+                                                <div className="notif-footer-info" style={{ display: 'flex', visibility: 'visible', opacity: 1 }}>
+                                                    <span className="notif-sender-info">
+                                                        Enviado por: <strong>{n.sender}</strong>
+                                                    </span>
+                                                    <span className="notif-target-tag">
+                                                        PARA: {(n.targetUsers && n.targetUsers.length > 0) ? `${n.targetUsers.length} FUNCIONÁRIOS` : (n.targetSector || 'GERAL').toUpperCase()}
+                                                    </span>
                                                 </div>
                                             </div>
+                                            {showUnreadMarker && <div className="unread-dot"></div>}
                                         </div>
                                     );
                                 })}
@@ -1863,59 +1899,55 @@ export default function CentralHub() {
             {/* MODAL DETALHADO DO AVISO */}
             {activeNotification && createPortal(
                 <div className="modal-overlay" onClick={() => setActiveNotification(null)} style={{ zIndex: 10000 }}>
-                    <div className="notif-detail-card" onClick={(e) => e.stopPropagation()}>
-                        <div className="modal-header-notif">
-                            <h3>{activeNotification.title}</h3>
-                            <button style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', padding: '0.2rem' }} onClick={() => setActiveNotification(null)}><X size={20} /></button>
+                    <div className="confirm-modal-content notification-viewer-content" onClick={(e) => e.stopPropagation()} style={{ width: '800px', maxWidth: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+                        <div className="modal-header">
+                            <h3 id="view-notif-title">{activeNotification.title || 'AVISO'}</h3>
+                            <button className="btn-close" onClick={() => setActiveNotification(null)}><X size={20} /></button>
                         </div>
-                        <div className="modal-body-scroll">
-                            <div className="notif-detail-meta">
-                                <div className="sender-profile-detail">
-                                    <img src={getUserAvatar(appUsers.find(u => u.name === activeNotification.sender)?.img)} className="sender-avatar-large" alt="" />
-                                    <div className="sender-info-text">
-                                        <h4>{activeNotification.sender}</h4>
-                                        <p>{activeNotification.senderRole || 'Colaborador'}</p>
-                                    </div>
+                        <div className="modal-body" style={{ flex: 1, overflowY: 'auto', textAlign: 'left', padding: '2rem' }}>
+                            <div className="notif-meta-info" style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+                                <div>
+                                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Enviado por</span>
+                                    <div id="view-notif-sender" style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{activeNotification.sender}</div>
                                 </div>
-                                <div className="notif-detail-time-text">
-                                    <span>ENVIADO EM</span>
-                                    <h5>{new Date(activeNotification.timestamp).toLocaleString('pt-BR')}</h5>
+                                <div style={{ textAlign: 'right' }}>
+                                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Data / Hora</span>
+                                    <div id="view-notif-time" style={{ fontWeight: 'bold' }}>{new Date(activeNotification.timestamp).toLocaleString('pt-BR')}</div>
                                 </div>
                             </div>
-
-                            <div className="notif-detail-message-body">{activeNotification.message}</div>
+                            
+                            <div id="view-notif-message" style={{ fontSize: '1.1rem', lineHeight: 1.6, marginBottom: '2rem', whiteSpace: 'pre-wrap' }}>{activeNotification.message}</div>
 
                             {activeNotification.attachment && (
-                                <div className="notif-detail-attachment-viewer">
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#60a5fa', fontSize: '0.9rem', fontWeight: 600 }}>
-                                        <FileText size={18} />
-                                        <span>ANEXO: {activeNotification.attachment.name}</span>
-                                    </div>
+                                <div id="view-notif-attachment-container" style={{ marginBottom: '2rem', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden', background: 'var(--bg-main)', textAlign: 'center' }}>
                                     {activeNotification.attachment.type.startsWith('image/') ? (
-                                        <img src={activeNotification.attachment.data} style={{ maxWidth: '100%', maxHeight: '320px', borderRadius: '8px', objectFit: 'contain', border: '1px solid rgba(255,255,255,0.05)' }} alt="" />
+                                        <img src={activeNotification.attachment.data} style={{ maxWidth: '100%', maxHeight: '400px', objectFit: 'contain', borderRadius: '8px' }} alt="" />
                                     ) : (
                                         <div style={{ padding: '2rem 1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '8px', width: '100%', textAlign: 'center', border: '1px dashed rgba(255,255,255,0.05)' }}>Documento PDF / Arquivo</div>
                                     )}
-                                    <a href={activeNotification.attachment.data} download={activeNotification.attachment.name} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#3b82f6', color: '#fff', textDecoration: 'none', padding: '0.6rem 1.5rem', borderRadius: '6px', fontSize: '0.85rem', fontWeight: 700, marginTop: '0.5rem' }}><Download size={14} /> Baixar Arquivo</a>
+                                    <div style={{ marginTop: '1rem', padding: '1rem' }}>
+                                        <a href={activeNotification.attachment.data} download={activeNotification.attachment.name} className="btn-primary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 1rem', width: 'auto' }}><Download size={14} /> Baixar Arquivo</a>
+                                    </div>
                                 </div>
                             )}
 
+                            {/* Read Receipts Section (Only for sender) */}
                             {activeNotification.sender === currentUser.name && activeNotification.targetUsers && activeNotification.targetUsers.length > 0 && (
-                                <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem', marginTop: '1rem' }}>
-                                    <h4 style={{ margin: '0 0 1rem 0', color: 'var(--accent-orange)', fontSize: '0.9rem', fontWeight: 700, letterSpacing: '0.5px', textTransform: 'uppercase' }}>Confirmação de Leitura</h4>
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '0.8rem' }}>
+                                <div id="view-notif-receipts-container" style={{ marginTop: '2rem', borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+                                    <h4 style={{ marginBottom: '1rem', color: 'var(--accent-orange)' }}>Confirmação de Leitura</h4>
+                                    <div id="view-notif-receipts-list" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
                                         {activeNotification.targetUsers.map(uid => {
                                             const targetUser = appUsers.find(u => u.id === uid);
                                             if (!targetUser) return null;
                                             const readTime = activeNotification.readBy && activeNotification.readBy[uid];
                                             return (
-                                                <div key={uid} className={`receipts-receipt-card ${readTime ? 'read' : 'unread'}`}>
-                                                    <img src={getUserAvatar(targetUser.img)} style={{ width: '28px', height: '28px', borderRadius: '50%' }} alt="" />
-                                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                                        <h5 style={{ margin: 0, fontSize: '0.8rem', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{targetUser.displayName || targetUser.name}</h5>
-                                                        <p style={{ margin: 0, fontSize: '0.7rem', color: readTime ? '#22c55e' : 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                                                            {readTime ? <><CheckCheck size={10} /> Lido {formatRelativeTime(readTime)}</> : <><Clock size={10} /> Pendente</>}
-                                                        </p>
+                                                <div key={uid} className={`receipt-card ${readTime ? 'read' : 'unread'}`}>
+                                                    <img src={getUserAvatar(targetUser.img)} className="receipt-avatar" alt="" />
+                                                    <div className="receipt-info">
+                                                        <h5>{targetUser.displayName || targetUser.name}</h5>
+                                                        <span>
+                                                            {readTime ? `Lido em ${new Date(readTime).toLocaleString('pt-BR')}` : 'Não lido'}
+                                                        </span>
                                                     </div>
                                                 </div>
                                             );
