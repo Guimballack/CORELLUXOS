@@ -655,7 +655,7 @@ export default function CentralHub() {
     };
 
     return (
-        <div className="screen active with-header" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+        <div className="screen active with-header" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: activeTab === 'feed' ? 'hidden' : 'auto' }}>
             {/* INCLUIR STYLES ADICIONAIS DO CHECKLIST E CONSTRUTOR */}
             <style dangerouslySetInnerHTML={{__html: `
                 .central-content-container {
