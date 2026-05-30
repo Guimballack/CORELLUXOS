@@ -1280,125 +1280,286 @@ export default function CentralHub() {
 
                 {activeTab === 'compose' && (
                     /* ABA ENVIAR AVISO */
-                    <div className="composer-panel">
-                        <div className="composer-main">
-                            <div className="composer-field-group">
-                                <label>Título do Comunicado *</label>
-                                <input type="text" className="input-title" placeholder="Ex: REUNIÃO GERAL DE EQUIPE" value={composeTitle} onChange={(e) => setComposeTitle(e.target.value.toUpperCase())} />
-                            </div>
-
-                            <div className="composer-field-group">
-                                <div style={{ display: 'flex', justifySpaceBetween: 'space-between', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <label>Mensagem *</label>
-                                    <span style={{ fontSize: '0.75rem', color: charCount > 450 ? '#ef4444' : 'var(--text-secondary)' }}>{charCount} / 500 caracteres</span>
-                                </div>
-                                <textarea className="textarea-body" placeholder="O que você gostaria de comunicar aos colaboradores selecionados?" value={composeMessage} onChange={handleMessageChange} maxLength={500} />
-                            </div>
-
-                            <div className="composer-field-group">
-                                <label>Prioridade do Alerta</label>
-                                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.2rem' }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', textTransform: 'none', color: '#fff', fontSize: '0.88rem', fontWeight: 500 }}><input type="radio" name="priority" value="normal" checked={composePriority === 'normal'} onChange={() => setComposePriority('normal')} style={{ accentColor: 'var(--accent-orange)' }} /> Normal</label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', textTransform: 'none', color: '#f87171', fontSize: '0.88rem', fontWeight: 500 }}><input type="radio" name="priority" value="urgente" checked={composePriority === 'urgente'} onChange={() => setComposePriority('urgente')} style={{ accentColor: '#ef4444' }} /> Urgente (Exibe em destaque vermelho)</label>
-                                </div>
-                            </div>
-
-                            <div className="composer-toolbar">
-                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                                    <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleAttachmentSelect} accept="image/*,.pdf" />
-                                    <button className="btn-tool" onClick={() => fileInputRef.current.click()}><Paperclip size={14} /> Anexar Imagem/PDF</button>
-                                    <button className="btn-tool" onClick={handleInsertGovSignature} style={{ color: '#60a5fa', borderColor: 'rgba(59, 130, 246, 0.2)' }}><Signature size={14} /> Pedir Assinatura Digital</button>
-                                    {state.pendingAttachment && (
-                                        <div className="attachment-preview-box">
-                                            <FileText size={14} />
-                                            <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{state.pendingAttachment.name}</span>
-                                            <button className="btn-remove-att" onClick={handleRemoveAttachment}><X size={12} /></button>
+                    <div className="central-form-panel" style={{ maxWidth: '1000px', margin: '2rem auto', width: '95%' }}>
+                        <div className="panel-body">
+                            <div className="notif-composer-grid">
+                                {/* Left Column: User Selection */}
+                                <div className="composer-selection-area">
+                                    <div className="selection-header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '1rem', marginBottom: '1.5rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px' }}>
+                                                DESTINATÁRIOS ({selectedUserIds.length} selecionados)
+                                            </label>
+                                            <button className="btn-select-all" onClick={handleSelectAll}>
+                                                <CheckCheck size={14} style={{ marginRight: '0.3rem', display: 'inline-block', verticalAlign: 'middle' }} />
+                                                {selectedUserIds.length === appUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id).length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                                            </button>
                                         </div>
-                                    )}
+                                        <div className="recipient-tabs" style={{ display: 'flex', gap: '0.2rem', background: 'rgba(0,0,0,0.25)', padding: '0.25rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                                            <button 
+                                                type="button" 
+                                                className={`tab-btn ${recipientSubTab === 'users' ? 'active' : ''}`} 
+                                                onClick={() => setRecipientSubTab('users')} 
+                                                style={{ 
+                                                    flex: 1, 
+                                                    textAlign: 'center', 
+                                                    border: 'none', 
+                                                    padding: '0.6rem 1rem', 
+                                                    borderRadius: '8px', 
+                                                    fontWeight: 600, 
+                                                    cursor: 'pointer', 
+                                                    transition: 'all 0.2s', 
+                                                    fontSize: '0.85rem', 
+                                                    color: recipientSubTab === 'users' ? 'white' : 'var(--text-secondary)', 
+                                                    background: recipientSubTab === 'users' ? 'var(--accent-orange)' : 'transparent', 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    justifyContent: 'center', 
+                                                    gap: '0.5rem', 
+                                                    outline: 'none' 
+                                                }}
+                                            >
+                                                <i className="fas fa-user"></i> Colaboradores
+                                            </button>
+                                            <button 
+                                                type="button" 
+                                                className={`tab-btn ${recipientSubTab === 'sectors' ? 'active' : ''}`} 
+                                                onClick={() => setRecipientSubTab('sectors')} 
+                                                style={{ 
+                                                    flex: 1, 
+                                                    textAlign: 'center', 
+                                                    border: 'none', 
+                                                    padding: '0.6rem 1rem', 
+                                                    borderRadius: '8px', 
+                                                    fontWeight: 600, 
+                                                    cursor: 'pointer', 
+                                                    transition: 'all 0.2s', 
+                                                    fontSize: '0.85rem', 
+                                                    color: recipientSubTab === 'sectors' ? 'white' : 'var(--text-secondary)', 
+                                                    background: recipientSubTab === 'sectors' ? 'var(--accent-orange)' : 'transparent', 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    justifyContent: 'center', 
+                                                    gap: '0.5rem', 
+                                                    outline: 'none' 
+                                                }}
+                                            >
+                                                <i className="fas fa-network-wired"></i> Setores
+                                            </button>
+                                            <button 
+                                                type="button" 
+                                                className={`tab-btn ${recipientSubTab === 'areas' ? 'active' : ''}`} 
+                                                onClick={() => setRecipientSubTab('areas')} 
+                                                style={{ 
+                                                    flex: 1, 
+                                                    textAlign: 'center', 
+                                                    border: 'none', 
+                                                    padding: '0.6rem 1rem', 
+                                                    borderRadius: '8px', 
+                                                    fontWeight: 600, 
+                                                    cursor: 'pointer', 
+                                                    transition: 'all 0.2s', 
+                                                    fontSize: '0.85rem', 
+                                                    color: recipientSubTab === 'areas' ? 'white' : 'var(--text-secondary)', 
+                                                    background: recipientSubTab === 'areas' ? 'var(--accent-orange)' : 'transparent', 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    justifyContent: 'center', 
+                                                    gap: '0.5rem', 
+                                                    outline: 'none' 
+                                                }}
+                                            >
+                                                <i className="fas fa-layer-group"></i> Áreas
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div 
+                                        id="notif-user-selection-grid" 
+                                        className="user-selection-grid"
+                                        style={{
+                                            gridTemplateColumns: recipientSubTab === 'users' ? 'repeat(auto-fill, minmax(120px, 1fr))' : 'repeat(auto-fill, minmax(160px, 1fr))'
+                                        }}
+                                    >
+                                        {recipientSubTab === 'users' && (
+                                            appUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id).map(user => {
+                                                const isSelected = selectedUserIds.includes(user.id);
+                                                return (
+                                                    <div 
+                                                        key={user.id} 
+                                                        className={`selection-card ${isSelected ? 'selected' : ''}`}
+                                                        onClick={() => handleToggleUser(user.id)}
+                                                    >
+                                                        <img src={getUserAvatar(user.img)} alt={user.name} className="sel-avatar" />
+                                                        <h4>{user.displayName || user.name}</h4>
+                                                        <p>{user.role}</p>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+
+                                        {recipientSubTab === 'sectors' && (
+                                            sectors.filter(s => s.status === 'Ativo').map(sector => {
+                                                const sectorUsers = appUsers.filter(u => {
+                                                    if (u.status !== 'Ativo' || u.id === currentUser.id) return false;
+                                                    const role = (u.role || '').toLowerCase().trim();
+                                                    const sec = sector.name.toLowerCase().trim();
+                                                    if (sec === 'cozinha' && ['cozinha', 'chef', 'cozinheiro', 'produção'].includes(role)) return true;
+                                                    if (sec === 'estoque' && ['estoque', 'estoquista', 'almoxarife'].includes(role)) return true;
+                                                    if (sec === 'salão' && ['salão', 'garçom', 'atendente', 'caixa'].includes(role)) return true;
+                                                    if (sec === 'administração' && ['administração', 'gerente', 'supervisor', 'administrador'].includes(role)) return true;
+                                                    return role === sec;
+                                                });
+                                                const isSelected = sectorUsers.length > 0 && sectorUsers.every(u => selectedUserIds.includes(u.id));
+                                                const colorClass = sector.color || 'color-orange';
+                                                return (
+                                                    <div 
+                                                        key={sector.id} 
+                                                        className={`selection-card ${isSelected ? 'selected' : ''}`}
+                                                        onClick={() => handleSelectBySector(sector.name)}
+                                                        style={{ minHeight: '140px', justifyContent: 'center' }}
+                                                    >
+                                                        <div className={`sector-icon-badge ${colorClass}`} style={{ width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justify: 'center', fontSize: '1.5rem', marginBottom: '0.8rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                            <i className={`fas ${sector.icon || 'fa-network-wired'}`}></i>
+                                                        </div>
+                                                        <h4 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 700 }}>{sector.name}</h4>
+                                                        <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{sectorUsers.length} colaborador{sectorUsers.length !== 1 ? 'es' : ''}</p>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+
+                                        {recipientSubTab === 'areas' && (
+                                            areas.filter(a => a.status === 'Ativo').map(area => {
+                                                let areaUsers = [];
+                                                if ([1, 2, 3].includes(area.id)) {
+                                                    areaUsers = appUsers.filter(u => ['cozinha', 'chef', 'cozinheiro', 'produção'].includes((u.role || '').toLowerCase()));
+                                                } else if ([4, 5, 6].includes(area.id)) {
+                                                    areaUsers = appUsers.filter(u => ['garçom', 'atendente', 'caixa', 'salão'].includes((u.role || '').toLowerCase()));
+                                                } else if ([7, 8, 9].includes(area.id)) {
+                                                    areaUsers = appUsers.filter(u => ['estoquista', 'almoxarife', 'estoque'].includes((u.role || '').toLowerCase()));
+                                                } else if (area.id === 10) {
+                                                    areaUsers = appUsers.filter(u => ['administrador', 'gerente', 'supervisor', 'administração'].includes((u.role || '').toLowerCase()));
+                                                }
+                                                const areaUsersFiltered = areaUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id);
+                                                const isSelected = areaUsersFiltered.length > 0 && areaUsersFiltered.every(u => selectedUserIds.includes(u.id));
+                                                const parentSector = sectors.find(s => s.id === area.sectorId) || { name: 'Geral', color: 'color-blue' };
+                                                const colorClass = parentSector.color || 'color-blue';
+                                                return (
+                                                    <div 
+                                                        key={area.id} 
+                                                        className={`selection-card ${isSelected ? 'selected' : ''}`}
+                                                        onClick={() => handleSelectByArea(area.id)}
+                                                        style={{ minHeight: '140px', justifyContent: 'center' }}
+                                                    >
+                                                        <div className={`area-icon-badge ${colorClass}`} style={{ width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justify: 'center', fontSize: '1.5rem', marginBottom: '0.8rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                            <i className="fas fa-layer-group"></i>
+                                                        </div>
+                                                        <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }} title={area.name}>{area.name}</h4>
+                                                        <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '0.15rem 0.4rem', borderRadius: '4px', marginTop: '0.3rem', textTransform: 'uppercase' }}>{parentSector.name}</span>
+                                                        <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{areaUsersFiltered.length} colaborador{areaUsersFiltered.length !== 1 ? 'es' : ''}</p>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
                                 </div>
 
-                                <button className="btn-send-aviso" disabled={!composeTitle.trim() || !composeMessage.trim() || selectedUserIds.length === 0} onClick={handleSendNotification}><Send size={15} /> DISPARAR AVISO</button>
-                            </div>
-                        </div>
+                                {/* Right Column: Message Composer */}
+                                <div className="composer-message-area">
+                                    <div className="form-group" style={{ marginBottom: '1.2rem' }}>
+                                        <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px' }}>TÍTULO DO COMUNICADO *</label>
+                                        <input 
+                                            type="text" 
+                                            className="form-input" 
+                                            placeholder="Ex: REUNIÃO GERAL DE EQUIPE" 
+                                            value={composeTitle} 
+                                            onChange={(e) => setComposeTitle(e.target.value.toUpperCase())}
+                                            style={{ marginTop: '0.5rem', width: '100%' }}
+                                        />
+                                    </div>
 
-                        {/* LISTA LATERAL DE SELEÇÃO */}
-                        <div className="composer-sidebar">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)' }}>DESTINATÁRIOS ({selectedUserIds.length})</label>
-                                <button onClick={handleSelectAll} style={{ background: 'transparent', border: 'none', color: 'var(--accent-orange)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}>
-                                    {selectedUserIds.length === appUsers.filter(u => u.status === 'Ativo').length ? 'Desmarcar Todos' : 'Selecionar Todos'}
-                                </button>
-                            </div>
-
-                            <div className="recipients-tabs">
-                                <button className={`recipients-tab-btn ${recipientSubTab === 'users' ? 'active' : ''}`} onClick={() => setRecipientSubTab('users')}>Colaboradores</button>
-                                <button className={`recipients-tab-btn ${recipientSubTab === 'sectors' ? 'active' : ''}`} onClick={() => setRecipientSubTab('sectors')}>Setores</button>
-                                <button className={`recipients-tab-btn ${recipientSubTab === 'areas' ? 'active' : ''}`} onClick={() => setRecipientSubTab('areas')}>Áreas</button>
-                            </div>
-
-                            <div className="recipients-list-scroll">
-                                {recipientSubTab === 'users' && (
-                                    appUsers.filter(u => u.status === 'Ativo').map(u => {
-                                        const isSelected = selectedUserIds.includes(u.id);
-                                        return (
-                                            <div key={u.id} className={`recipient-item-card ${isSelected ? 'selected' : ''}`} onClick={() => handleToggleUser(u.id)}>
-                                                <img src={getUserAvatar(u.img)} className="recipient-avatar-mini" alt="" />
-                                                <div className="recipient-info-text">
-                                                    <h5>{u.displayName || u.name}</h5>
-                                                    <p>{u.role}</p>
-                                                </div>
-                                                <div className="recipient-check"><Check size={12} strokeWidth={3} /></div>
-                                            </div>
-                                        );
-                                    })
-                                )}
-
-                                {recipientSubTab === 'sectors' && (
-                                    sectors.filter(s => s.status === 'Ativo').map(s => {
-                                        const sectorUsers = appUsers.filter(u => {
-                                            if (u.status !== 'Ativo') return false;
-                                            const role = (u.role || '').toLowerCase();
-                                            const sector = s.name.toLowerCase();
-                                            if (sector === 'cozinha' && ['cozinha', 'chef', 'cozinheiro', 'produção'].includes(role)) return true;
-                                            if (sector === 'estoque' && ['estoque', 'estoquista', 'almoxarife'].includes(role)) return true;
-                                            if (sector === 'salão' && ['salão', 'garçom', 'atendente', 'caixa'].includes(role)) return true;
-                                            if (sector === 'administração' && ['administração', 'gerente', 'supervisor', 'administrador'].includes(role)) return true;
-                                            return role === sector;
-                                        });
-                                        const sectorUserIds = sectorUsers.map(u => u.id);
-                                        const allSelected = sectorUserIds.length > 0 && sectorUserIds.every(id => selectedUserIds.includes(id));
+                                    <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px' }}>MENSAGEM DO AVISO *</label>
+                                    
+                                    <div className="message-input-wrapper" style={{ marginTop: '0.5rem' }}>
+                                        <textarea 
+                                            id="notif-message-input" 
+                                            placeholder="O que você deseja comunicar à equipe?" 
+                                            value={composeMessage} 
+                                            onChange={handleMessageChange} 
+                                            maxLength={500}
+                                        />
                                         
-                                        return (
-                                            <div key={s.id} className={`recipient-item-card ${allSelected ? 'selected' : ''}`} onClick={() => handleSelectBySector(s.name)}>
-                                                <div className="recipient-info-text">
-                                                    <h5>Setor: {s.name}</h5>
-                                                    <p>{sectorUsers.length} colaboradores ativos</p>
-                                                </div>
-                                                <div className="recipient-check"><Check size={12} strokeWidth={3} /></div>
+                                        {state.pendingAttachment && (
+                                            <div id="notif-attachment-preview" className="attachment-preview" style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '0.5rem 1rem', borderRadius: '8px' }}>
+                                                <FileText size={16} />
+                                                <span id="attachment-name" style={{ marginLeft: '0.5rem', marginRight: '0.5rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{state.pendingAttachment.name}</span>
+                                                <button className="btn-remove-attachment" onClick={handleRemoveAttachment} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                                                    <X size={14} />
+                                                </button>
                                             </div>
-                                        );
-                                    })
-                                )}
-
-                                {recipientSubTab === 'areas' && (
-                                    areas.filter(a => a.status === 'Ativo').map(a => {
-                                        let areaUserCount = 0;
-                                        if ([1, 2, 3].includes(a.id)) areaUserCount = appUsers.filter(u => u.status === 'Ativo' && ['cozinha', 'chef', 'cozinheiro', 'produção'].includes((u.role || '').toLowerCase())).length;
-                                        else if ([4, 5, 6].includes(a.id)) areaUserCount = appUsers.filter(u => u.status === 'Ativo' && ['garçom', 'atendente', 'caixa', 'salão'].includes((u.role || '').toLowerCase())).length;
-                                        else if ([7, 8, 9].includes(a.id)) areaUserCount = appUsers.filter(u => u.status === 'Ativo' && ['estoquista', 'almoxarife', 'estoque'].includes((u.role || '').toLowerCase())).length;
-                                        else if (a.id === 10) areaUserCount = appUsers.filter(u => u.status === 'Ativo' && ['administrador', 'gerente', 'supervisor', 'administração'].includes((u.role || '').toLowerCase())).length;
-
-                                        return (
-                                            <div key={a.id} className="recipient-item-card" onClick={() => handleSelectByArea(a.id)}>
-                                                <div className="recipient-info-text">
-                                                    <h5>Área: {a.name}</h5>
-                                                    <p>{areaUserCount} colaboradores possíveis</p>
-                                                </div>
-                                                <div className="recipient-check"><Check size={12} strokeWidth={3} /></div>
+                                        )}
+                                        
+                                        <div className="message-footer">
+                                            <div className="footer-left" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+                                                <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleAttachmentSelect} accept="image/*,.pdf" />
+                                                
+                                                <button className="btn-attach" onClick={() => fileInputRef.current.click()} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                    <Paperclip size={14} /> Anexar Imagem/PDF
+                                                </button>
+                                                
+                                                <button className="btn-attach" onClick={handleInsertGovSignature} style={{ background: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.3)', color: '#60a5fa', fontSize: '0.75rem', padding: '0.4rem 0.8rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                    <Signature size={14} /> Pedir Assinatura Digital
+                                                </button>
+                                                
+                                                <span id="char-count" style={{ marginLeft: '0.5rem', color: charCount > 450 ? '#ef4444' : 'var(--text-secondary)', fontSize: '0.8rem' }}>{charCount} / 500</span>
                                             </div>
-                                        );
-                                    })
-                                )}
+                                            
+                                            <button 
+                                                className="btn-send-notif" 
+                                                disabled={!composeTitle.trim() || !composeMessage.trim() || selectedUserIds.length === 0} 
+                                                onClick={handleSendNotification}
+                                                style={{ 
+                                                    opacity: (!composeTitle.trim() || !composeMessage.trim() || selectedUserIds.length === 0) ? 0.6 : 1, 
+                                                    cursor: (!composeTitle.trim() || !composeMessage.trim() || selectedUserIds.length === 0) ? 'not-allowed' : 'pointer'
+                                                }}
+                                            >
+                                                <span>DISPARAR AVISO</span>
+                                                <Send size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="form-group" style={{ marginTop: '1.2rem' }}>
+                                        <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px' }}>PRIORIDADE DO ALERTA</label>
+                                        <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', textTransform: 'none', color: '#fff', fontSize: '0.88rem', fontWeight: 500 }}>
+                                                <input 
+                                                    type="radio" 
+                                                    name="priority" 
+                                                    value="normal" 
+                                                    checked={composePriority === 'normal'} 
+                                                    onChange={() => setComposePriority('normal')} 
+                                                    style={{ accentColor: 'var(--accent-orange)' }} 
+                                                /> Normal
+                                            </label>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', textTransform: 'none', color: '#f87171', fontSize: '0.88rem', fontWeight: 500 }}>
+                                                <input 
+                                                    type="radio" 
+                                                    name="priority" 
+                                                    value="urgente" 
+                                                    checked={composePriority === 'urgente'} 
+                                                    onChange={() => setComposePriority('urgente')} 
+                                                    style={{ accentColor: '#ef4444' }} 
+                                                /> Urgente (Exibe em destaque vermelho)
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <p className="notif-disclaimer" style={{ marginTop: '1.5rem' }}>
+                                        <Info size={14} style={{ marginRight: '0.3rem', display: 'inline-block', verticalAlign: 'middle' }} />
+                                        Este aviso será enviado instantaneamente para os usuários selecionados.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
