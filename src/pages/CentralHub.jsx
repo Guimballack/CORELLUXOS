@@ -1283,337 +1283,266 @@ export default function CentralHub() {
                     <div 
                         className="central-form-panel" 
                         style={{ 
-                            maxWidth: '1200px', 
-                            margin: '0 auto', 
                             width: '100%', 
                             height: '100%', 
-                            maxHeight: '100%', 
-                            overflow: 'hidden' 
+                            overflow: 'hidden',
+                            background: 'none',
+                            border: 'none',
+                            borderRadius: 0,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0'
                         }}
                     >
-                        <div className="panel-body" style={{ height: '100%', flex: 1, display: 'flex', flexDirection: 'column', padding: '1.25rem', overflow: 'hidden' }}>
+                        {/* Panel Header */}
+                        <div className="panel-header" style={{ padding: '0.75rem 1.2rem', marginBottom: '0.8rem', flexShrink: 0 }}>
+                            <h3 style={{ fontSize: '0.9rem', color: 'var(--accent-orange)', display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>
+                                <Send size={14} /> COMPOR NOVO AVISO
+                            </h3>
+                        </div>
+
+                        {/* Two-column grid */}
+                        <div 
+                            style={{ 
+                                flex: 1,
+                                display: 'grid',
+                                gridTemplateColumns: '1fr 1fr',
+                                gap: '1rem',
+                                overflow: 'hidden',
+                                minHeight: 0
+                            }}
+                        >
+                            {/* Left Column: Recipient Selection */}
                             <div 
-                                className="notif-composer-grid" 
                                 style={{ 
-                                    height: '100%', 
-                                    minHeight: 'unset', 
-                                    flex: 1, 
-                                    gap: '1.5rem', 
-                                    gridTemplateColumns: '320px 1fr', 
-                                    overflow: 'hidden' 
+                                    display: 'flex', 
+                                    flexDirection: 'column', 
+                                    overflow: 'hidden',
+                                    background: 'var(--bg-card)',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: '12px',
+                                    padding: '1rem',
+                                    gap: '0.7rem'
                                 }}
                             >
-                                {/* Left Column: User Selection */}
+                                {/* Header row */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px' }}>
+                                        DESTINATÁRIOS <span style={{ color: 'var(--accent-orange)', fontWeight: 800 }}>({selectedUserIds.length})</span>
+                                    </label>
+                                    <button className="btn-select-all" onClick={handleSelectAll} style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}>
+                                        <CheckCheck size={12} style={{ marginRight: '0.25rem', display: 'inline-block', verticalAlign: 'middle' }} />
+                                        {selectedUserIds.length === appUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id).length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                                    </button>
+                                </div>
+
+                                {/* Sub-tabs */}
+                                <div style={{ display: 'flex', gap: '0.2rem', background: 'rgba(0,0,0,0.25)', padding: '0.2rem', borderRadius: '8px', border: '1px solid var(--border-color)', flexShrink: 0 }}>
+                                    {[
+                                        { id: 'users', icon: 'fa-user', label: 'Colaboradores' },
+                                        { id: 'sectors', icon: 'fa-network-wired', label: 'Setores' },
+                                        { id: 'areas', icon: 'fa-layer-group', label: 'Áreas' }
+                                    ].map(tab => (
+                                        <button 
+                                            key={tab.id}
+                                            type="button" 
+                                            onClick={() => setRecipientSubTab(tab.id)} 
+                                            style={{ 
+                                                flex: 1, border: 'none', padding: '0.4rem 0.4rem', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', fontSize: '0.75rem',
+                                                color: recipientSubTab === tab.id ? 'white' : 'var(--text-secondary)', 
+                                                background: recipientSubTab === tab.id ? 'var(--accent-orange)' : 'transparent', 
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', outline: 'none', transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            <i className={`fas ${tab.icon}`} style={{ fontSize: '0.7rem' }}></i> {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Cards Grid */}
                                 <div 
-                                    className="composer-selection-area" 
-                                    style={{ 
-                                        height: '100%', 
-                                        display: 'flex', 
-                                        flexDirection: 'column', 
-                                        overflow: 'hidden' 
+                                    className="user-selection-grid"
+                                    style={{
+                                        gridTemplateColumns: recipientSubTab === 'users' ? 'repeat(auto-fill, minmax(95px, 1fr))' : 'repeat(auto-fill, minmax(120px, 1fr))',
+                                        flex: 1,
+                                        maxHeight: 'unset',
+                                        overflowY: 'auto',
+                                        gap: '0.6rem',
+                                        alignContent: 'start',
+                                        display: 'grid'
                                     }}
                                 >
-                                    <div className="selection-header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.8rem', marginBottom: '0.8rem' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px' }}>
-                                                DESTINATÁRIOS ({selectedUserIds.length} selecionados)
-                                            </label>
-                                            <button className="btn-select-all" onClick={handleSelectAll}>
-                                                <CheckCheck size={14} style={{ marginRight: '0.3rem', display: 'inline-block', verticalAlign: 'middle' }} />
-                                                {selectedUserIds.length === appUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id).length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                                    {recipientSubTab === 'users' && (
+                                        appUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id).map(user => {
+                                            const isSelected = selectedUserIds.includes(user.id);
+                                            return (
+                                                <div key={user.id} className={`selection-card ${isSelected ? 'selected' : ''}`} onClick={() => handleToggleUser(user.id)} style={{ padding: '0.6rem 0.4rem' }}>
+                                                    <img src={getUserAvatar(user.img)} alt={user.name} className="sel-avatar" style={{ width: '36px', height: '36px', marginBottom: '0.4rem' }} />
+                                                    <h4 style={{ fontSize: '0.75rem', marginBottom: '0.1rem' }}>{user.displayName || user.name}</h4>
+                                                    <p style={{ fontSize: '0.62rem' }}>{user.role}</p>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                    {recipientSubTab === 'sectors' && (
+                                        sectors.filter(s => s.status === 'Ativo').map(sector => {
+                                            const sectorUsers = appUsers.filter(u => {
+                                                if (u.status !== 'Ativo' || u.id === currentUser.id) return false;
+                                                const role = (u.role || '').toLowerCase().trim();
+                                                const sec = sector.name.toLowerCase().trim();
+                                                if (sec === 'cozinha' && ['cozinha', 'chef', 'cozinheiro', 'produção'].includes(role)) return true;
+                                                if (sec === 'estoque' && ['estoque', 'estoquista', 'almoxarife'].includes(role)) return true;
+                                                if (sec === 'salão' && ['salão', 'garçom', 'atendente', 'caixa'].includes(role)) return true;
+                                                if (sec === 'administração' && ['administração', 'gerente', 'supervisor', 'administrador'].includes(role)) return true;
+                                                return role === sec;
+                                            });
+                                            const isSelected = sectorUsers.length > 0 && sectorUsers.every(u => selectedUserIds.includes(u.id));
+                                            const colorClass = sector.color || 'color-orange';
+                                            return (
+                                                <div key={sector.id} className={`selection-card ${isSelected ? 'selected' : ''}`} onClick={() => handleSelectBySector(sector.name)} style={{ minHeight: '100px', justifyContent: 'center', padding: '0.6rem 0.4rem' }}>
+                                                    <div className={`sector-icon-badge ${colorClass}`} style={{ width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', marginBottom: '0.5rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                        <i className={`fas ${sector.icon || 'fa-network-wired'}`}></i>
+                                                    </div>
+                                                    <h4 style={{ margin: 0, fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 700 }}>{sector.name}</h4>
+                                                    <p style={{ margin: '0.15rem 0 0', fontSize: '0.62rem', color: 'var(--text-secondary)' }}>{sectorUsers.length} colab.</p>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                    {recipientSubTab === 'areas' && (
+                                        areas.filter(a => a.status === 'Ativo').map(area => {
+                                            let areaUsers = [];
+                                            if ([1, 2, 3].includes(area.id)) areaUsers = appUsers.filter(u => ['cozinha', 'chef', 'cozinheiro', 'produção'].includes((u.role || '').toLowerCase()));
+                                            else if ([4, 5, 6].includes(area.id)) areaUsers = appUsers.filter(u => ['garçom', 'atendente', 'caixa', 'salão'].includes((u.role || '').toLowerCase()));
+                                            else if ([7, 8, 9].includes(area.id)) areaUsers = appUsers.filter(u => ['estoquista', 'almoxarife', 'estoque'].includes((u.role || '').toLowerCase()));
+                                            else if (area.id === 10) areaUsers = appUsers.filter(u => ['administrador', 'gerente', 'supervisor', 'administração'].includes((u.role || '').toLowerCase()));
+                                            const areaUsersFiltered = areaUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id);
+                                            const isSelected = areaUsersFiltered.length > 0 && areaUsersFiltered.every(u => selectedUserIds.includes(u.id));
+                                            const parentSector = sectors.find(s => s.id === area.sectorId) || { name: 'Geral', color: 'color-blue' };
+                                            const colorClass = parentSector.color || 'color-blue';
+                                            return (
+                                                <div key={area.id} className={`selection-card ${isSelected ? 'selected' : ''}`} onClick={() => handleSelectByArea(area.id)} style={{ minHeight: '100px', justifyContent: 'center', padding: '0.6rem 0.4rem' }}>
+                                                    <div className={`area-icon-badge ${colorClass}`} style={{ width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', marginBottom: '0.5rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                        <i className="fas fa-layer-group"></i>
+                                                    </div>
+                                                    <h4 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }} title={area.name}>{area.name}</h4>
+                                                    <span style={{ fontSize: '0.58rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '0.08rem 0.3rem', borderRadius: '4px', marginTop: '0.2rem', textTransform: 'uppercase' }}>{parentSector.name}</span>
+                                                    <p style={{ margin: '0.15rem 0 0', fontSize: '0.62rem', color: 'var(--text-secondary)' }}>{areaUsersFiltered.length} colab.</p>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Right Column: Message Composer */}
+                            <div 
+                                style={{ 
+                                    display: 'flex', 
+                                    flexDirection: 'column', 
+                                    overflow: 'hidden',
+                                    gap: '0.8rem'
+                                }}
+                            >
+                                {/* Title */}
+                                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '0.9rem 1rem', flexShrink: 0 }}>
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px', display: 'block', marginBottom: '0.45rem' }}>TÍTULO DO COMUNICADO *</label>
+                                    <input 
+                                        type="text" 
+                                        className="form-input" 
+                                        placeholder="Ex: REUNIÃO GERAL DE EQUIPE" 
+                                        value={composeTitle} 
+                                        onChange={(e) => setComposeTitle(e.target.value.toUpperCase())}
+                                        style={{ width: '100%', margin: 0 }}
+                                    />
+                                </div>
+
+                                {/* Message Wrapper */}
+                                <div 
+                                    className="message-input-wrapper" 
+                                    style={{ 
+                                        flex: 1, 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        gap: '0.7rem', 
+                                        padding: '1rem',
+                                        marginTop: 0,
+                                        overflow: 'hidden',
+                                        minHeight: 0
+                                    }}
+                                >
+                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px', flexShrink: 0 }}>MENSAGEM DO AVISO *</label>
+                                    <textarea 
+                                        id="notif-message-input" 
+                                        placeholder="O que você deseja comunicar à equipe?" 
+                                        value={composeMessage} 
+                                        onChange={handleMessageChange} 
+                                        maxLength={500}
+                                        style={{ flex: 1, height: 'auto', minHeight: '60px', resize: 'none', fontSize: '0.95rem' }}
+                                    />
+                                    
+                                    {state.pendingAttachment && (
+                                        <div className="attachment-preview" style={{ display: 'flex', alignItems: 'center', padding: '0.4rem 0.8rem', flexShrink: 0 }}>
+                                            <FileText size={13} />
+                                            <span style={{ marginLeft: '0.4rem', marginRight: '0.4rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{state.pendingAttachment.name}</span>
+                                            <button className="btn-remove-attachment" onClick={handleRemoveAttachment} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                                                <X size={12} />
                                             </button>
                                         </div>
-                                        <div className="recipient-tabs" style={{ display: 'flex', gap: '0.2rem', background: 'rgba(0,0,0,0.25)', padding: '0.25rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
-                                            <button 
-                                                type="button" 
-                                                className={`tab-btn ${recipientSubTab === 'users' ? 'active' : ''}`} 
-                                                onClick={() => setRecipientSubTab('users')} 
-                                                style={{ 
-                                                    flex: 1, 
-                                                    textAlign: 'center', 
-                                                    border: 'none', 
-                                                    padding: '0.6rem 1rem', 
-                                                    borderRadius: '8px', 
-                                                    fontWeight: 600, 
-                                                    cursor: 'pointer', 
-                                                    transition: 'all 0.2s', 
-                                                    fontSize: '0.85rem', 
-                                                    color: recipientSubTab === 'users' ? 'white' : 'var(--text-secondary)', 
-                                                    background: recipientSubTab === 'users' ? 'var(--accent-orange)' : 'transparent', 
-                                                    display: 'flex', 
-                                                    alignItems: 'center', 
-                                                    justifyContent: 'center', 
-                                                    gap: '0.5rem', 
-                                                    outline: 'none' 
-                                                }}
-                                            >
-                                                <i className="fas fa-user"></i> Colaboradores
-                                            </button>
-                                            <button 
-                                                type="button" 
-                                                className={`tab-btn ${recipientSubTab === 'sectors' ? 'active' : ''}`} 
-                                                onClick={() => setRecipientSubTab('sectors')} 
-                                                style={{ 
-                                                    flex: 1, 
-                                                    textAlign: 'center', 
-                                                    border: 'none', 
-                                                    padding: '0.6rem 1rem', 
-                                                    borderRadius: '8px', 
-                                                    fontWeight: 600, 
-                                                    cursor: 'pointer', 
-                                                    transition: 'all 0.2s', 
-                                                    fontSize: '0.85rem', 
-                                                    color: recipientSubTab === 'sectors' ? 'white' : 'var(--text-secondary)', 
-                                                    background: recipientSubTab === 'sectors' ? 'var(--accent-orange)' : 'transparent', 
-                                                    display: 'flex', 
-                                                    alignItems: 'center', 
-                                                    justifyContent: 'center', 
-                                                    gap: '0.5rem', 
-                                                    outline: 'none' 
-                                                }}
-                                            >
-                                                <i className="fas fa-network-wired"></i> Setores
-                                            </button>
-                                            <button 
-                                                type="button" 
-                                                className={`tab-btn ${recipientSubTab === 'areas' ? 'active' : ''}`} 
-                                                onClick={() => setRecipientSubTab('areas')} 
-                                                style={{ 
-                                                    flex: 1, 
-                                                    textAlign: 'center', 
-                                                    border: 'none', 
-                                                    padding: '0.6rem 1rem', 
-                                                    borderRadius: '8px', 
-                                                    fontWeight: 600, 
-                                                    cursor: 'pointer', 
-                                                    transition: 'all 0.2s', 
-                                                    fontSize: '0.85rem', 
-                                                    color: recipientSubTab === 'areas' ? 'white' : 'var(--text-secondary)', 
-                                                    background: recipientSubTab === 'areas' ? 'var(--accent-orange)' : 'transparent', 
-                                                    display: 'flex', 
-                                                    alignItems: 'center', 
-                                                    justifyContent: 'center', 
-                                                    gap: '0.5rem', 
-                                                    outline: 'none' 
-                                                }}
-                                            >
-                                                <i className="fas fa-layer-group"></i> Áreas
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div 
-                                        id="notif-user-selection-grid" 
-                                        className="user-selection-grid"
-                                        style={{
-                                            gridTemplateColumns: recipientSubTab === 'users' ? 'repeat(auto-fill, minmax(110px, 1fr))' : 'repeat(auto-fill, minmax(140px, 1fr))',
-                                            flex: 1,
-                                            maxHeight: 'unset',
-                                            overflowY: 'auto'
-                                        }}
-                                    >
-                                        {recipientSubTab === 'users' && (
-                                            appUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id).map(user => {
-                                                const isSelected = selectedUserIds.includes(user.id);
-                                                return (
-                                                    <div 
-                                                        key={user.id} 
-                                                        className={`selection-card ${isSelected ? 'selected' : ''}`}
-                                                        onClick={() => handleToggleUser(user.id)}
-                                                    >
-                                                        <img src={getUserAvatar(user.img)} alt={user.name} className="sel-avatar" />
-                                                        <h4>{user.displayName || user.name}</h4>
-                                                        <p>{user.role}</p>
-                                                    </div>
-                                                );
-                                            })
-                                        )}
-
-                                        {recipientSubTab === 'sectors' && (
-                                            sectors.filter(s => s.status === 'Ativo').map(sector => {
-                                                const sectorUsers = appUsers.filter(u => {
-                                                    if (u.status !== 'Ativo' || u.id === currentUser.id) return false;
-                                                    const role = (u.role || '').toLowerCase().trim();
-                                                    const sec = sector.name.toLowerCase().trim();
-                                                    if (sec === 'cozinha' && ['cozinha', 'chef', 'cozinheiro', 'produção'].includes(role)) return true;
-                                                    if (sec === 'estoque' && ['estoque', 'estoquista', 'almoxarife'].includes(role)) return true;
-                                                    if (sec === 'salão' && ['salão', 'garçom', 'atendente', 'caixa'].includes(role)) return true;
-                                                    if (sec === 'administração' && ['administração', 'gerente', 'supervisor', 'administrador'].includes(role)) return true;
-                                                    return role === sec;
-                                                });
-                                                const isSelected = sectorUsers.length > 0 && sectorUsers.every(u => selectedUserIds.includes(u.id));
-                                                const colorClass = sector.color || 'color-orange';
-                                                return (
-                                                    <div 
-                                                        key={sector.id} 
-                                                        className={`selection-card ${isSelected ? 'selected' : ''}`}
-                                                        onClick={() => handleSelectBySector(sector.name)}
-                                                        style={{ minHeight: '140px', justifyContent: 'center' }}
-                                                    >
-                                                        <div className={`sector-icon-badge ${colorClass}`} style={{ width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justify: 'center', fontSize: '1.5rem', marginBottom: '0.8rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                                            <i className={`fas ${sector.icon || 'fa-network-wired'}`}></i>
-                                                        </div>
-                                                        <h4 style={{ margin: 0, fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 700 }}>{sector.name}</h4>
-                                                        <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{sectorUsers.length} colaborador{sectorUsers.length !== 1 ? 'es' : ''}</p>
-                                                    </div>
-                                                );
-                                            })
-                                        )}
-
-                                        {recipientSubTab === 'areas' && (
-                                            areas.filter(a => a.status === 'Ativo').map(area => {
-                                                let areaUsers = [];
-                                                if ([1, 2, 3].includes(area.id)) {
-                                                    areaUsers = appUsers.filter(u => ['cozinha', 'chef', 'cozinheiro', 'produção'].includes((u.role || '').toLowerCase()));
-                                                } else if ([4, 5, 6].includes(area.id)) {
-                                                    areaUsers = appUsers.filter(u => ['garçom', 'atendente', 'caixa', 'salão'].includes((u.role || '').toLowerCase()));
-                                                } else if ([7, 8, 9].includes(area.id)) {
-                                                    areaUsers = appUsers.filter(u => ['estoquista', 'almoxarife', 'estoque'].includes((u.role || '').toLowerCase()));
-                                                } else if (area.id === 10) {
-                                                    areaUsers = appUsers.filter(u => ['administrador', 'gerente', 'supervisor', 'administração'].includes((u.role || '').toLowerCase()));
-                                                }
-                                                const areaUsersFiltered = areaUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id);
-                                                const isSelected = areaUsersFiltered.length > 0 && areaUsersFiltered.every(u => selectedUserIds.includes(u.id));
-                                                const parentSector = sectors.find(s => s.id === area.sectorId) || { name: 'Geral', color: 'color-blue' };
-                                                const colorClass = parentSector.color || 'color-blue';
-                                                return (
-                                                    <div 
-                                                        key={area.id} 
-                                                        className={`selection-card ${isSelected ? 'selected' : ''}`}
-                                                        onClick={() => handleSelectByArea(area.id)}
-                                                        style={{ minHeight: '140px', justifyContent: 'center' }}
-                                                    >
-                                                        <div className={`area-icon-badge ${colorClass}`} style={{ width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justify: 'center', fontSize: '1.5rem', marginBottom: '0.8rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                                            <i className="fas fa-layer-group"></i>
-                                                        </div>
-                                                        <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }} title={area.name}>{area.name}</h4>
-                                                        <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '0.15rem 0.4rem', borderRadius: '4px', marginTop: '0.3rem', textTransform: 'uppercase' }}>{parentSector.name}</span>
-                                                        <p style={{ margin: '0.3rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{areaUsersFiltered.length} colaborador{areaUsersFiltered.length !== 1 ? 'es' : ''}</p>
-                                                    </div>
-                                                );
-                                            })
-                                        )}
+                                    )}
+                                    
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flexShrink: 0 }}>
+                                        <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleAttachmentSelect} accept="image/*,.pdf" />
+                                        <button className="btn-attach" onClick={() => fileInputRef.current.click()} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.35rem 0.7rem', borderRadius: '7px', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                            <Paperclip size={12} /> Imagem/PDF
+                                        </button>
+                                        <button className="btn-attach" onClick={handleInsertGovSignature} style={{ background: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.3)', color: '#60a5fa', fontSize: '0.72rem', padding: '0.35rem 0.7rem', borderRadius: '7px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                            <Signature size={12} /> Assinatura Digital
+                                        </button>
+                                        <span style={{ marginLeft: 'auto', color: charCount > 450 ? '#ef4444' : 'var(--text-secondary)', fontSize: '0.75rem' }}>{charCount} / 500</span>
                                     </div>
                                 </div>
 
-                                <div 
-                                    className="composer-message-area" 
-                                    style={{ 
-                                        height: '100%', 
-                                        display: 'flex', 
-                                        flexDirection: 'column', 
-                                        overflow: 'hidden' 
-                                    }}
-                                >
-                                    <div className="form-group" style={{ marginBottom: '0.8rem' }}>
-                                        <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px' }}>TÍTULO DO COMUNICADO *</label>
-                                        <input 
-                                            type="text" 
-                                            className="form-input" 
-                                            placeholder="Ex: REUNIÃO GERAL DE EQUIPE" 
-                                            value={composeTitle} 
-                                            onChange={(e) => setComposeTitle(e.target.value.toUpperCase())}
-                                            style={{ marginTop: '0.3rem', width: '100%' }}
-                                        />
-                                    </div>
-
-                                    <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px' }}>MENSAGEM DO AVISO *</label>
-                                    
-                                    <div 
-                                        className="message-input-wrapper" 
-                                        style={{ 
-                                            marginTop: '0.3rem', 
-                                            flex: 1, 
-                                            display: 'flex', 
-                                            flexDirection: 'column', 
-                                            gap: '0.8rem', 
-                                            padding: '1rem',
-                                            overflow: 'hidden'
-                                        }}
-                                    >
-                                        <textarea 
-                                            id="notif-message-input" 
-                                            placeholder="O que você deseja comunicar à equipe?" 
-                                            value={composeMessage} 
-                                            onChange={handleMessageChange} 
-                                            maxLength={500}
-                                            style={{ flex: 1, height: 'auto', minHeight: '80px', resize: 'none' }}
-                                        />
-                                        
-                                        {state.pendingAttachment && (
-                                            <div id="notif-attachment-preview" className="attachment-preview" style={{ display: 'flex', alignItems: 'center', background: 'rgba(0,0,0,0.2)', padding: '0.5rem 1rem', borderRadius: '8px' }}>
-                                                <FileText size={16} />
-                                                <span id="attachment-name" style={{ marginLeft: '0.5rem', marginRight: '0.5rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{state.pendingAttachment.name}</span>
-                                                <button className="btn-remove-attachment" onClick={handleRemoveAttachment} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                                                    <X size={14} />
-                                                </button>
-                                            </div>
-                                        )}
-                                        
-                                        <div className="message-footer">
-                                            <div className="footer-left" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
-                                                <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleAttachmentSelect} accept="image/*,.pdf" />
-                                                
-                                                <button className="btn-attach" onClick={() => fileInputRef.current.click()} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.75rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                                    <Paperclip size={14} /> Anexar Imagem/PDF
-                                                </button>
-                                                
-                                                <button className="btn-attach" onClick={handleInsertGovSignature} style={{ background: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.3)', color: '#60a5fa', fontSize: '0.75rem', padding: '0.4rem 0.8rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                                    <Signature size={14} /> Pedir Assinatura Digital
-                                                </button>
-                                                
-                                                <span id="char-count" style={{ marginLeft: '0.5rem', color: charCount > 450 ? '#ef4444' : 'var(--text-secondary)', fontSize: '0.8rem' }}>{charCount} / 500</span>
-                                            </div>
-                                            
-                                            <button 
-                                                className="btn-send-notif" 
-                                                disabled={!composeTitle.trim() || !composeMessage.trim() || selectedUserIds.length === 0} 
-                                                onClick={handleSendNotification}
-                                                style={{ 
-                                                    opacity: (!composeTitle.trim() || !composeMessage.trim() || selectedUserIds.length === 0) ? 0.6 : 1, 
-                                                    cursor: (!composeTitle.trim() || !composeMessage.trim() || selectedUserIds.length === 0) ? 'not-allowed' : 'pointer'
-                                                }}
-                                            >
-                                                <span>DISPARAR AVISO</span>
-                                                <Send size={14} />
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    <div className="form-group" style={{ marginTop: '0.6rem' }}>
-                                        <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px' }}>PRIORIDADE DO ALERTA</label>
-                                        <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.3rem' }}>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', textTransform: 'none', color: '#fff', fontSize: '0.88rem', fontWeight: 500 }}>
-                                                <input 
-                                                    type="radio" 
-                                                    name="priority" 
-                                                    value="normal" 
-                                                    checked={composePriority === 'normal'} 
-                                                    onChange={() => setComposePriority('normal')} 
-                                                    style={{ accentColor: 'var(--accent-orange)' }} 
-                                                /> Normal
+                                {/* Priority + Send */}
+                                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '0.9rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.7rem', flexShrink: 0 }}>
+                                    <div>
+                                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px', display: 'block', marginBottom: '0.45rem' }}>PRIORIDADE DO ALERTA</label>
+                                        <div style={{ display: 'flex', gap: '1.5rem' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: '#fff', fontSize: '0.85rem', fontWeight: 500 }}>
+                                                <input type="radio" name="priority" value="normal" checked={composePriority === 'normal'} onChange={() => setComposePriority('normal')} style={{ accentColor: 'var(--accent-orange)' }} /> Normal
                                             </label>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', textTransform: 'none', color: '#f87171', fontSize: '0.88rem', fontWeight: 500 }}>
-                                                <input 
-                                                    type="radio" 
-                                                    name="priority" 
-                                                    value="urgente" 
-                                                    checked={composePriority === 'urgente'} 
-                                                    onChange={() => setComposePriority('urgente')} 
-                                                    style={{ accentColor: '#ef4444' }} 
-                                                /> Urgente (Exibe em destaque vermelho)
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: '#f87171', fontSize: '0.85rem', fontWeight: 500 }}>
+                                                <input type="radio" name="priority" value="urgente" checked={composePriority === 'urgente'} onChange={() => setComposePriority('urgente')} style={{ accentColor: '#ef4444' }} /> Urgente
                                             </label>
                                         </div>
                                     </div>
-                                    
-                                    <p className="notif-disclaimer" style={{ marginTop: '0.6rem' }}>
-                                        <Info size={14} style={{ marginRight: '0.3rem', display: 'inline-block', verticalAlign: 'middle' }} />
-                                        Este aviso será enviado instantaneamente para os usuários selecionados.
-                                    </p>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
+                                        <p className="notif-disclaimer" style={{ margin: 0, fontSize: '0.7rem' }}>
+                                            <Info size={12} style={{ marginRight: '0.25rem', display: 'inline-block', verticalAlign: 'middle' }} />
+                                            Aviso enviado instantaneamente para os selecionados.
+                                        </p>
+                                        <button 
+                                            className="btn-send-notif" 
+                                            disabled={!composeTitle.trim() || !composeMessage.trim() || selectedUserIds.length === 0} 
+                                            onClick={handleSendNotification}
+                                            style={{ 
+                                                opacity: (!composeTitle.trim() || !composeMessage.trim() || selectedUserIds.length === 0) ? 0.6 : 1, 
+                                                cursor: (!composeTitle.trim() || !composeMessage.trim() || selectedUserIds.length === 0) ? 'not-allowed' : 'pointer',
+                                                padding: '0.6rem 1.4rem',
+                                                fontSize: '0.8rem',
+                                                flexShrink: 0
+                                            }}
+                                        >
+                                            <span>DISPARAR AVISO</span>
+                                            <Send size={13} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 )}
+
 
                 {activeTab === 'checklist' && (
                     /* PRINCIPAL DE CHECKLISTS */
