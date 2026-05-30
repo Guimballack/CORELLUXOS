@@ -1230,16 +1230,14 @@ export default function CentralHub() {
                 {activeTab === 'feed' && (
                     /* ABA FEED DE AVISOS */
                     <>
-                        <div className="feed-filter-row">
-                            <div className="filter-buttons">
-                                <button className={`filter-pill ${feedFilter === 'todos' ? 'active' : ''}`} onClick={() => setFeedFilter('todos')}>Todos</button>
-                                <button className={`filter-pill ${feedFilter === 'unread' ? 'active' : ''}`} onClick={() => setFeedFilter('unread')}>Não Lidos</button>
-                                <button className={`filter-pill ${feedFilter === 'sent' ? 'active' : ''}`} onClick={() => setFeedFilter('sent')}>Enviados por Mim</button>
-                                <button className={`filter-pill ${feedFilter === 'sistema' ? 'active' : ''}`} onClick={() => setFeedFilter('sistema')}>Sistema</button>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                            <div className="notif-filters">
+                                <button className={`filter-btn ${feedFilter === 'todos' ? 'active' : ''}`} onClick={() => setFeedFilter('todos')}>Todos</button>
+                                <button className={`filter-btn ${feedFilter === 'unread' ? 'active' : ''}`} onClick={() => setFeedFilter('unread')}>Não Lidos</button>
                             </div>
                             
-                            <div className="search-input-wrapper">
-                                <Search size={16} className="search-icon-inside" />
+                            <div className="search-box">
+                                <Search size={16} style={{ color: 'var(--text-secondary)' }} />
                                 <input type="text" placeholder="Pesquisar título, conteúdo ou remetente..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
                             </div>
                         </div>
