@@ -1280,7 +1280,7 @@ export default function CentralHub() {
 
                 {activeTab === 'compose' && (
                     /* ABA ENVIAR AVISO */
-                    <div className="central-form-panel" style={{ maxWidth: '1000px', margin: '2rem auto', width: '95%' }}>
+                    <div className="central-form-panel" style={{ maxWidth: '1000px', margin: '2rem auto', width: '95%', overflowY: 'auto', maxHeight: 'calc(100vh - 200px)' }}>
                         <div className="panel-body">
                             <div className="notif-composer-grid">
                                 {/* Left Column: User Selection */}
