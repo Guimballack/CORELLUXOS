@@ -1095,27 +1095,7 @@ export default function CentralHub() {
                 }
             `}} />
 
-            {/* HEADER DA TELA COM NAVEGAÇÃO DE VOLTA */}
-            {activeTab !== 'menu' && (
-                <div className="screen-header-bar" style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1rem', marginBottom: '1.5rem', marginTop: '1rem' }}>
-                    <button className="btn-back" onClick={() => setActiveTab('menu')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', padding: '0.5rem 1rem', borderRadius: '6px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }}>
-                        <ArrowLeft size={14} /> VOLTAR
-                    </button>
-                    <div className="category-title-area" style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                        <div className={`cat-icon-area ${activeTab === 'feed' ? 'color-blue' : activeTab === 'compose' ? 'color-orange' : 'color-teal'}`} style={{ width: '45px', height: '45px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', background: activeTab === 'feed' ? 'rgba(59, 130, 246, 0.1)' : activeTab === 'compose' ? 'rgba(243, 107, 29, 0.1)' : 'rgba(20, 184, 166, 0.1)', color: activeTab === 'feed' ? 'var(--accent-blue)' : activeTab === 'compose' ? 'var(--accent-orange)' : '#2dd4bf' }}>
-                            {activeTab === 'feed' ? <Bell size={18} /> : activeTab === 'compose' ? <Send size={18} /> : <CheckSquare size={18} />}
-                        </div>
-                        <div className="category-title-text" style={{ textAlign: 'left' }}>
-                            <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#fff', textTransform: 'uppercase' }}>
-                                {activeTab === 'feed' ? 'MEUS AVISOS' : activeTab === 'compose' ? 'ENVIAR NOVO AVISO' : 'CHECKLIST OPERACIONAL'}
-                            </h2>
-                            <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-                                {activeTab === 'feed' ? 'Feed de notificações e atividades' : activeTab === 'compose' ? 'Disparar comunicação para a equipe' : 'Rotinas, vistorias, tarefas diárias e auditorias setoriais'}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
+
 
             {/* SUB-NAV SE FOR CHECKLIST */}
             {activeTab === 'checklist' && (
