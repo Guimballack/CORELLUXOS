@@ -658,6 +658,57 @@ export default function CentralHub() {
         <div className="screen active with-header" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
             {/* INCLUIR STYLES ADICIONAIS DO CHECKLIST E CONSTRUTOR */}
             <style dangerouslySetInnerHTML={{__html: `
+                .central-content-container {
+                    flex: 1;
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                    box-sizing: border-box;
+                    padding: 1.5rem;
+                }
+
+                .composer-panel {
+                    display: grid;
+                    grid-template-columns: 1fr 340px;
+                    gap: 1.5rem;
+                    height: calc(100vh - 200px);
+                    min-height: 400px;
+                    overflow: hidden;
+                    box-sizing: border-box;
+                }
+
+                @media (max-width: 900px) {
+                    .composer-panel {
+                        grid-template-columns: 1fr;
+                        height: auto;
+                        overflow: visible;
+                    }
+                }
+
+                .composer-main {
+                    background: rgba(30, 41, 59, 0.15);
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                    border-radius: 12px;
+                    padding: 1.5rem;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1.25rem;
+                    overflow-y: auto;
+                    box-sizing: border-box;
+                }
+
+                .composer-sidebar {
+                    background: rgba(30, 41, 59, 0.15);
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                    border-radius: 12px;
+                    padding: 1.5rem;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1.25rem;
+                    overflow-y: auto;
+                    box-sizing: border-box;
+                }
+
                 .checklist-subnav {
                     display: flex;
                     gap: 0.5rem;
@@ -1044,37 +1095,7 @@ export default function CentralHub() {
                 }
             `}} />
 
-            {/* HEADER DA TELA */}
-            {activeTab !== 'menu' && (
-                <div className="central-header-bar" style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '1.5rem' }}>
-                    <div className="central-tabs-nav" style={{ marginLeft: 0 }}>
-                        <button 
-                            className={`tab-btn ${activeTab === 'feed' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('feed')}
-                        >
-                            <Bell size={15} /> MEUS AVISOS
-                        </button>
-                        {currentUser.permissions.sendNotif && (
-                            <button 
-                                className={`tab-btn ${activeTab === 'compose' ? 'active' : ''}`}
-                                onClick={() => setActiveTab('compose')}
-                            >
-                                <Send size={15} /> ENVIAR AVISO
-                            </button>
-                        )}
-                        <button 
-                            className={`tab-btn ${activeTab === 'checklist' ? 'active' : ''}`}
-                            onClick={() => {
-                                setActiveTab('checklist');
-                                setChecklistSubTab('dashboard');
-                            }}
-                            style={{ activeTab: 'checklist' ? { background: '#14b8a6', boxShadow: '0 4px 12px rgba(20, 184, 166, 0.3)' } : {} }}
-                        >
-                            <CheckSquare size={15} /> CHECKLISTS
-                        </button>
-                    </div>
-                </div>
-            )}
+
 
             {/* SUB-NAV SE FOR CHECKLIST */}
             {activeTab === 'checklist' && (

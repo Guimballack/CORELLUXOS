@@ -33,6 +33,7 @@ import {
     FileText,
     History,
     AlertTriangle,
+    Info,
     FolderOpen,
     Paperclip,
     Camera,
@@ -1444,7 +1445,7 @@ export default function SettingsHub() {
         const resolvedContatos = (() => {
             let list = [];
             if (sup.contato?.listaContatos && Array.isArray(sup.contato.listaContatos) && sup.contato.listaContatos.length > 0) {
-                list = sup.contato.listaContatos.map(c => ({
+                list = sup.contato.listaContatos.map((c, idx) => ({
                     nome: c.nome || '',
                     setor: c.setor || '',
                     email: c.email || '',
@@ -1452,7 +1453,8 @@ export default function SettingsHub() {
                     whatsapp: c.whatsapp || '',
                     site: c.site || '',
                     observacao: c.observacao || '',
-                    observacaoSalva: c.observacaoSalva || c.observacao || ''
+                    observacaoSalva: c.observacaoSalva || c.observacao || '',
+                    isPrimary: c.isPrimary !== undefined ? c.isPrimary : (idx === 0)
                 }));
             } else if (sup.contato) {
                 list = [
@@ -1464,7 +1466,8 @@ export default function SettingsHub() {
                         whatsapp: sup.contato.whatsapp || '',
                         site: sup.contato.site || '',
                         observacao: '',
-                        observacaoSalva: ''
+                        observacaoSalva: '',
+                        isPrimary: true
                     }
                 ];
                 if (sup.contato.responsavelFinanceiro || sup.contato.emailFinanceiro) {
@@ -1475,12 +1478,16 @@ export default function SettingsHub() {
                         telefoneComercial: '',
                         whatsapp: '',
                         site: '',
-                        observacao: ''
+                        observacao: '',
+                        isPrimary: false
                     });
                 }
             }
             if (list.length === 0) {
-                list = [{ nome: '', setor: 'Comercial', email: '', telefoneComercial: '', whatsapp: '', site: '', observacao: '' }];
+                list = [{ nome: '', setor: 'Comercial', email: '', telefoneComercial: '', whatsapp: '', site: '', observacao: '', isPrimary: true }];
+            }
+            if (!list.some(c => c.isPrimary)) {
+                list[0].isPrimary = true;
             }
             return list;
         })();
@@ -1522,7 +1529,7 @@ export default function SettingsHub() {
             tipoFornecedor: 'Distribuidor', situacao: 'Ativo', 
             dataCadastro: new Date().toISOString().split('T')[0],
             contato: { responsavelComercial: '', responsavelFinanceiro: '', telefone: '', whatsapp: '', emailComercial: '', emailFinanceiro: '', site: '' },
-            contatos: [{ nome: '', setor: 'Comercial', email: '', telefoneComercial: '', whatsapp: '', site: '', observacao: '', observacaoSalva: '' }],
+            contatos: [{ nome: '', setor: 'Comercial', email: '', telefoneComercial: '', whatsapp: '', site: '', observacao: '', observacaoSalva: '', isPrimary: true }],
             endereco: { cep: '', rua: '', numero: '', complemento: '', bairro: '', cidade: '', estado: '', pais: 'Brasil' },
             financeiro: { formaPagamento: '', prazoPagamento: '', limiteCredito: 0, banco: '', agencia: '', conta: '', pix: '', tipoChavePix: 'CNPJ' },
             logistica: { prazoEntrega: '', diasEntrega: '', transportadora: '', pedidoMinimo: 0, freteMinimo: 0, regiaoAtendimento: '' },
@@ -1542,7 +1549,7 @@ export default function SettingsHub() {
         const cleanedPrazoPagamento = fornForm.financeiro.prazoPagamento ? String(fornForm.financeiro.prazoPagamento).replace(/\D/g, '') : '';
 
         // Build backward-compatible contato object from the list of contatos
-        const primaryContact = fornForm.contatos?.[0] || { nome: '', setor: '', email: '', whatsapp: '', site: '', telefoneComercial: '', observacao: '' };
+        const primaryContact = fornForm.contatos?.find(c => c.isPrimary) || fornForm.contatos?.[0] || { nome: '', setor: '', email: '', whatsapp: '', site: '', telefoneComercial: '', observacao: '' };
         const financeContact = fornForm.contatos?.find(c => c.setor && c.setor.toLowerCase().includes('finan')) || fornForm.contatos?.[1] || { nome: '', email: '' };
 
         const legacyContato = {
@@ -1593,7 +1600,7 @@ export default function SettingsHub() {
 
         setFornForm(prev => ({ ...prev, contatos: list }));
 
-        const primaryContact = list[0] || { nome: '', setor: '', email: '', whatsapp: '', site: '', telefoneComercial: '', observacao: '', observacaoSalva: '' };
+        const primaryContact = list.find(c => c.isPrimary) || list[0] || { nome: '', setor: '', email: '', whatsapp: '', site: '', telefoneComercial: '', observacao: '', observacaoSalva: '' };
         const financeContact = list.find(c => c.setor && c.setor.toLowerCase().includes('finan')) || list[1] || { nome: '', email: '' };
 
         const legacyContato = {
@@ -4576,7 +4583,27 @@ export default function SettingsHub() {
                                             position: 'relative' 
                                         }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                                                <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>Contato #{index + 1}</span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                                    <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--text-primary)' }}>Contato #{index + 1}</span>
+                                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', color: cont.isPrimary ? 'var(--accent-orange)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: '700' }}>
+                                                        <input 
+                                                            type="radio"
+                                                            name="primary_contact_group"
+                                                            checked={!!cont.isPrimary}
+                                                            onChange={() => {
+                                                                setFornForm(prev => {
+                                                                    const list = prev.contatos.map((c, i) => ({
+                                                                        ...c,
+                                                                        isPrimary: i === index
+                                                                    }));
+                                                                    return { ...prev, contatos: list };
+                                                                });
+                                                            }}
+                                                            style={{ accentColor: 'var(--accent-orange)', cursor: 'pointer' }}
+                                                        />
+                                                        Contato Principal
+                                                    </label>
+                                                </div>
                                                 {fornForm.contatos.length > 1 && (
                                                     <button
                                                         type="button"
@@ -4590,7 +4617,10 @@ export default function SettingsHub() {
                                                                 onConfirm: () => {
                                                                     setFornForm(prev => {
                                                                         const list = [...prev.contatos];
-                                                                        list.splice(index, 1);
+                                                                        const [removed] = list.splice(index, 1);
+                                                                        if (removed.isPrimary && list.length > 0) {
+                                                                            list[0].isPrimary = true;
+                                                                        }
                                                                         return { ...prev, contatos: list };
                                                                     });
                                                                 }
@@ -4663,19 +4693,56 @@ export default function SettingsHub() {
                                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
                                                     <div>
                                                         <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>E-mail</label>
-                                                        <input 
-                                                            type="email"
-                                                            value={cont.email} 
-                                                            onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                setFornForm(prev => {
-                                                                    const list = [...prev.contatos];
-                                                                    list[index] = { ...list[index], email: val };
-                                                                    return { ...prev, contatos: list };
-                                                                });
-                                                            }}
-                                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                                        />
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                            <input 
+                                                                type="email"
+                                                                value={cont.email} 
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    setFornForm(prev => {
+                                                                        const list = [...prev.contatos];
+                                                                        list[index] = { ...list[index], email: val };
+                                                                        return { ...prev, contatos: list };
+                                                                    });
+                                                                }}
+                                                                style={{ flex: 1, background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', width: '100%' }}
+                                                            />
+                                                            {(cont.email || '').trim().length > 0 && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        window.open(`mailto:${cont.email.trim()}`, '_blank');
+                                                                    }}
+                                                                    title="Enviar E-mail"
+                                                                    style={{
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        width: '38px',
+                                                                        height: '38px',
+                                                                        borderRadius: '8px',
+                                                                        border: 'none',
+                                                                        background: '#EA4335',
+                                                                        color: '#fff',
+                                                                        cursor: 'pointer',
+                                                                        transition: 'all 0.2s ease',
+                                                                        flexShrink: 0
+                                                                    }}
+                                                                    onMouseOver={(e) => {
+                                                                        e.currentTarget.style.background = '#d93025';
+                                                                        e.currentTarget.style.transform = 'scale(1.05)';
+                                                                    }}
+                                                                    onMouseOut={(e) => {
+                                                                        e.currentTarget.style.background = '#EA4335';
+                                                                        e.currentTarget.style.transform = 'scale(1)';
+                                                                    }}
+                                                                >
+                                                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                                                        <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L5.455 4.64 12 9.548l6.545-4.91 1.528-1.145C21.69 2.28 24 3.434 24 5.457z" />
+                                                                    </svg>
+                                                                </button>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                     <div>
                                                         <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Telefone Comercial</label>
@@ -4834,10 +4901,21 @@ export default function SettingsHub() {
                                     <button
                                         type="button"
                                         onClick={() => {
-                                            setFornForm(prev => ({
-                                                ...prev,
-                                                contatos: [...(prev.contatos || []), { nome: '', setor: '', email: '', telefoneComercial: '', whatsapp: '', site: '', observacao: '' }]
-                                            }));
+                                            setFornForm(prev => {
+                                                const list = [...(prev.contatos || [])];
+                                                const isFirst = list.length === 0;
+                                                list.push({ 
+                                                    nome: '', 
+                                                    setor: '', 
+                                                    email: '', 
+                                                    telefoneComercial: '', 
+                                                    whatsapp: '', 
+                                                    site: '', 
+                                                    observacao: '',
+                                                    isPrimary: isFirst
+                                                });
+                                                return { ...prev, contatos: list };
+                                            });
                                         }}
                                         style={{
                                             padding: '0.8rem',
@@ -5079,6 +5157,10 @@ export default function SettingsHub() {
                                                     style={{ width: '100px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', textAlign: 'center' }}
                                                 />
                                                 <span style={{ color: 'var(--text-secondary)', fontWeight: '700', fontSize: '0.85rem' }}>DIAS</span>
+                                            </div>
+                                            <div style={{ fontSize: '0.7rem', color: 'var(--accent-orange)', marginTop: '0.4rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                <Info size={11} style={{ flexShrink: 0 }} />
+                                                <span>Define o Lead Time de abastecimento usado no Supply Chain</span>
                                             </div>
                                         </div>
                                         <div>
