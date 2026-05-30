@@ -655,16 +655,7 @@ export default function CentralHub() {
     };
 
     return (
-        <div 
-            className="screen active with-header" 
-            style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                height: '100%', 
-                overflowY: activeTab === 'compose' || activeTab === 'feed' ? 'hidden' : 'auto',
-                padding: activeTab === 'compose' ? '0.5rem 1rem' : undefined
-            }}
-        >
+        <div className="screen active with-header" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: activeTab === 'compose' || activeTab === 'feed' ? 'hidden' : 'auto' }}>
             {/* INCLUIR STYLES ADICIONAIS DO CHECKLIST E CONSTRUTOR */}
             <style dangerouslySetInnerHTML={{__html: `
                 .central-content-container {
@@ -1158,15 +1149,7 @@ export default function CentralHub() {
             )}
 
             {/* CONTEÚDO PRINCIPAL */}
-            <div 
-                className="central-content-container" 
-                style={{ 
-                    overflowY: activeTab === 'compose' || activeTab === 'feed' ? 'hidden' : 'auto',
-                    padding: activeTab === 'compose' ? '0.5rem' : undefined,
-                    height: activeTab === 'compose' ? '100%' : undefined,
-                    maxHeight: activeTab === 'compose' ? '100%' : undefined
-                }}
-            >
+            <div className="central-content-container" style={{ overflowY: activeTab === 'compose' || activeTab === 'feed' ? 'hidden' : 'auto' }}>
                 {activeTab === 'menu' && (
                     <div className="dashboard-menu">
                         <button 
@@ -1300,8 +1283,8 @@ export default function CentralHub() {
                     <div 
                         className="central-form-panel" 
                         style={{ 
-                            maxWidth: '100%', 
-                            margin: '0', 
+                            maxWidth: '1200px', 
+                            margin: '0 auto', 
                             width: '100%', 
                             height: '100%', 
                             maxHeight: '100%', 
@@ -1316,7 +1299,7 @@ export default function CentralHub() {
                                     minHeight: 'unset', 
                                     flex: 1, 
                                     gap: '1.5rem', 
-                                    gridTemplateColumns: '1.2fr 1fr', 
+                                    gridTemplateColumns: '320px 1fr', 
                                     overflow: 'hidden' 
                                 }}
                             >
