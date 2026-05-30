@@ -1341,7 +1341,7 @@ export default function CentralHub() {
                                     {[
                                         { id: 'users', icon: 'fa-user', label: 'Colaboradores' },
                                         { id: 'sectors', icon: 'fa-network-wired', label: 'Setores' },
-                                        { id: 'areas', icon: 'fa-layer-group', label: 'Áreas' }
+                                        { id: 'areas', icon: 'fa-layer-group', label: 'Cargos' }
                                     ].map(tab => (
                                         <button 
                                             key={tab.id}
