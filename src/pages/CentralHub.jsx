@@ -655,7 +655,16 @@ export default function CentralHub() {
     };
 
     return (
-        <div className="screen active with-header" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: activeTab === 'feed' ? 'hidden' : 'auto' }}>
+        <div 
+            className="screen active with-header" 
+            style={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                height: '100%', 
+                overflowY: activeTab === 'compose' || activeTab === 'feed' ? 'hidden' : 'auto',
+                padding: activeTab === 'compose' ? '0.5rem 1rem' : undefined
+            }}
+        >
             {/* INCLUIR STYLES ADICIONAIS DO CHECKLIST E CONSTRUTOR */}
             <style dangerouslySetInnerHTML={{__html: `
                 .central-content-container {
@@ -1149,7 +1158,15 @@ export default function CentralHub() {
             )}
 
             {/* CONTEÚDO PRINCIPAL */}
-            <div className="central-content-container" style={{ overflowY: activeTab === 'feed' ? 'hidden' : 'auto' }}>
+            <div 
+                className="central-content-container" 
+                style={{ 
+                    overflowY: activeTab === 'compose' || activeTab === 'feed' ? 'hidden' : 'auto',
+                    padding: activeTab === 'compose' ? '0.5rem' : undefined,
+                    height: activeTab === 'compose' ? '100%' : undefined,
+                    maxHeight: activeTab === 'compose' ? '100%' : undefined
+                }}
+            >
                 {activeTab === 'menu' && (
                     <div className="dashboard-menu">
                         <button 
@@ -1280,12 +1297,40 @@ export default function CentralHub() {
 
                 {activeTab === 'compose' && (
                     /* ABA ENVIAR AVISO */
-                    <div className="central-form-panel" style={{ maxWidth: '1000px', margin: '2rem auto', width: '95%', overflowY: 'auto', maxHeight: 'calc(100vh - 200px)' }}>
-                        <div className="panel-body">
-                            <div className="notif-composer-grid">
+                    <div 
+                        className="central-form-panel" 
+                        style={{ 
+                            maxWidth: '100%', 
+                            margin: '0', 
+                            width: '100%', 
+                            height: '100%', 
+                            maxHeight: '100%', 
+                            overflow: 'hidden' 
+                        }}
+                    >
+                        <div className="panel-body" style={{ height: '100%', flex: 1, display: 'flex', flexDirection: 'column', padding: '1.25rem', overflow: 'hidden' }}>
+                            <div 
+                                className="notif-composer-grid" 
+                                style={{ 
+                                    height: '100%', 
+                                    minHeight: 'unset', 
+                                    flex: 1, 
+                                    gap: '1.5rem', 
+                                    gridTemplateColumns: '1.2fr 1fr', 
+                                    overflow: 'hidden' 
+                                }}
+                            >
                                 {/* Left Column: User Selection */}
-                                <div className="composer-selection-area">
-                                    <div className="selection-header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '1rem', marginBottom: '1.5rem' }}>
+                                <div 
+                                    className="composer-selection-area" 
+                                    style={{ 
+                                        height: '100%', 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        overflow: 'hidden' 
+                                    }}
+                                >
+                                    <div className="selection-header" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.8rem', marginBottom: '0.8rem' }}>
                                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px' }}>
                                                 DESTINATÁRIOS ({selectedUserIds.length} selecionados)
@@ -1377,7 +1422,10 @@ export default function CentralHub() {
                                         id="notif-user-selection-grid" 
                                         className="user-selection-grid"
                                         style={{
-                                            gridTemplateColumns: recipientSubTab === 'users' ? 'repeat(auto-fill, minmax(120px, 1fr))' : 'repeat(auto-fill, minmax(160px, 1fr))'
+                                            gridTemplateColumns: recipientSubTab === 'users' ? 'repeat(auto-fill, minmax(110px, 1fr))' : 'repeat(auto-fill, minmax(140px, 1fr))',
+                                            flex: 1,
+                                            maxHeight: 'unset',
+                                            overflowY: 'auto'
                                         }}
                                     >
                                         {recipientSubTab === 'users' && (
@@ -1464,9 +1512,16 @@ export default function CentralHub() {
                                     </div>
                                 </div>
 
-                                {/* Right Column: Message Composer */}
-                                <div className="composer-message-area">
-                                    <div className="form-group" style={{ marginBottom: '1.2rem' }}>
+                                <div 
+                                    className="composer-message-area" 
+                                    style={{ 
+                                        height: '100%', 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        overflow: 'hidden' 
+                                    }}
+                                >
+                                    <div className="form-group" style={{ marginBottom: '0.8rem' }}>
                                         <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px' }}>TÍTULO DO COMUNICADO *</label>
                                         <input 
                                             type="text" 
@@ -1474,19 +1529,31 @@ export default function CentralHub() {
                                             placeholder="Ex: REUNIÃO GERAL DE EQUIPE" 
                                             value={composeTitle} 
                                             onChange={(e) => setComposeTitle(e.target.value.toUpperCase())}
-                                            style={{ marginTop: '0.5rem', width: '100%' }}
+                                            style={{ marginTop: '0.3rem', width: '100%' }}
                                         />
                                     </div>
 
                                     <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px' }}>MENSAGEM DO AVISO *</label>
                                     
-                                    <div className="message-input-wrapper" style={{ marginTop: '0.5rem' }}>
+                                    <div 
+                                        className="message-input-wrapper" 
+                                        style={{ 
+                                            marginTop: '0.3rem', 
+                                            flex: 1, 
+                                            display: 'flex', 
+                                            flexDirection: 'column', 
+                                            gap: '0.8rem', 
+                                            padding: '1rem',
+                                            overflow: 'hidden'
+                                        }}
+                                    >
                                         <textarea 
                                             id="notif-message-input" 
                                             placeholder="O que você deseja comunicar à equipe?" 
                                             value={composeMessage} 
                                             onChange={handleMessageChange} 
                                             maxLength={500}
+                                            style={{ flex: 1, height: 'auto', minHeight: '80px', resize: 'none' }}
                                         />
                                         
                                         {state.pendingAttachment && (
@@ -1529,9 +1596,9 @@ export default function CentralHub() {
                                         </div>
                                     </div>
 
-                                    <div className="form-group" style={{ marginTop: '1.2rem' }}>
+                                    <div className="form-group" style={{ marginTop: '0.6rem' }}>
                                         <label style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px' }}>PRIORIDADE DO ALERTA</label>
-                                        <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
+                                        <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.3rem' }}>
                                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', textTransform: 'none', color: '#fff', fontSize: '0.88rem', fontWeight: 500 }}>
                                                 <input 
                                                     type="radio" 
@@ -1555,7 +1622,7 @@ export default function CentralHub() {
                                         </div>
                                     </div>
                                     
-                                    <p className="notif-disclaimer" style={{ marginTop: '1.5rem' }}>
+                                    <p className="notif-disclaimer" style={{ marginTop: '0.6rem' }}>
                                         <Info size={14} style={{ marginRight: '0.3rem', display: 'inline-block', verticalAlign: 'middle' }} />
                                         Este aviso será enviado instantaneamente para os usuários selecionados.
                                     </p>
