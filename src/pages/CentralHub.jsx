@@ -1149,7 +1149,7 @@ export default function CentralHub() {
             )}
 
             {/* CONTEÚDO PRINCIPAL */}
-            <div className="central-content-container">
+            <div className="central-content-container" style={{ overflowY: activeTab === 'feed' ? 'hidden' : 'auto' }}>
                 {activeTab === 'menu' && (
                     <div className="dashboard-menu">
                         <button 
