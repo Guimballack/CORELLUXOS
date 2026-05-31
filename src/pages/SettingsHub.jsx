@@ -179,7 +179,7 @@ export default function SettingsHub() {
     const [showCargoModal, setShowCargoModal] = useState(false);
     const [editingCargo, setEditingCargo] = useState(null);
     const [cargoForm, setCargoForm] = useState({
-        name: '', description: '', status: 'Ativo'
+        name: '', description: '', sectorId: '', status: 'Ativo'
     });
 
     const [showFornModal, setShowFornModal] = useState(false);
@@ -231,19 +231,8 @@ export default function SettingsHub() {
             setSetores(sectorsData);
 
             // Load cargos
-            const savedCargos = localStorage.getItem('corellux_cargos');
-            if (savedCargos) {
-                setCargos(JSON.parse(savedCargos));
-            } else {
-                const defaultCargos = [
-                    { id: 1, name: 'Administrador', description: 'Acesso total ao sistema', status: 'Ativo' },
-                    { id: 2, name: 'Gerente', description: 'Gestão operacional e aprovações', status: 'Ativo' },
-                    { id: 3, name: 'Estoquista', description: 'Controle de entrada e saída', status: 'Ativo' },
-                    { id: 4, name: 'Cozinha', description: 'Solicitação de insumos', status: 'Ativo' }
-                ];
-                setCargos(defaultCargos);
-                localStorage.setItem('corellux_cargos', JSON.stringify(defaultCargos));
-            }
+            const areasData = await DbService.getAreas();
+            setCargos(areasData);
         } catch (e) {
             console.error('[SettingsHub] Error loading database registries:', e);
         } finally {
@@ -1366,7 +1355,8 @@ export default function SettingsHub() {
         setCargoForm({
             id: car.id,
             name: car.name || '',
-            description: car.description || '',
+            description: car.description || car.desc || '',
+            sectorId: car.sectorId || '',
             status: car.status || 'Ativo'
         });
         setShowCargoModal(true);
@@ -1375,49 +1365,67 @@ export default function SettingsHub() {
     const openCargoModalForCreate = () => {
         setEditingCargo(null);
         setCargoForm({
-            name: '', description: '', status: 'Ativo'
+            name: '', description: '', sectorId: '', status: 'Ativo'
         });
         setShowCargoModal(true);
     };
 
-    const handleSaveCargo = (e) => {
+    const handleSaveCargo = async (e) => {
         e.preventDefault();
         
-        let updatedCargos = [...cargos];
+        const payload = {
+            ...cargoForm,
+            name: cargoForm.name.trim(),
+            sectorId: cargoForm.sectorId ? Number(cargoForm.sectorId) : null
+        };
         if (editingCargo) {
-            updatedCargos = cargos.map(c => String(c.id) === String(editingCargo.id) ? { ...c, ...cargoForm, name: cargoForm.name.trim() } : c);
+            payload.id = editingCargo.id;
         } else {
-            const newCargo = {
-                ...cargoForm,
-                name: cargoForm.name.trim(),
-                id: Date.now()
-            };
-            updatedCargos.push(newCargo);
+            delete payload.id;
         }
 
-        setCargos(updatedCargos);
-        localStorage.setItem('corellux_cargos', JSON.stringify(updatedCargos));
-        showToast('Cargo gravado com sucesso!', 'success');
+        const result = await DbService.saveArea(payload);
+        if (result.success) {
+            showToast('Cargo gravado com sucesso!', 'success');
+        } else {
+            showToast('[Aviso] Gravado em cache local offline.', 'warning');
+        }
         setShowCargoModal(false);
+        // Refresh cargo list
+        const areasData = await DbService.getAreas();
+        setCargos(areasData);
     };
 
     // Confirm modals delete helpers
-    const confirmDeleteCargo = () => {
+    const confirmDeleteCargo = async () => {
         if (!cargoToDelete) return;
         const car = cargoToDelete;
         setCargoToDelete(null);
 
-        const updatedCargos = cargos.filter(c => String(c.id) !== String(car.id));
-        setCargos(updatedCargos);
-        localStorage.setItem('corellux_cargos', JSON.stringify(updatedCargos));
-        showToast('Cargo excluído com sucesso.', 'success');
+        const result = await DbService.deleteArea(car.id);
+        if (result.success) {
+            showToast('Cargo excluído com sucesso.', 'success');
+        } else {
+            showToast('[Aviso] Removido no cache local offline.', 'warning');
+        }
+        // Refresh cargo list
+        const areasData = await DbService.getAreas();
+        setCargos(areasData);
     };
 
-    const handleToggleCargoStatus = (car) => {
+    const handleToggleCargoStatus = async (car) => {
         const newStatus = car.status === 'Ativo' ? 'Inativo' : 'Ativo';
-        const updatedCargos = cargos.map(c => String(c.id) === String(car.id) ? { ...c, status: newStatus } : c);
-        setCargos(updatedCargos);
-        localStorage.setItem('corellux_cargos', JSON.stringify(updatedCargos));
+        const updated = { 
+            ...car, 
+            status: newStatus,
+            sectorId: car.sectorId ? Number(car.sectorId) : null
+        };
+        setCargos(prev => prev.map(c => String(c.id) === String(car.id) ? { ...c, status: newStatus } : c));
+        
+        const result = await DbService.saveArea(updated);
+        // Refresh cargo list
+        const areasData = await DbService.getAreas();
+        setCargos(areasData);
     };
 
     const handleDeleteCargo = (car) => {
@@ -2639,6 +2647,7 @@ export default function SettingsHub() {
                                         <thead>
                                             <tr>
                                                 <th>Nome</th>
+                                                <th>Setor</th>
                                                 <th>Descrição</th>
                                                 <th style={{ width: '120px' }}>Status</th>
                                                 <th style={{ textAlign: 'center', width: '130px' }}>Ações</th>
@@ -2647,7 +2656,7 @@ export default function SettingsHub() {
                                         <tbody>
                                             {filteredCargos.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                                                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
                                                         Nenhum cargo encontrado.
                                                     </td>
                                                 </tr>
@@ -2662,7 +2671,13 @@ export default function SettingsHub() {
                                                                 <strong style={{ fontSize: '1rem' }}>{car.name}</strong>
                                                             </div>
                                                         </td>
-                                                        <td style={{ color: 'var(--text-secondary)' }}>{car.description || '-'}</td>
+                                                        <td style={{ color: 'var(--text-secondary)' }}>
+                                                            {(() => {
+                                                                const s = setores.find(sec => String(sec.id) === String(car.sectorId));
+                                                                return s ? s.name : '-';
+                                                            })()}
+                                                        </td>
+                                                        <td style={{ color: 'var(--text-secondary)' }}>{car.description || car.desc || '-'}</td>
                                                         <td style={{ width: '120px' }}>
                                                             <span className={`status-badge ${car.status === 'Ativo' ? 'badge-ativo' : 'badge-desligado'}`} style={{
                                                                 background: car.status === 'Ativo' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
@@ -5715,6 +5730,21 @@ export default function SettingsHub() {
                                     onChange={(e) => setCargoForm(prev => ({ ...prev, name: e.target.value }))}
                                     style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
                                 />
+                            </div>
+
+                            <div style={{ marginBottom: '1rem' }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Setor Vinculado</label>
+                                <select 
+                                    required 
+                                    value={cargoForm.sectorId || ''} 
+                                    onChange={(e) => setCargoForm(prev => ({ ...prev, sectorId: e.target.value }))}
+                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                >
+                                    <option value="">Selecione um setor...</option>
+                                    {setores.map(sec => (
+                                        <option key={sec.id} value={sec.id}>{sec.name}</option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div style={{ marginBottom: '1rem' }}>

@@ -22,7 +22,11 @@ function toCamelCase(obj) {
         
         // Tradução manual especial de chaves específicas se necessário
         let finalKey = camelKey;
-        if (key === 'description') finalKey = 'desc';
+        if (key === 'description') {
+            newObj['desc'] = toCamelCase(obj[key]);
+            newObj['description'] = toCamelCase(obj[key]);
+            continue;
+        }
         if (key === 'situacao') finalKey = 'situacao'; // manter
         if (key === 'sector_id') finalKey = 'sectorId';
         if (key === 'user_ids') finalKey = 'userIds';
@@ -42,11 +46,13 @@ function toSnakeCase(obj) {
     const newObj = {};
     for (const key of Object.keys(obj)) {
         let snakeKey = key;
-        if (key === 'desc') snakeKey = 'description';
+        if (key === 'desc' || key === 'description') {
+            newObj['description'] = toSnakeCase(obj[key]);
+        }
         else {
             snakeKey = key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+            newObj[snakeKey] = toSnakeCase(obj[key]);
         }
-        newObj[snakeKey] = toSnakeCase(obj[key]);
     }
     return newObj;
 }
@@ -409,6 +415,103 @@ export const DbService = {
         } catch (e) {
             console.error('[DbService] Erro ao buscar áreas. Usando fallback local:', e.message || e);
             return mockData.areas || [];
+        }
+    },
+
+    async saveArea(area) {
+        try {
+            const snakeArea = toSnakeCase(area);
+            let result;
+            if (area.id) {
+                result = await supabase
+                    .from('areas')
+                    .update(snakeArea)
+                    .eq('id', area.id)
+                    .select();
+            } else {
+                delete snakeArea.id;
+                result = await supabase
+                    .from('areas')
+                    .insert([snakeArea])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            const saved = toCamelCase(result.data[0]);
+
+            // Sync local on success
+            const local = localStorage.getItem('corellux_cargos');
+            let list = [];
+            if (local) {
+                try {
+                    list = JSON.parse(local);
+                } catch (err) {
+                    list = [...mockData.areas];
+                }
+            } else {
+                list = [...mockData.areas];
+            }
+            const idx = list.findIndex(a => String(a.id) === String(saved.id));
+            if (idx !== -1) {
+                list[idx] = saved;
+            } else {
+                list.push(saved);
+            }
+            localStorage.setItem('corellux_cargos', JSON.stringify(list));
+
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar cargo no Supabase. Gravando localmente:', e.message || e);
+            const local = localStorage.getItem('corellux_cargos');
+            let list = [];
+            if (local) {
+                try {
+                    list = JSON.parse(local);
+                } catch (err) {
+                    list = [...mockData.areas];
+                }
+            } else {
+                list = [...mockData.areas];
+            }
+            const newArea = {
+                ...area,
+                id: area.id || Date.now() + Math.floor(Math.random() * 1000)
+            };
+            const idx = list.findIndex(a => String(a.id) === String(newArea.id));
+            if (idx !== -1) {
+                list[idx] = newArea;
+            } else {
+                list.push(newArea);
+            }
+            localStorage.setItem('corellux_cargos', JSON.stringify(list));
+            return { success: true, data: newArea };
+        }
+    },
+
+    async deleteArea(id) {
+        try {
+            const { error } = await supabase
+                .from('areas')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
+
+            // Sync local
+            const local = localStorage.getItem('corellux_cargos');
+            if (local) {
+                const list = JSON.parse(local);
+                const updated = list.filter(a => String(a.id) !== String(id));
+                localStorage.setItem('corellux_cargos', JSON.stringify(updated));
+            }
+            return { success: true };
+        } catch (e) {
+            console.warn('[DbService] Erro ao excluir cargo no Supabase. Atualizando localmente:', e.message || e);
+            const local = localStorage.getItem('corellux_cargos');
+            if (local) {
+                const list = JSON.parse(local);
+                const updated = list.filter(a => String(a.id) !== String(id));
+                localStorage.setItem('corellux_cargos', JSON.stringify(updated));
+            }
+            return { success: true };
         }
     },
 
