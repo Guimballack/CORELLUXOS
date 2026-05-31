@@ -5438,7 +5438,16 @@ export default function SettingsHub() {
 
                                         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '250px', paddingRight: '0.2rem' }}>
                                             {(() => {
+                                                const selectedCats = fornForm.fomentCategories || [];
+                                                if (selectedCats.length === 0) {
+                                                    return (
+                                                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontStyle: 'italic', textAlign: 'center', padding: '2rem 1rem' }}>
+                                                            Selecione uma ou mais categorias ao lado para listar os insumos correspondentes.
+                                                        </p>
+                                                    );
+                                                }
                                                 const filteredProds = produtos.filter(p => {
+                                                    if (!selectedCats.includes(p.category)) return false;
                                                     const s = fomentProdSearch.toLowerCase().trim();
                                                     if (!s) return true;
                                                     return (p.name || '').toLowerCase().includes(s) || (p.sku || '').toLowerCase().includes(s);
