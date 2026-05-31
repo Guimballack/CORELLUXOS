@@ -73,6 +73,7 @@ export default function CentralHub() {
     const [composeMessage, setComposeMessage] = useState('');
     const [composePriority, setComposePriority] = useState('normal'); // 'normal', 'urgente'
     const [charCount, setCharCount] = useState(0);
+    const [isComposeModalOpen, setIsComposeModalOpen] = useState(false);
 
     // Checklist Execution States
     const [activeModelForExecution, setActiveModelForExecution] = useState(null);
@@ -220,7 +221,7 @@ export default function CentralHub() {
     };
 
     const handleSelectAll = () => {
-        const activeUsers = appUsers.filter(u => u.status === 'Ativo');
+        const activeUsers = appUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id);
         if (selectedUserIds.length === activeUsers.length) {
             setKey('selectedUserIds', []);
         } else {
@@ -230,7 +231,7 @@ export default function CentralHub() {
 
     const handleSelectBySector = (sectorName) => {
         const matchedUsers = appUsers.filter(u => {
-            if (u.status !== 'Ativo') return false;
+            if (u.status !== 'Ativo' || u.id === currentUser.id) return false;
             const role = (u.role || '').toLowerCase();
             const sector = sectorName.toLowerCase();
             if (sector === 'cozinha' && (role === 'cozinha' || role === 'chef' || role === 'cozinheiro' || role === 'produção')) return true;
@@ -262,7 +263,7 @@ export default function CentralHub() {
             matchedUsers = appUsers.filter(u => ['administrador', 'gerente', 'supervisor', 'administração'].includes((u.role || '').toLowerCase()));
         }
 
-        const matchedIds = matchedUsers.filter(u => u.status === 'Ativo').map(u => u.id);
+        const matchedIds = matchedUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id).map(u => u.id);
         const allSelected = matchedIds.every(id => selectedUserIds.includes(id));
 
         if (allSelected) {
@@ -352,6 +353,7 @@ export default function CentralHub() {
             if (fileInputRef.current) fileInputRef.current.value = '';
             showSystemAlert('Aviso enviado com sucesso!', 'Sucesso');
             setActiveTab('feed');
+            setIsComposeModalOpen(false);
         }
     };
 
@@ -655,7 +657,7 @@ export default function CentralHub() {
     };
 
     return (
-        <div className="screen active with-header" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: activeTab === 'compose' || activeTab === 'feed' ? 'hidden' : 'auto' }}>
+        <div className="screen active with-header" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: isComposeModalOpen || activeTab === 'feed' ? 'hidden' : 'auto' }}>
             {/* INCLUIR STYLES ADICIONAIS DO CHECKLIST E CONSTRUTOR */}
             <style dangerouslySetInnerHTML={{__html: `
                 .central-content-container {
@@ -1093,6 +1095,25 @@ export default function CentralHub() {
                     margin-top: 0.5rem;
                     display: block;
                 }
+
+                /* Custom employee selection styles inside compose modal */
+                .modal-overlay .employee-grid .selection-card {
+                    background: transparent !important;
+                    border: none !important;
+                    box-shadow: none !important;
+                    transform: none !important;
+                }
+                .modal-overlay .employee-grid .selection-card:hover {
+                    background: transparent !important;
+                    transform: translateY(-2px) !important;
+                }
+                .modal-overlay .employee-grid .selection-card.selected {
+                    background: transparent !important;
+                    border: none !important;
+                }
+                .modal-overlay .employee-grid .selection-card.selected::after {
+                    display: none !important; /* Hide checkmark icon */
+                }
             `}} />
 
 
@@ -1149,7 +1170,7 @@ export default function CentralHub() {
             )}
 
             {/* CONTEÚDO PRINCIPAL */}
-            <div className="central-content-container" style={{ overflowY: activeTab === 'compose' || activeTab === 'feed' ? 'hidden' : 'auto' }}>
+            <div className="central-content-container" style={{ overflowY: isComposeModalOpen || activeTab === 'feed' ? 'hidden' : 'auto' }}>
                 {activeTab === 'menu' && (
                     <div className="dashboard-menu">
                         <button 
@@ -1179,7 +1200,7 @@ export default function CentralHub() {
                         ) : (
                             <button 
                                 className="menu-card blue" 
-                                onClick={() => setActiveTab('compose')}
+                                onClick={() => setIsComposeModalOpen(true)}
                             >
                                 <div className="card-icon"><Send size={24} /></div>
                                 <div className="card-content">
@@ -1276,288 +1297,6 @@ export default function CentralHub() {
                             </div>
                         )}
                     </>
-                )}
-
-                {activeTab === 'compose' && (
-                    /* ABA ENVIAR AVISO */
-                    <div 
-                        className="central-form-panel" 
-                        style={{ 
-                            width: '100%', 
-                            height: '100%', 
-                            overflow: 'hidden',
-                            background: 'none',
-                            border: 'none',
-                            borderRadius: 0,
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '0'
-                        }}
-                    >
-                        {/* Panel Header */}
-                        <div className="panel-header" style={{ padding: '0.75rem 1.2rem', marginBottom: '0.8rem', flexShrink: 0 }}>
-                            <h3 style={{ fontSize: '0.9rem', color: 'var(--accent-orange)', display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>
-                                <Send size={14} /> COMPOR NOVO AVISO
-                            </h3>
-                        </div>
-
-                        {/* Two-column grid */}
-                        <div 
-                            style={{ 
-                                flex: 1,
-                                display: 'grid',
-                                gridTemplateColumns: '1fr 1fr',
-                                gap: '1rem',
-                                overflow: 'hidden',
-                                minHeight: 0
-                            }}
-                        >
-                            {/* Left Column: Recipient Selection */}
-                            <div 
-                                style={{ 
-                                    display: 'flex', 
-                                    flexDirection: 'column', 
-                                    overflow: 'hidden',
-                                    gap: '0.7rem'
-                                }}
-                            >
-                                {/* Header row */}
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px' }}>
-                                        DESTINATÁRIOS <span style={{ color: 'var(--accent-orange)', fontWeight: 800 }}>({selectedUserIds.length})</span>
-                                    </label>
-                                    <button className="btn-select-all" onClick={handleSelectAll} style={{ padding: '0.3rem 0.7rem', fontSize: '0.7rem' }}>
-                                        <CheckCheck size={12} style={{ marginRight: '0.25rem', display: 'inline-block', verticalAlign: 'middle' }} />
-                                        {selectedUserIds.length === appUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id).length ? 'Desmarcar Todos' : 'Selecionar Todos'}
-                                    </button>
-                                </div>
-
-                                {/* Sub-tabs */}
-                                <div style={{ display: 'flex', gap: '0.2rem', background: 'rgba(0,0,0,0.25)', padding: '0.2rem', borderRadius: '8px', border: '1px solid var(--border-color)', flexShrink: 0 }}>
-                                    {[
-                                        { id: 'users', icon: 'fa-user', label: 'Colaboradores' },
-                                        { id: 'sectors', icon: 'fa-network-wired', label: 'Setores' },
-                                        { id: 'areas', icon: 'fa-layer-group', label: 'Cargos' }
-                                    ].map(tab => (
-                                        <button 
-                                            key={tab.id}
-                                            type="button" 
-                                            onClick={() => setRecipientSubTab(tab.id)} 
-                                            style={{ 
-                                                flex: 1, border: 'none', padding: '0.4rem 0.4rem', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', fontSize: '0.75rem',
-                                                color: recipientSubTab === tab.id ? 'white' : 'var(--text-secondary)', 
-                                                background: recipientSubTab === tab.id ? 'var(--accent-orange)' : 'transparent', 
-                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', outline: 'none', transition: 'all 0.2s'
-                                            }}
-                                        >
-                                            <i className={`fas ${tab.icon}`} style={{ fontSize: '0.7rem' }}></i> {tab.label}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                {/* Cards Grid */}
-                                <div 
-                                    className="user-selection-grid"
-                                    style={{
-                                        gridTemplateColumns: recipientSubTab === 'users' ? 'repeat(auto-fill, minmax(95px, 1fr))' : 'repeat(auto-fill, minmax(120px, 1fr))',
-                                        flex: 1,
-                                        maxHeight: 'unset',
-                                        overflowY: 'auto',
-                                        gap: '0.6rem',
-                                        alignContent: 'start',
-                                        display: 'grid'
-                                    }}
-                                >
-                                    {recipientSubTab === 'users' && (
-                                        appUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id).map(user => {
-                                            const isSelected = selectedUserIds.includes(user.id);
-                                            return (
-                                                <div 
-                                                    key={user.id} 
-                                                    className={`selection-card ${isSelected ? 'selected' : ''}`} 
-                                                    onClick={() => handleToggleUser(user.id)} 
-                                                    style={{ 
-                                                        padding: '0.6rem 0.4rem',
-                                                        background: isSelected ? 'rgba(243, 107, 29, 0.1)' : 'transparent',
-                                                        border: isSelected ? '1px solid var(--accent-orange)' : '1px solid transparent',
-                                                        boxShadow: 'none'
-                                                    }}
-                                                >
-                                                    <img src={getUserAvatar(user.img)} alt={user.name} className="sel-avatar" style={{ width: '36px', height: '36px', marginBottom: '0.4rem' }} />
-                                                    <h4 style={{ fontSize: '0.75rem', marginBottom: '0.1rem' }}>{user.displayName || user.name}</h4>
-                                                    <p style={{ fontSize: '0.62rem' }}>{user.role}</p>
-                                                </div>
-                                            );
-                                        })
-                                    )}
-                                    {recipientSubTab === 'sectors' && (
-                                        sectors.filter(s => s.status === 'Ativo').map(sector => {
-                                            const sectorUsers = appUsers.filter(u => {
-                                                if (u.status !== 'Ativo' || u.id === currentUser.id) return false;
-                                                const role = (u.role || '').toLowerCase().trim();
-                                                const sec = sector.name.toLowerCase().trim();
-                                                if (sec === 'cozinha' && ['cozinha', 'chef', 'cozinheiro', 'produção'].includes(role)) return true;
-                                                if (sec === 'estoque' && ['estoque', 'estoquista', 'almoxarife'].includes(role)) return true;
-                                                if (sec === 'salão' && ['salão', 'garçom', 'atendente', 'caixa'].includes(role)) return true;
-                                                if (sec === 'administração' && ['administração', 'gerente', 'supervisor', 'administrador'].includes(role)) return true;
-                                                return role === sec;
-                                            });
-                                            const isSelected = sectorUsers.length > 0 && sectorUsers.every(u => selectedUserIds.includes(u.id));
-                                            const colorClass = sector.color || 'color-orange';
-                                            return (
-                                                <div 
-                                                    key={sector.id} 
-                                                    className={`selection-card ${isSelected ? 'selected' : ''}`} 
-                                                    onClick={() => handleSelectBySector(sector.name)} 
-                                                    style={{ 
-                                                        minHeight: '100px', 
-                                                        justifyContent: 'center', 
-                                                        padding: '0.6rem 0.4rem',
-                                                        background: isSelected ? 'rgba(243, 107, 29, 0.1)' : 'transparent',
-                                                        border: isSelected ? '1px solid var(--accent-orange)' : '1px solid transparent',
-                                                        boxShadow: 'none'
-                                                    }}
-                                                >
-                                                    <div className={`sector-icon-badge ${colorClass}`} style={{ width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', marginBottom: '0.5rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                                        <i className={`fas ${sector.icon || 'fa-network-wired'}`}></i>
-                                                    </div>
-                                                    <h4 style={{ margin: 0, fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: 700 }}>{sector.name}</h4>
-                                                    <p style={{ margin: '0.15rem 0 0', fontSize: '0.62rem', color: 'var(--text-secondary)' }}>{sectorUsers.length} colab.</p>
-                                                </div>
-                                            );
-                                        })
-                                    )}
-                                    {recipientSubTab === 'areas' && (
-                                        areas.filter(a => a.status === 'Ativo').map(area => {
-                                            let areaUsers = [];
-                                            if ([1, 2, 3].includes(area.id)) areaUsers = appUsers.filter(u => ['cozinha', 'chef', 'cozinheiro', 'produção'].includes((u.role || '').toLowerCase()));
-                                            else if ([4, 5, 6].includes(area.id)) areaUsers = appUsers.filter(u => ['garçom', 'atendente', 'caixa', 'salão'].includes((u.role || '').toLowerCase()));
-                                            else if ([7, 8, 9].includes(area.id)) areaUsers = appUsers.filter(u => ['estoquista', 'almoxarife', 'estoque'].includes((u.role || '').toLowerCase()));
-                                            else if (area.id === 10) areaUsers = appUsers.filter(u => ['administrador', 'gerente', 'supervisor', 'administração'].includes((u.role || '').toLowerCase()));
-                                            const areaUsersFiltered = areaUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id);
-                                            const isSelected = areaUsersFiltered.length > 0 && areaUsersFiltered.every(u => selectedUserIds.includes(u.id));
-                                            const parentSector = sectors.find(s => s.id === area.sectorId) || { name: 'Geral', color: 'color-blue' };
-                                            const colorClass = parentSector.color || 'color-blue';
-                                            return (
-                                                <div 
-                                                    key={area.id} 
-                                                    className={`selection-card ${isSelected ? 'selected' : ''}`} 
-                                                    onClick={() => handleSelectByArea(area.id)} 
-                                                    style={{ 
-                                                        minHeight: '100px', 
-                                                        justifyContent: 'center', 
-                                                        padding: '0.6rem 0.4rem',
-                                                        background: isSelected ? 'rgba(243, 107, 29, 0.1)' : 'transparent',
-                                                        border: isSelected ? '1px solid var(--accent-orange)' : '1px solid transparent',
-                                                        boxShadow: 'none'
-                                                    }}
-                                                >
-                                                    <div className={`area-icon-badge ${colorClass}`} style={{ width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', marginBottom: '0.5rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                                                        <i className="fas fa-layer-group"></i>
-                                                    </div>
-                                                    <h4 style={{ margin: 0, fontSize: '0.72rem', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }} title={area.name}>{area.name}</h4>
-                                                    <span style={{ fontSize: '0.58rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '0.08rem 0.3rem', borderRadius: '4px', marginTop: '0.2rem', textTransform: 'uppercase' }}>{parentSector.name}</span>
-                                                    <p style={{ margin: '0.15rem 0 0', fontSize: '0.62rem', color: 'var(--text-secondary)' }}>{areaUsersFiltered.length} colab.</p>
-                                                </div>
-                                            );
-                                        })
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Right Column: Message Composer */}
-                             <div 
-                                 style={{ 
-                                     display: 'flex', 
-                                     flexDirection: 'column', 
-                                     overflow: 'hidden',
-                                     gap: '0.8rem'
-                                 }}
-                             >
-                                 <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px', flexShrink: 0 }}>MENSAGEM DO AVISO *</label>
-                                 
-                                 {/* Message Wrapper */}
-                                 <div 
-                                     className="message-input-wrapper" 
-                                     style={{ 
-                                         flex: 1, 
-                                         display: 'flex', 
-                                         flexDirection: 'column', 
-                                         gap: '0.8rem', 
-                                         padding: '1.2rem',
-                                         marginTop: 0,
-                                         overflow: 'hidden',
-                                         minHeight: 0
-                                     }}
-                                 >
-                                     <textarea 
-                                         id="notif-message-input" 
-                                         placeholder="O que você deseja comunicar à equipe?" 
-                                         value={composeMessage} 
-                                         onChange={handleMessageChange} 
-                                         maxLength={500}
-                                         style={{ flex: 1, height: 'auto', minHeight: '60px', resize: 'none', fontSize: '0.95rem' }}
-                                     />
-                                     
-                                     {state.pendingAttachment && (
-                                         <div className="attachment-preview" style={{ display: 'flex', alignItems: 'center', padding: '0.4rem 0.8rem', flexShrink: 0 }}>
-                                             <FileText size={13} />
-                                             <span style={{ marginLeft: '0.4rem', marginRight: '0.4rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{state.pendingAttachment.name}</span>
-                                             <button className="btn-remove-attachment" onClick={handleRemoveAttachment} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                                                 <X size={12} />
-                                             </button>
-                                         </div>
-                                     )}
-                                     
-                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', flexShrink: 0 }}>
-                                         <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleAttachmentSelect} accept="image/*,.pdf" />
-                                         <button className="btn-attach" onClick={() => fileInputRef.current.click()} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.35rem 0.7rem', borderRadius: '7px', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                             <Paperclip size={12} /> Imagem/PDF
-                                         </button>
-                                         <button className="btn-attach" onClick={handleInsertGovSignature} style={{ background: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.3)', color: '#60a5fa', fontSize: '0.72rem', padding: '0.35rem 0.7rem', borderRadius: '7px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                             <Signature size={12} /> Assinatura Digital
-                                         </button>
-                                         
-                                         {/* Inline Priority selector */}
-                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginLeft: '0.5rem', borderLeft: '1px solid var(--border-color)', paddingLeft: '0.8rem' }}>
-                                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#fff', fontSize: '0.72rem', fontWeight: 500 }}>
-                                                 <input type="radio" name="priority" value="normal" checked={composePriority === 'normal'} onChange={() => setComposePriority('normal')} style={{ accentColor: 'var(--accent-orange)' }} /> Normal
-                                             </label>
-                                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#f87171', fontSize: '0.72rem', fontWeight: 500 }}>
-                                                 <input type="radio" name="priority" value="urgente" checked={composePriority === 'urgente'} onChange={() => setComposePriority('urgente')} style={{ accentColor: '#ef4444' }} /> Urgente
-                                             </label>
-                                         </div>
-
-                                         <span style={{ color: charCount > 450 ? '#ef4444' : 'var(--text-secondary)', fontSize: '0.72rem', marginLeft: 'auto' }}>{charCount} / 500</span>
-                                         
-                                         <button 
-                                             className="btn-send-notif" 
-                                             disabled={!composeMessage.trim() || selectedUserIds.length === 0} 
-                                             onClick={handleSendNotification}
-                                             style={{ 
-                                                 opacity: (!composeMessage.trim() || selectedUserIds.length === 0) ? 0.6 : 1, 
-                                                 cursor: (!composeMessage.trim() || selectedUserIds.length === 0) ? 'not-allowed' : 'pointer',
-                                                 padding: '0.5rem 1.2rem',
-                                                 fontSize: '0.78rem',
-                                                 borderRadius: '8px',
-                                                 marginLeft: '0.5rem',
-                                                 flexShrink: 0
-                                             }}
-                                         >
-                                             <span>DISPARAR AVISO</span>
-                                             <Send size={12} />
-                                         </button>
-                                     </div>
-                                 </div>
-                                 
-                                 {/* Disclaimer */}
-                                 <p className="notif-disclaimer" style={{ margin: '0.2rem 0 0 0', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-                                     <Info size={12} style={{ marginRight: '0.25rem', display: 'inline-block', verticalAlign: 'middle' }} />
-                                     Aviso enviado instantaneamente para os selecionados.
-                                 </p>
-                             </div>
-                        </div>
-                    </div>
                 )}
 
 
@@ -2030,6 +1769,311 @@ export default function CentralHub() {
                     </>
                 )}
             </div>
+
+            {/* MODAL PARA COMPOR NOVO AVISO */}
+            {isComposeModalOpen && createPortal(
+                <div className="modal-overlay" onClick={() => setIsComposeModalOpen(false)} style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                    <div 
+                        className="confirm-modal-content" 
+                        onClick={(e) => e.stopPropagation()} 
+                        style={{ 
+                            width: '1100px', 
+                            maxWidth: '95vw', 
+                            maxHeight: '90vh', 
+                            display: 'flex', 
+                            flexDirection: 'column',
+                            padding: '1.5rem',
+                            background: 'var(--bg-card)',
+                            border: '1px solid var(--border-color)',
+                            borderRadius: '16px',
+                            boxShadow: '0 10px 30px rgba(0, 0, 0, 0.5)',
+                            overflow: 'hidden'
+                        }}
+                    >
+                        {/* Modal Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', marginBottom: '1.2rem', flexShrink: 0 }}>
+                            <h3 style={{ fontSize: '1.05rem', color: 'var(--accent-orange)', display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0, fontWeight: 700 }}>
+                                <Send size={16} /> COMPOR NOVO AVISO
+                            </h3>
+                            <button 
+                                onClick={() => setIsComposeModalOpen(false)} 
+                                style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0.2rem' }}
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Two-column grid */}
+                        <div 
+                            style={{ 
+                                flex: 1,
+                                display: 'grid',
+                                gridTemplateColumns: '1fr 1fr',
+                                gap: '1.5rem',
+                                overflow: 'hidden',
+                                minHeight: 0
+                            }}
+                        >
+                            {/* Left Column: Recipient Selection */}
+                            <div 
+                                style={{ 
+                                    display: 'flex', 
+                                    flexDirection: 'column', 
+                                    overflow: 'hidden',
+                                    gap: '0.7rem'
+                                }}
+                            >
+                                {/* Header row */}
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                                    <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px' }}>
+                                        DESTINATÁRIOS <span style={{ color: 'var(--accent-orange)', fontWeight: 800 }}>({selectedUserIds.length})</span>
+                                    </label>
+                                    <button className="btn-select-all" onClick={handleSelectAll} style={{ padding: '0.35rem 0.8rem', fontSize: '0.75rem' }}>
+                                        <CheckCheck size={12} style={{ marginRight: '0.25rem', display: 'inline-block', verticalAlign: 'middle' }} />
+                                        {selectedUserIds.length === appUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id).length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                                    </button>
+                                </div>
+
+                                {/* Sub-tabs */}
+                                <div style={{ display: 'flex', gap: '0.25rem', background: 'rgba(0,0,0,0.25)', padding: '0.25rem', borderRadius: '8px', border: '1px solid var(--border-color)', flexShrink: 0 }}>
+                                    {[
+                                        { id: 'users', icon: 'fa-user', label: 'Colaboradores' },
+                                        { id: 'sectors', icon: 'fa-network-wired', label: 'Setores' },
+                                        { id: 'areas', icon: 'fa-layer-group', label: 'Cargos' }
+                                    ].map(tab => (
+                                        <button 
+                                            key={tab.id}
+                                            type="button" 
+                                            onClick={() => setRecipientSubTab(tab.id)} 
+                                            style={{ 
+                                                flex: 1, border: 'none', padding: '0.5rem 0.5rem', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', fontSize: '0.78rem',
+                                                color: recipientSubTab === tab.id ? 'white' : 'var(--text-secondary)', 
+                                                background: recipientSubTab === tab.id ? 'var(--accent-orange)' : 'transparent', 
+                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', outline: 'none', transition: 'all 0.2s'
+                                            }}
+                                        >
+                                            <i className={`fas ${tab.icon}`} style={{ fontSize: '0.75rem' }}></i> {tab.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* Cards Grid */}
+                                <div 
+                                    className={`user-selection-grid ${recipientSubTab === 'users' ? 'employee-grid' : 'category-grid'}`}
+                                    style={{
+                                        gridTemplateColumns: recipientSubTab === 'users' ? 'repeat(auto-fill, minmax(140px, 1fr))' : 'repeat(auto-fill, minmax(140px, 1fr))',
+                                        flex: 1,
+                                        maxHeight: 'unset',
+                                        overflowY: 'auto',
+                                        gap: '0.6rem',
+                                        alignContent: 'start',
+                                        display: 'grid'
+                                    }}
+                                >
+                                    {recipientSubTab === 'users' && (
+                                        appUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id).map(user => {
+                                            const isSelected = selectedUserIds.includes(user.id);
+                                            return (
+                                                <div 
+                                                    key={user.id} 
+                                                    className={`selection-card ${isSelected ? 'selected' : ''}`} 
+                                                    onClick={() => handleToggleUser(user.id)} 
+                                                    style={{ 
+                                                        padding: '0.5rem',
+                                                        background: 'transparent',
+                                                        border: 'none',
+                                                        boxShadow: 'none'
+                                                    }}
+                                                >
+                                                    <img 
+                                                        src={getUserAvatar(user.img)} 
+                                                        alt={user.name} 
+                                                        className="sel-avatar" 
+                                                        style={{ 
+                                                            width: '80px', 
+                                                            height: '80px', 
+                                                            borderRadius: '50%',
+                                                            objectFit: 'cover',
+                                                            marginBottom: '0.6rem',
+                                                            border: isSelected ? '3px solid var(--accent-orange)' : '3px solid transparent',
+                                                            transition: 'all 0.2s ease',
+                                                            boxShadow: isSelected ? '0 0 12px rgba(243, 107, 29, 0.4)' : 'none'
+                                                        }} 
+                                                    />
+                                                    <h4 style={{ fontSize: '0.95rem', marginBottom: '0.2rem', color: 'var(--text-primary)', fontWeight: '600' }}>{user.displayName || user.name}</h4>
+                                                    <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0 }}>{user.role}</p>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                    {recipientSubTab === 'sectors' && (
+                                        sectors.filter(s => s.status === 'Ativo').map(sector => {
+                                            const sectorUsers = appUsers.filter(u => {
+                                                if (u.status !== 'Ativo' || u.id === currentUser.id) return false;
+                                                const role = (u.role || '').toLowerCase().trim();
+                                                const sec = sector.name.toLowerCase().trim();
+                                                if (sec === 'cozinha' && ['cozinha', 'chef', 'cozinheiro', 'produção'].includes(role)) return true;
+                                                if (sec === 'estoque' && ['estoque', 'estoquista', 'almoxarife'].includes(role)) return true;
+                                                if (sec === 'salão' && ['salão', 'garçom', 'atendente', 'caixa'].includes(role)) return true;
+                                                if (sec === 'administração' && ['administração', 'gerente', 'supervisor', 'administrador'].includes(role)) return true;
+                                                return role === sec;
+                                            });
+                                            const isSelected = sectorUsers.length > 0 && sectorUsers.every(u => selectedUserIds.includes(u.id));
+                                            const colorClass = sector.color || 'color-orange';
+                                            return (
+                                                <div 
+                                                    key={sector.id} 
+                                                    className={`selection-card ${isSelected ? 'selected' : ''}`} 
+                                                    onClick={() => handleSelectBySector(sector.name)} 
+                                                    style={{ 
+                                                        minHeight: '115px', 
+                                                        justifyContent: 'center', 
+                                                        padding: '0.85rem 0.6rem',
+                                                        background: isSelected ? 'rgba(243, 107, 29, 0.1)' : 'var(--bg-card)',
+                                                        border: isSelected ? '1px solid var(--accent-orange)' : '1px solid var(--border-color)'
+                                                    }}
+                                                >
+                                                    <div className={`sector-icon-badge ${colorClass}`} style={{ width: '42px', height: '42px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', marginBottom: '0.6rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                        <i className={`fas ${sector.icon || 'fa-network-wired'}`}></i>
+                                                    </div>
+                                                    <h4 style={{ margin: 0, fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 700 }}>{sector.name}</h4>
+                                                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.68rem', color: 'var(--text-secondary)' }}>{sectorUsers.length} colab.</p>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                    {recipientSubTab === 'areas' && (
+                                        areas.filter(a => a.status === 'Ativo').map(area => {
+                                            let areaUsers = [];
+                                            if ([1, 2, 3].includes(area.id)) areaUsers = appUsers.filter(u => ['cozinha', 'chef', 'cozinheiro', 'produção'].includes((u.role || '').toLowerCase()));
+                                            else if ([4, 5, 6].includes(area.id)) areaUsers = appUsers.filter(u => ['garçom', 'atendente', 'caixa', 'salão'].includes((u.role || '').toLowerCase()));
+                                            else if ([7, 8, 9].includes(area.id)) areaUsers = appUsers.filter(u => ['estoquista', 'almoxarife', 'estoque'].includes((u.role || '').toLowerCase()));
+                                            else if (area.id === 10) areaUsers = appUsers.filter(u => ['administrador', 'gerente', 'supervisor', 'administração'].includes((u.role || '').toLowerCase()));
+                                            const areaUsersFiltered = areaUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id);
+                                            const isSelected = areaUsersFiltered.length > 0 && areaUsersFiltered.every(u => selectedUserIds.includes(u.id));
+                                            const parentSector = sectors.find(s => s.id === area.sectorId) || { name: 'Geral', color: 'color-blue' };
+                                            const colorClass = parentSector.color || 'color-blue';
+                                            return (
+                                                <div 
+                                                    key={area.id} 
+                                                    className={`selection-card ${isSelected ? 'selected' : ''}`} 
+                                                    onClick={() => handleSelectByArea(area.id)} 
+                                                    style={{ 
+                                                        minHeight: '115px', 
+                                                        justifyContent: 'center', 
+                                                        padding: '0.85rem 0.6rem',
+                                                        background: isSelected ? 'rgba(243, 107, 29, 0.1)' : 'var(--bg-card)',
+                                                        border: isSelected ? '1px solid var(--accent-orange)' : '1px solid var(--border-color)'
+                                                    }}
+                                                >
+                                                    <div className={`area-icon-badge ${colorClass}`} style={{ width: '42px', height: '42px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', marginBottom: '0.6rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                        <i className="fas fa-layer-group"></i>
+                                                    </div>
+                                                    <h4 style={{ margin: 0, fontSize: '0.8rem', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }} title={area.name}>{area.name}</h4>
+                                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '0.1rem 0.4rem', borderRadius: '4px', marginTop: '0.2rem', textTransform: 'uppercase' }}>{parentSector.name}</span>
+                                                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.68rem', color: 'var(--text-secondary)' }}>{areaUsersFiltered.length} colab.</p>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Right Column: Message Composer */}
+                            <div 
+                                style={{ 
+                                    display: 'flex', 
+                                    flexDirection: 'column', 
+                                    overflow: 'hidden',
+                                    gap: '0.8rem'
+                                }}
+                            >
+                                <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px', flexShrink: 0 }}>MENSAGEM DO AVISO *</label>
+                                
+                                {/* Message Wrapper */}
+                                <div 
+                                    className="message-input-wrapper" 
+                                    style={{ 
+                                        flex: 1, 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        gap: '0.8rem', 
+                                        padding: '1.2rem',
+                                        marginTop: 0,
+                                        overflow: 'hidden',
+                                        minHeight: 0
+                                    }}
+                                >
+                                    <textarea 
+                                        id="notif-message-input" 
+                                        placeholder="O que você deseja comunicar à equipe?" 
+                                        value={composeMessage} 
+                                        onChange={handleMessageChange} 
+                                        maxLength={500}
+                                        style={{ flex: 1, height: 'auto', minHeight: '60px', resize: 'none', fontSize: '0.95rem' }}
+                                    />
+                                    
+                                    {state.pendingAttachment && (
+                                        <div className="attachment-preview" style={{ display: 'flex', alignItems: 'center', padding: '0.4rem 0.8rem', flexShrink: 0 }}>
+                                            <FileText size={13} />
+                                            <span style={{ marginLeft: '0.4rem', marginRight: '0.4rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{state.pendingAttachment.name}</span>
+                                            <button className="btn-remove-attachment" onClick={handleRemoveAttachment} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                                                <X size={12} />
+                                            </button>
+                                        </div>
+                                    )}
+                                    
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', flexShrink: 0 }}>
+                                         <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleAttachmentSelect} accept="image/*,.pdf" />
+                                         <button className="btn-attach" onClick={() => fileInputRef.current.click()} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.35rem 0.7rem', borderRadius: '7px', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                             <Paperclip size={12} /> Imagem/PDF
+                                         </button>
+                                         <button className="btn-attach" onClick={handleInsertGovSignature} style={{ background: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.3)', color: '#60a5fa', fontSize: '0.72rem', padding: '0.35rem 0.7rem', borderRadius: '7px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                             <Signature size={12} /> Assinatura Digital
+                                         </button>
+                                         
+                                         {/* Inline Priority selector */}
+                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginLeft: '0.5rem', borderLeft: '1px solid var(--border-color)', paddingLeft: '0.8rem' }}>
+                                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#fff', fontSize: '0.72rem', fontWeight: 500 }}>
+                                                 <input type="radio" name="priority" value="normal" checked={composePriority === 'normal'} onChange={() => setComposePriority('normal')} style={{ accentColor: 'var(--accent-orange)' }} /> Normal
+                                             </label>
+                                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#f87171', fontSize: '0.72rem', fontWeight: 500 }}>
+                                                 <input type="radio" name="priority" value="urgente" checked={composePriority === 'urgente'} onChange={() => setComposePriority('urgente')} style={{ accentColor: '#ef4444' }} /> Urgente
+                                             </label>
+                                         </div>
+
+                                         <span style={{ color: charCount > 450 ? '#ef4444' : 'var(--text-secondary)', fontSize: '0.72rem', marginLeft: 'auto' }}>{charCount} / 500</span>
+                                         
+                                         <button 
+                                             className="btn-send-notif" 
+                                             disabled={!composeMessage.trim() || selectedUserIds.length === 0} 
+                                             onClick={handleSendNotification}
+                                             style={{ 
+                                                 opacity: (!composeMessage.trim() || selectedUserIds.length === 0) ? 0.6 : 1, 
+                                                 cursor: (!composeMessage.trim() || selectedUserIds.length === 0) ? 'not-allowed' : 'pointer',
+                                                 padding: '0.5rem 1.2rem',
+                                                 fontSize: '0.78rem',
+                                                 borderRadius: '8px',
+                                                 marginLeft: '0.5rem',
+                                                 flexShrink: 0
+                                             }}
+                                         >
+                                             <span>DISPARAR AVISO</span>
+                                             <Send size={12} />
+                                         </button>
+                                     </div>
+                                 </div>
+                                 
+                                 {/* Disclaimer */}
+                                 <p className="notif-disclaimer" style={{ margin: '0.2rem 0 0 0', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                                     <Info size={12} style={{ marginRight: '0.25rem', display: 'inline-block', verticalAlign: 'middle' }} />
+                                     Aviso enviado instantaneamente para os selecionados.
+                                 </p>
+                             </div>
+                        </div>
+                    </div>
+                </div>
+            , document.body)}
 
             {/* MODAL DETALHADO DO AVISO */}
             {activeNotification && createPortal(
