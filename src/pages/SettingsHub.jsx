@@ -1123,7 +1123,7 @@ export default function SettingsHub() {
     const [prodForm, setProdForm] = useState({
         sku: '', name: '', brand: '', category: '', 
         unit: 'KG', stock: 0, minStock: 0, avgStock: 0, maxStock: 0,
-        status: 'Ativo', desc: ''
+        status: 'Ativo', desc: '', primarySupplierId: '', secondarySupplierId: ''
     });
 
     const openProdModalForEdit = (prod) => {
@@ -1139,7 +1139,9 @@ export default function SettingsHub() {
             avgStock: prod.avgStock || 0,
             maxStock: prod.maxStock || 0,
             status: prod.status || 'Ativo',
-            desc: prod.desc || ''
+            desc: prod.desc || '',
+            primarySupplierId: prod.primarySupplierId || '',
+            secondarySupplierId: prod.secondarySupplierId || ''
         });
         setShowProdModal(true);
     };
@@ -1150,7 +1152,7 @@ export default function SettingsHub() {
             sku: '', name: '', brand: '', 
             category: categorias[0]?.name || '', 
             unit: 'KG', stock: 0, minStock: 0, avgStock: 0, maxStock: 0,
-            status: 'Ativo', desc: ''
+            status: 'Ativo', desc: '', primarySupplierId: '', secondarySupplierId: ''
         });
         setShowProdModal(true);
     };
@@ -1163,7 +1165,13 @@ export default function SettingsHub() {
             return;
         }
 
-        const result = await DbService.saveProduct(prodForm, editingProd ? editingProd.sku : null);
+        const payload = {
+            ...prodForm,
+            primarySupplierId: prodForm.primarySupplierId ? Number(prodForm.primarySupplierId) : null,
+            secondarySupplierId: prodForm.secondarySupplierId ? Number(prodForm.secondarySupplierId) : null
+        };
+
+        const result = await DbService.saveProduct(payload, editingProd ? editingProd.sku : null);
         if (result.success) {
             showToast('Produto gravado com sucesso!', 'success');
         } else {
@@ -2268,6 +2276,7 @@ export default function SettingsHub() {
                                                 <th>Marca</th>
                                                 <th>Unidade</th>
                                                 <th>Categoria</th>
+                                                <th>Fornecedores</th>
                                                 <th>Estoque</th>
                                                 <th style={{ width: '120px' }}>Status</th>
                                                 <th style={{ textAlign: 'center', width: '130px' }}>Ações</th>
@@ -2286,6 +2295,24 @@ export default function SettingsHub() {
                                                     <td><span style={{ color: 'var(--accent-orange)', fontWeight: '600', fontSize: '0.75rem', textTransform: 'uppercase' }}>{prod.brand || '-'}</span></td>
                                                     <td>{prod.unit}</td>
                                                     <td><span className="category-tag">{prod.category}</span></td>
+                                                    <td>
+                                                        <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                            <div>
+                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>1º: </span>
+                                                                <strong>{(() => {
+                                                                    const f = fornecedores.find(sup => String(sup.id) === String(prod.primarySupplierId));
+                                                                    return f ? (f.nomeFantasia || f.razaoSocial) : 'Sem Fornecedor';
+                                                                })()}</strong>
+                                                            </div>
+                                                            <div>
+                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>2º: </span>
+                                                                <span style={{ color: 'var(--text-secondary)' }}>{(() => {
+                                                                    const f = fornecedores.find(sup => String(sup.id) === String(prod.secondarySupplierId));
+                                                                    return f ? (f.nomeFantasia || f.razaoSocial) : 'Sem Fornecedor';
+                                                                })()}</span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
                                                     <td>{prod.stock}</td>
                                                     <td style={{ width: '120px' }}>
                                                         <span className={`status-badge ${prod.status === 'Ativo' ? 'badge-ativo' : 'badge-desligado'}`} style={{
@@ -4350,6 +4377,35 @@ export default function SettingsHub() {
                                         <option value="Bandeja">Bandeja (BDJ)</option>
                                         <option value="Fardo">Fardo (FRD)</option>
                                         <option value="Galão">Galão (GL)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Fornecedor Principal</label>
+                                    <select 
+                                        value={prodForm.primarySupplierId || ''}
+                                        onChange={(e) => setProdForm(prev => ({ ...prev, primarySupplierId: e.target.value }))}
+                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                    >
+                                        <option value="">Sem Fornecedor</option>
+                                        {fornecedores.map(f => (
+                                            <option key={f.id} value={f.id}>{f.nomeFantasia || f.razaoSocial}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Fornecedor Secundário</label>
+                                    <select 
+                                        value={prodForm.secondarySupplierId || ''}
+                                        onChange={(e) => setProdForm(prev => ({ ...prev, secondarySupplierId: e.target.value }))}
+                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                    >
+                                        <option value="">Sem Fornecedor</option>
+                                        {fornecedores.map(f => (
+                                            <option key={f.id} value={f.id}>{f.nomeFantasia || f.razaoSocial}</option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>
