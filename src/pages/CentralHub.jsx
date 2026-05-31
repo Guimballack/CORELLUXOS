@@ -69,7 +69,7 @@ export default function CentralHub() {
     const [activeExecutionDetail, setActiveExecutionDetail] = useState(null);
 
     // Form States (Avisos)
-    const [composeTitle, setComposeTitle] = useState('');
+    const [composeTitle, setComposeTitle] = useState('AVISO DO SISTEMA');
     const [composeMessage, setComposeMessage] = useState('');
     const [composePriority, setComposePriority] = useState('normal'); // 'normal', 'urgente'
     const [charCount, setCharCount] = useState(0);
@@ -319,15 +319,15 @@ export default function CentralHub() {
             showSystemAlert('Você não tem permissão para enviar avisos.', 'Acesso Negado');
             return;
         }
-        if (!composeTitle.trim() || !composeMessage.trim() || selectedUserIds.length === 0) {
-            showSystemAlert('Preencha todos os campos obrigatórios.', 'Atenção');
+        if (!composeMessage.trim() || selectedUserIds.length === 0) {
+            showSystemAlert('Preencha todos os campos obrigatórios (mensagem e destinatários).', 'Atenção');
             return;
         }
 
         const notif = {
             id: Date.now(),
             type: 'sistema',
-            title: composeTitle.toUpperCase(),
+            title: composeTitle.toUpperCase() || 'AVISO DO SISTEMA',
             message: composeMessage,
             priority: composePriority,
             sender: currentUser.name,
@@ -343,7 +343,7 @@ export default function CentralHub() {
         const result = await DbService.saveNotification(notif);
         if (result.success) {
             setKey('notifications', [result.data, ...notifications]);
-            setComposeTitle('');
+            setComposeTitle('AVISO DO SISTEMA');
             setComposeMessage('');
             setComposePriority('normal');
             setCharCount(0);
@@ -1318,10 +1318,6 @@ export default function CentralHub() {
                                     display: 'flex', 
                                     flexDirection: 'column', 
                                     overflow: 'hidden',
-                                    background: 'var(--bg-card)',
-                                    border: '1px solid var(--border-color)',
-                                    borderRadius: '12px',
-                                    padding: '1rem',
                                     gap: '0.7rem'
                                 }}
                             >
@@ -1376,7 +1372,17 @@ export default function CentralHub() {
                                         appUsers.filter(u => u.status === 'Ativo' && u.id !== currentUser.id).map(user => {
                                             const isSelected = selectedUserIds.includes(user.id);
                                             return (
-                                                <div key={user.id} className={`selection-card ${isSelected ? 'selected' : ''}`} onClick={() => handleToggleUser(user.id)} style={{ padding: '0.6rem 0.4rem' }}>
+                                                <div 
+                                                    key={user.id} 
+                                                    className={`selection-card ${isSelected ? 'selected' : ''}`} 
+                                                    onClick={() => handleToggleUser(user.id)} 
+                                                    style={{ 
+                                                        padding: '0.6rem 0.4rem',
+                                                        background: isSelected ? 'rgba(243, 107, 29, 0.1)' : 'transparent',
+                                                        border: isSelected ? '1px solid var(--accent-orange)' : '1px solid transparent',
+                                                        boxShadow: 'none'
+                                                    }}
+                                                >
                                                     <img src={getUserAvatar(user.img)} alt={user.name} className="sel-avatar" style={{ width: '36px', height: '36px', marginBottom: '0.4rem' }} />
                                                     <h4 style={{ fontSize: '0.75rem', marginBottom: '0.1rem' }}>{user.displayName || user.name}</h4>
                                                     <p style={{ fontSize: '0.62rem' }}>{user.role}</p>
@@ -1399,7 +1405,19 @@ export default function CentralHub() {
                                             const isSelected = sectorUsers.length > 0 && sectorUsers.every(u => selectedUserIds.includes(u.id));
                                             const colorClass = sector.color || 'color-orange';
                                             return (
-                                                <div key={sector.id} className={`selection-card ${isSelected ? 'selected' : ''}`} onClick={() => handleSelectBySector(sector.name)} style={{ minHeight: '100px', justifyContent: 'center', padding: '0.6rem 0.4rem' }}>
+                                                <div 
+                                                    key={sector.id} 
+                                                    className={`selection-card ${isSelected ? 'selected' : ''}`} 
+                                                    onClick={() => handleSelectBySector(sector.name)} 
+                                                    style={{ 
+                                                        minHeight: '100px', 
+                                                        justifyContent: 'center', 
+                                                        padding: '0.6rem 0.4rem',
+                                                        background: isSelected ? 'rgba(243, 107, 29, 0.1)' : 'transparent',
+                                                        border: isSelected ? '1px solid var(--accent-orange)' : '1px solid transparent',
+                                                        boxShadow: 'none'
+                                                    }}
+                                                >
                                                     <div className={`sector-icon-badge ${colorClass}`} style={{ width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', marginBottom: '0.5rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
                                                         <i className={`fas ${sector.icon || 'fa-network-wired'}`}></i>
                                                     </div>
@@ -1421,7 +1439,19 @@ export default function CentralHub() {
                                             const parentSector = sectors.find(s => s.id === area.sectorId) || { name: 'Geral', color: 'color-blue' };
                                             const colorClass = parentSector.color || 'color-blue';
                                             return (
-                                                <div key={area.id} className={`selection-card ${isSelected ? 'selected' : ''}`} onClick={() => handleSelectByArea(area.id)} style={{ minHeight: '100px', justifyContent: 'center', padding: '0.6rem 0.4rem' }}>
+                                                <div 
+                                                    key={area.id} 
+                                                    className={`selection-card ${isSelected ? 'selected' : ''}`} 
+                                                    onClick={() => handleSelectByArea(area.id)} 
+                                                    style={{ 
+                                                        minHeight: '100px', 
+                                                        justifyContent: 'center', 
+                                                        padding: '0.6rem 0.4rem',
+                                                        background: isSelected ? 'rgba(243, 107, 29, 0.1)' : 'transparent',
+                                                        border: isSelected ? '1px solid var(--accent-orange)' : '1px solid transparent',
+                                                        boxShadow: 'none'
+                                                    }}
+                                                >
                                                     <div className={`area-icon-badge ${colorClass}`} style={{ width: '34px', height: '34px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem', marginBottom: '0.5rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
                                                         <i className="fas fa-layer-group"></i>
                                                     </div>
@@ -1436,109 +1466,96 @@ export default function CentralHub() {
                             </div>
 
                             {/* Right Column: Message Composer */}
-                            <div 
-                                style={{ 
-                                    display: 'flex', 
-                                    flexDirection: 'column', 
-                                    overflow: 'hidden',
-                                    gap: '0.8rem'
-                                }}
-                            >
-                                {/* Title */}
-                                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '0.9rem 1rem', flexShrink: 0 }}>
-                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px', display: 'block', marginBottom: '0.45rem' }}>TÍTULO DO COMUNICADO *</label>
-                                    <input 
-                                        type="text" 
-                                        className="form-input" 
-                                        placeholder="Ex: REUNIÃO GERAL DE EQUIPE" 
-                                        value={composeTitle} 
-                                        onChange={(e) => setComposeTitle(e.target.value.toUpperCase())}
-                                        style={{ width: '100%', margin: 0 }}
-                                    />
-                                </div>
+                             <div 
+                                 style={{ 
+                                     display: 'flex', 
+                                     flexDirection: 'column', 
+                                     overflow: 'hidden',
+                                     gap: '0.8rem'
+                                 }}
+                             >
+                                 <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px', flexShrink: 0 }}>MENSAGEM DO AVISO *</label>
+                                 
+                                 {/* Message Wrapper */}
+                                 <div 
+                                     className="message-input-wrapper" 
+                                     style={{ 
+                                         flex: 1, 
+                                         display: 'flex', 
+                                         flexDirection: 'column', 
+                                         gap: '0.8rem', 
+                                         padding: '1.2rem',
+                                         marginTop: 0,
+                                         overflow: 'hidden',
+                                         minHeight: 0
+                                     }}
+                                 >
+                                     <textarea 
+                                         id="notif-message-input" 
+                                         placeholder="O que você deseja comunicar à equipe?" 
+                                         value={composeMessage} 
+                                         onChange={handleMessageChange} 
+                                         maxLength={500}
+                                         style={{ flex: 1, height: 'auto', minHeight: '60px', resize: 'none', fontSize: '0.95rem' }}
+                                     />
+                                     
+                                     {state.pendingAttachment && (
+                                         <div className="attachment-preview" style={{ display: 'flex', alignItems: 'center', padding: '0.4rem 0.8rem', flexShrink: 0 }}>
+                                             <FileText size={13} />
+                                             <span style={{ marginLeft: '0.4rem', marginRight: '0.4rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{state.pendingAttachment.name}</span>
+                                             <button className="btn-remove-attachment" onClick={handleRemoveAttachment} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                                                 <X size={12} />
+                                             </button>
+                                         </div>
+                                     )}
+                                     
+                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap', flexShrink: 0 }}>
+                                         <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleAttachmentSelect} accept="image/*,.pdf" />
+                                         <button className="btn-attach" onClick={() => fileInputRef.current.click()} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.35rem 0.7rem', borderRadius: '7px', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                             <Paperclip size={12} /> Imagem/PDF
+                                         </button>
+                                         <button className="btn-attach" onClick={handleInsertGovSignature} style={{ background: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.3)', color: '#60a5fa', fontSize: '0.72rem', padding: '0.35rem 0.7rem', borderRadius: '7px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                             <Signature size={12} /> Assinatura Digital
+                                         </button>
+                                         
+                                         {/* Inline Priority selector */}
+                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginLeft: '0.5rem', borderLeft: '1px solid var(--border-color)', paddingLeft: '0.8rem' }}>
+                                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#fff', fontSize: '0.72rem', fontWeight: 500 }}>
+                                                 <input type="radio" name="priority" value="normal" checked={composePriority === 'normal'} onChange={() => setComposePriority('normal')} style={{ accentColor: 'var(--accent-orange)' }} /> Normal
+                                             </label>
+                                             <label style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', cursor: 'pointer', color: '#f87171', fontSize: '0.72rem', fontWeight: 500 }}>
+                                                 <input type="radio" name="priority" value="urgente" checked={composePriority === 'urgente'} onChange={() => setComposePriority('urgente')} style={{ accentColor: '#ef4444' }} /> Urgente
+                                             </label>
+                                         </div>
 
-                                {/* Message Wrapper */}
-                                <div 
-                                    className="message-input-wrapper" 
-                                    style={{ 
-                                        flex: 1, 
-                                        display: 'flex', 
-                                        flexDirection: 'column', 
-                                        gap: '0.7rem', 
-                                        padding: '1rem',
-                                        marginTop: 0,
-                                        overflow: 'hidden',
-                                        minHeight: 0
-                                    }}
-                                >
-                                    <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px', flexShrink: 0 }}>MENSAGEM DO AVISO *</label>
-                                    <textarea 
-                                        id="notif-message-input" 
-                                        placeholder="O que você deseja comunicar à equipe?" 
-                                        value={composeMessage} 
-                                        onChange={handleMessageChange} 
-                                        maxLength={500}
-                                        style={{ flex: 1, height: 'auto', minHeight: '60px', resize: 'none', fontSize: '0.95rem' }}
-                                    />
-                                    
-                                    {state.pendingAttachment && (
-                                        <div className="attachment-preview" style={{ display: 'flex', alignItems: 'center', padding: '0.4rem 0.8rem', flexShrink: 0 }}>
-                                            <FileText size={13} />
-                                            <span style={{ marginLeft: '0.4rem', marginRight: '0.4rem', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.8rem' }}>{state.pendingAttachment.name}</span>
-                                            <button className="btn-remove-attachment" onClick={handleRemoveAttachment} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
-                                                <X size={12} />
-                                            </button>
-                                        </div>
-                                    )}
-                                    
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flexShrink: 0 }}>
-                                        <input type="file" ref={fileInputRef} style={{ display: 'none' }} onChange={handleAttachmentSelect} accept="image/*,.pdf" />
-                                        <button className="btn-attach" onClick={() => fileInputRef.current.click()} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.35rem 0.7rem', borderRadius: '7px', fontSize: '0.72rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                            <Paperclip size={12} /> Imagem/PDF
-                                        </button>
-                                        <button className="btn-attach" onClick={handleInsertGovSignature} style={{ background: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.3)', color: '#60a5fa', fontSize: '0.72rem', padding: '0.35rem 0.7rem', borderRadius: '7px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                            <Signature size={12} /> Assinatura Digital
-                                        </button>
-                                        <span style={{ marginLeft: 'auto', color: charCount > 450 ? '#ef4444' : 'var(--text-secondary)', fontSize: '0.75rem' }}>{charCount} / 500</span>
-                                    </div>
-                                </div>
-
-                                {/* Priority + Send */}
-                                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '0.9rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.7rem', flexShrink: 0 }}>
-                                    <div>
-                                        <label style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '1px', display: 'block', marginBottom: '0.45rem' }}>PRIORIDADE DO ALERTA</label>
-                                        <div style={{ display: 'flex', gap: '1.5rem' }}>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: '#fff', fontSize: '0.85rem', fontWeight: 500 }}>
-                                                <input type="radio" name="priority" value="normal" checked={composePriority === 'normal'} onChange={() => setComposePriority('normal')} style={{ accentColor: 'var(--accent-orange)' }} /> Normal
-                                            </label>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', color: '#f87171', fontSize: '0.85rem', fontWeight: 500 }}>
-                                                <input type="radio" name="priority" value="urgente" checked={composePriority === 'urgente'} onChange={() => setComposePriority('urgente')} style={{ accentColor: '#ef4444' }} /> Urgente
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem' }}>
-                                        <p className="notif-disclaimer" style={{ margin: 0, fontSize: '0.7rem' }}>
-                                            <Info size={12} style={{ marginRight: '0.25rem', display: 'inline-block', verticalAlign: 'middle' }} />
-                                            Aviso enviado instantaneamente para os selecionados.
-                                        </p>
-                                        <button 
-                                            className="btn-send-notif" 
-                                            disabled={!composeTitle.trim() || !composeMessage.trim() || selectedUserIds.length === 0} 
-                                            onClick={handleSendNotification}
-                                            style={{ 
-                                                opacity: (!composeTitle.trim() || !composeMessage.trim() || selectedUserIds.length === 0) ? 0.6 : 1, 
-                                                cursor: (!composeTitle.trim() || !composeMessage.trim() || selectedUserIds.length === 0) ? 'not-allowed' : 'pointer',
-                                                padding: '0.6rem 1.4rem',
-                                                fontSize: '0.8rem',
-                                                flexShrink: 0
-                                            }}
-                                        >
-                                            <span>DISPARAR AVISO</span>
-                                            <Send size={13} />
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+                                         <span style={{ color: charCount > 450 ? '#ef4444' : 'var(--text-secondary)', fontSize: '0.72rem', marginLeft: 'auto' }}>{charCount} / 500</span>
+                                         
+                                         <button 
+                                             className="btn-send-notif" 
+                                             disabled={!composeMessage.trim() || selectedUserIds.length === 0} 
+                                             onClick={handleSendNotification}
+                                             style={{ 
+                                                 opacity: (!composeMessage.trim() || selectedUserIds.length === 0) ? 0.6 : 1, 
+                                                 cursor: (!composeMessage.trim() || selectedUserIds.length === 0) ? 'not-allowed' : 'pointer',
+                                                 padding: '0.5rem 1.2rem',
+                                                 fontSize: '0.78rem',
+                                                 borderRadius: '8px',
+                                                 marginLeft: '0.5rem',
+                                                 flexShrink: 0
+                                             }}
+                                         >
+                                             <span>DISPARAR AVISO</span>
+                                             <Send size={12} />
+                                         </button>
+                                     </div>
+                                 </div>
+                                 
+                                 {/* Disclaimer */}
+                                 <p className="notif-disclaimer" style={{ margin: '0.2rem 0 0 0', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                                     <Info size={12} style={{ marginRight: '0.25rem', display: 'inline-block', verticalAlign: 'middle' }} />
+                                     Aviso enviado instantaneamente para os selecionados.
+                                 </p>
+                             </div>
                         </div>
                     </div>
                 )}
