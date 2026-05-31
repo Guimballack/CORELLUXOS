@@ -151,6 +151,7 @@ export default function SettingsHub() {
     const [searchForn, setSearchForn] = useState('');
     const [searchSector, setSearchSector] = useState('');
     const [searchCargo, setSearchCargo] = useState('');
+    const [fomentProdSearch, setFomentProdSearch] = useState('');
 
     // Modals control
     const [showColabModal, setShowColabModal] = useState(false);
@@ -1453,7 +1454,9 @@ export default function SettingsHub() {
         financeiro: { formaPagamento: '', prazoPagamento: '', limiteCredito: 0, banco: '', agencia: '', conta: '', pix: '', tipoChavePix: 'CNPJ' },
         logistica: { prazoEntrega: '', diasEntrega: '', transportadora: '', pedidoMinimo: 0, freteMinimo: 0, regiaoAtendimento: '' },
         ratings: { qualidade: 8, prazo: 8, atendimento: 8, preco: 8 },
-        blockInfo: { status: 'Ativo', motivo: '' }
+        blockInfo: { status: 'Ativo', motivo: '' },
+        fomentCategories: [],
+        fomentProducts: []
     });
 
     const openFornModalForEdit = (sup) => {
@@ -1530,8 +1533,11 @@ export default function SettingsHub() {
                 prazoEntrega: sup.logistica.prazoEntrega ? String(sup.logistica.prazoEntrega).replace(/\D/g, '') : ''
             } : { prazoEntrega: '', diasEntrega: '', transportadora: '', pedidoMinimo: 0, freteMinimo: 0, regiaoAtendimento: '' },
             ratings: sup.ratings || { qualidade: 8, prazo: 8, atendimento: 8, preco: 8 },
-            blockInfo: sup.blockInfo || { status: 'Ativo', motivo: '' }
+            blockInfo: sup.blockInfo || { status: 'Ativo', motivo: '' },
+            fomentCategories: sup.fomentCategories || [],
+            fomentProducts: sup.fomentProducts || []
         });
+        setFomentProdSearch('');
         setTempLinkedProducts(sup.linkedProducts || []);
         setTempNotes(sup.notes || []);
         setFornActiveSection('geral');
@@ -1550,8 +1556,11 @@ export default function SettingsHub() {
             financeiro: { formaPagamento: '', prazoPagamento: '', limiteCredito: 0, banco: '', agencia: '', conta: '', pix: '', tipoChavePix: 'CNPJ' },
             logistica: { prazoEntrega: '', diasEntrega: '', transportadora: '', pedidoMinimo: 0, freteMinimo: 0, regiaoAtendimento: '' },
             ratings: { qualidade: 8, prazo: 8, atendimento: 8, preco: 8 },
-            blockInfo: { status: 'Ativo', motivo: '' }
+            blockInfo: { status: 'Ativo', motivo: '' },
+            fomentCategories: [],
+            fomentProducts: []
         });
+        setFomentProdSearch('');
         setTempLinkedProducts([]);
         setTempNotes([]);
         setFornActiveSection('geral');
@@ -1701,6 +1710,26 @@ export default function SettingsHub() {
         };
         setTempNotes(prev => [newNote, ...prev]);
         setNewNoteText('');
+    };
+
+    const handleToggleFomentCategory = (catName) => {
+        setFornForm(prev => {
+            const current = prev.fomentCategories || [];
+            const next = current.includes(catName)
+                ? current.filter(c => c !== catName)
+                : [...current, catName];
+            return { ...prev, fomentCategories: next };
+        });
+    };
+
+    const handleToggleFomentProduct = (prodSku) => {
+        setFornForm(prev => {
+            const current = prev.fomentProducts || [];
+            const next = current.includes(prodSku)
+                ? current.filter(p => p !== prodSku)
+                : [...current, prodSku];
+            return { ...prev, fomentProducts: next };
+        });
     };
 
     // Mappings and ratings helpers
@@ -4567,6 +4596,7 @@ export default function SettingsHub() {
                                     { id: 'financeiro', label: 'Financeiro' },
                                     { id: 'logistica', label: 'Logística' },
                                     { id: 'ratings', label: 'Avaliações' },
+                                    { id: 'fomento', label: 'Categorias/Insumos' },
                                     { id: 'notes', label: 'Observações' }
                                 ].map((sec) => (
                                     <button
@@ -5344,6 +5374,101 @@ export default function SettingsHub() {
                                                 </div>
                                             ))
                                         )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* SECTION CONTENT: FOMENTO (CATEGORIAS E INSUMOS) */}
+                            {fornActiveSection === 'fomento' && (
+                                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.8fr', gap: '1.5rem', height: '100%', minHeight: '380px' }}>
+                                    {/* Left Column: Categories */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem' }}>
+                                        <h4 style={{ fontSize: '0.95rem', color: 'var(--accent-orange)', fontWeight: '700', textTransform: 'uppercase', marginBottom: '0.2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+                                            <span>Categorias Fomentadas</span>
+                                            <span style={{ fontSize: '0.75rem', background: 'rgba(255,145,0,0.1)', color: 'var(--accent-orange)', padding: '0.15rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(255,145,0,0.2)' }}>
+                                                {(fornForm.fomentCategories || []).length} selecionadas
+                                            </span>
+                                        </h4>
+                                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>Selecione quais categorias este fornecedor distribui:</p>
+                                        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.5rem', maxHeight: '300px', paddingRight: '0.2rem' }}>
+                                            {categorias.length === 0 ? (
+                                                <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontStyle: 'italic' }}>Nenhuma categoria cadastrada.</p>
+                                            ) : (
+                                                categorias.map(cat => {
+                                                    const isChecked = (fornForm.fomentCategories || []).includes(cat.name);
+                                                    return (
+                                                        <label key={cat.id} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.8rem', background: isChecked ? 'rgba(255,145,0,0.05)' : 'transparent', border: '1px solid var(--border-color)', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem' }}>
+                                                            <input 
+                                                                type="checkbox"
+                                                                checked={isChecked}
+                                                                onChange={() => handleToggleFomentCategory(cat.name)}
+                                                                style={{ accentColor: 'var(--accent-orange)' }}
+                                                            />
+                                                            <span style={{ fontWeight: isChecked ? '700' : 'normal', color: isChecked ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                                                                {cat.name}
+                                                            </span>
+                                                        </label>
+                                                    );
+                                                })
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Right Column: Insumos (Products) */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.2rem' }}>
+                                            <h4 style={{ fontSize: '0.95rem', color: 'var(--accent-orange)', fontWeight: '700', textTransform: 'uppercase', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', flex: 1 }}>
+                                                <span>Insumos Fomentados</span>
+                                                <span style={{ fontSize: '0.75rem', background: 'rgba(255,145,0,0.1)', color: 'var(--accent-orange)', padding: '0.15rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(255,145,0,0.2)' }}>
+                                                    {(fornForm.fomentProducts || []).length} selecionados
+                                                </span>
+                                            </h4>
+                                        </div>
+                                        
+                                        {/* Product Search Input */}
+                                        <div style={{ position: 'relative' }}>
+                                            <input 
+                                                type="text" 
+                                                placeholder="Filtrar por nome ou SKU..."
+                                                value={fomentProdSearch}
+                                                onChange={(e) => setFomentProdSearch(e.target.value)}
+                                                style={{ width: '100%', boxSizing: 'border-box', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 0.8rem', borderRadius: '6px', fontSize: '0.8rem', outline: 'none' }}
+                                            />
+                                        </div>
+
+                                        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '250px', paddingRight: '0.2rem' }}>
+                                            {(() => {
+                                                const filteredProds = produtos.filter(p => {
+                                                    const s = fomentProdSearch.toLowerCase().trim();
+                                                    if (!s) return true;
+                                                    return (p.name || '').toLowerCase().includes(s) || (p.sku || '').toLowerCase().includes(s);
+                                                });
+                                                if (filteredProds.length === 0) {
+                                                    return <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontStyle: 'italic', textAlign: 'center', padding: '1rem' }}>Nenhum insumo correspondente.</p>;
+                                                }
+                                                return filteredProds.map(prod => {
+                                                    const isChecked = (fornForm.fomentProducts || []).includes(prod.sku);
+                                                    return (
+                                                        <label key={prod.sku} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.8rem', background: isChecked ? 'rgba(255,145,0,0.05)' : 'transparent', border: '1px solid var(--border-color)', borderRadius: '6px', cursor: 'pointer', transition: 'all 0.2s', fontSize: '0.85rem' }}>
+                                                            <input 
+                                                                type="checkbox"
+                                                                checked={isChecked}
+                                                                onChange={() => handleToggleFomentProduct(prod.sku)}
+                                                                style={{ accentColor: 'var(--accent-orange)' }}
+                                                            />
+                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                                                                <span style={{ fontWeight: isChecked ? '700' : 'normal', color: isChecked ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                                                                    {prod.name}
+                                                                </span>
+                                                                <small style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
+                                                                    SKU: {prod.sku} {prod.brand ? `· ${prod.brand}` : ''} · Categoria: {prod.category}
+                                                                </small>
+                                                            </div>
+                                                        </label>
+                                                    );
+                                                });
+                                            })()}
+                                        </div>
                                     </div>
                                 </div>
                             )}
