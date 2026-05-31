@@ -3633,7 +3633,16 @@ export default function SettingsHub() {
                                                     <select 
                                                         required 
                                                         value={colabForm.role} 
-                                                        onChange={(e) => setColabForm(prev => ({ ...prev, role: e.target.value }))} 
+                                                        onChange={(e) => {
+                                                             const val = e.target.value;
+                                                             const cargoObj = cargos.find(c => c.name === val);
+                                                             let sectorName = colabForm.department;
+                                                             if (cargoObj && cargoObj.sectorId) {
+                                                                 const sec = setores.find(s => String(s.id) === String(cargoObj.sectorId));
+                                                                 if (sec) sectorName = sec.name;
+                                                             }
+                                                             setColabForm(prev => ({ ...prev, role: val, department: sectorName }));
+                                                         }} 
                                                         style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
                                                     >
                                                         <option value="">Selecione...</option>
