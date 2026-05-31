@@ -150,19 +150,37 @@ INSERT INTO products (sku, name, brand, description, unit, stock, category, stat
 ('MAS-001', 'Arroz Agulhinha T1 5kg', 'Prato Fino', 'Arroz branco tipo 1.', 'Pacote', 200, 'MASSAS E FARINÁCEOS', 'Ativo', 50, 150, 300);
 
 -- Inserir setores operacionais
-INSERT INTO sectors (name, icon, color, description, status) VALUES
-('COZINHA', 'fa-fire-burner', 'color-orange', 'Setor de produção, preparo de pratos e manipulação de alimentos.', 'Ativo'),
-('SALÃO', 'fa-utensils', 'color-teal', 'Setor de atendimento ao cliente, mesas e delivery.', 'Ativo'),
-('ESTOQUE', 'fa-boxes-stacked', 'color-blue', 'Setor de recebimento, armazenamento de insumos e expedição.', 'Ativo'),
-('ADMINISTRAÇÃO', 'fa-briefcase', 'color-purple', 'Setor administrativo, recursos humanos e financeiro.', 'Ativo');
+INSERT INTO sectors (id, name, icon, color, description, status) VALUES
+(1, 'ADMINISTRATIVO E FINANCEIRO', 'fa-briefcase', 'color-purple', 'Setor administrativo, recursos humanos, financeiro e gerência geral.', 'Ativo'),
+(2, 'SALÃO E ATENDIMENTO', 'fa-utensils', 'color-teal', 'Setor de atendimento ao cliente no salão, recepção e coordenação de mesas.', 'Ativo'),
+(3, 'DELIVERY', 'fa-motorcycle', 'color-orange', 'Setor de atendimento de pedidos externos e entregas rápidas.', 'Ativo'),
+(4, 'PRODUÇÃO', 'fa-fire-burner', 'color-red', 'Setor de preparação de massas, pizzas, molhos e pratos da cozinha.', 'Ativo'),
+(5, 'BAR', 'fa-wine-bottle', 'color-lightblue', 'Setor de preparo de drinks, coquetéis e bebidas em geral.', 'Ativo'),
+(6, 'ESTOQUE E SUPRIMENTOS', 'fa-boxes-stacked', 'color-blue', 'Setor de recebimento, cotação, compras e controle de insumos.', 'Ativo'),
+(7, 'SERVIÇOS GERAIS', 'fa-spray-can', 'color-green', 'Setor de higienização, limpeza e conservação das instalações.', 'Ativo');
 
--- Inserir áreas operacionais
-INSERT INTO areas (name, description, sector_id, status) VALUES
-('Grelha e Fogões', 'Área de cocção quente de carnes e guarnições.', 1, 'Ativo'),
-('Pia e Higienização', 'Área de lavagem de louças, talheres e panelas.', 1, 'Ativo'),
-('Balcão e Copa', 'Preparo de bebidas, cafés e entrega de pedidos rápidos.', 2, 'Ativo'),
-('Câmara Resfriada', 'Armazenamento refrigerado de laticínios e hortifruti.', 3, 'Ativo'),
-('Escritório Geral', 'Área de gerência, RH, compras e faturamento.', 4, 'Ativo');
+-- Inserir áreas operacionais (Cargos)
+INSERT INTO areas (id, name, description, sector_id, status) VALUES
+(1, 'Gerente de Pizzaria', 'Responsável pela administração geral da pizzaria, coordenando equipes, recursos e resultados.', 1, 'Ativo'),
+(2, 'Supervisor de Turno', 'Responsável por supervisionar as operações durante seu turno de trabalho.', 1, 'Ativo'),
+(3, 'Analista Administrativo', 'Responsável por atividades administrativas e suporte à gestão.', 1, 'Ativo'),
+(4, 'Assistente Financeiro', 'Responsável pelo apoio às rotinas financeiras da empresa.', 1, 'Ativo'),
+(5, 'Maître', 'Responsável pela coordenação do salão e supervisão da equipe de atendimento.', 2, 'Ativo'),
+(6, 'Recepcionista', 'Responsável pela recepção e organização da entrada dos clientes.', 2, 'Ativo'),
+(7, 'Garçom', 'Responsável pelo atendimento direto aos clientes nas mesas.', 2, 'Ativo'),
+(8, 'Cumim', 'Auxilia os garçons e apoia a organização do salão.', 2, 'Ativo'),
+(9, 'Operador de Caixa', 'Responsável pelo controle das vendas e recebimentos da pizzaria.', 2, 'Ativo'),
+(10, 'Atendente de Delivery', 'Responsável pelo recebimento e acompanhamento dos pedidos de entrega.', 3, 'Ativo'),
+(11, 'Entregador', 'Responsável pela entrega dos pedidos aos clientes.', 3, 'Ativo'),
+(12, 'Pizzaiolo', 'Responsável pela preparação e finalização das pizzas.', 4, 'Ativo'),
+(13, 'Auxiliar de Pizzaiolo', 'Auxilia o pizzaiolo na produção das pizzas.', 4, 'Ativo'),
+(14, 'Cozinheiro', 'Responsável pelo preparo dos pratos e produtos da cozinha.', 4, 'Ativo'),
+(15, 'Auxiliar de Cozinha', 'Presta apoio às atividades da cozinha.', 4, 'Ativo'),
+(16, 'Barman', 'Responsável pela preparação e serviço de bebidas.', 5, 'Ativo'),
+(17, 'Auxiliar de Bar', 'Auxilia as atividades operacionais do bar.', 5, 'Ativo'),
+(18, 'Estoquista', 'Responsável pelo controle e armazenamento de materiais e insumos.', 6, 'Ativo'),
+(19, 'Comprador', 'Responsável pelas aquisições da empresa.', 6, 'Ativo'),
+(20, 'Auxiliar de Limpeza', 'Responsável pela limpeza e conservação das instalações.', 7, 'Ativo');
 
 -- Inserir lotes de estoque (WMS)
 INSERT INTO stock_batches (item_sku, lot, brand, supplier, manufacturing_date, expiration_date, address, quantity, unit) VALUES

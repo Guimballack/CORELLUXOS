@@ -4269,22 +4269,48 @@ if (window.CorelluxState) {
     window.state = initialAppState;
 }
 export const sectors = [
-    { id: 1, name: 'COZINHA', icon: 'fa-fire-burner', color: 'color-orange', desc: 'Setor de produção, preparo de pratos e manipulação de alimentos.', status: 'Ativo' },
-    { id: 2, name: 'SALÃO', icon: 'fa-utensils', color: 'color-teal', desc: 'Setor de atendimento ao cliente, mesas e delivery.', status: 'Ativo' },
-    { id: 3, name: 'ESTOQUE', icon: 'fa-boxes-stacked', color: 'color-blue', desc: 'Setor de recebimento, armazenamento de insumos e expedição.', status: 'Ativo' },
-    { id: 4, name: 'ADMINISTRAÇÃO', icon: 'fa-briefcase', color: 'color-purple', desc: 'Setor administrativo, recursos humanos e financeiro.', status: 'Ativo' }
+    { id: 1, name: 'ADMINISTRATIVO E FINANCEIRO', icon: 'fa-briefcase', color: 'color-purple', desc: 'Setor administrativo, recursos humanos, financeiro e gerência geral.', status: 'Ativo' },
+    { id: 2, name: 'SALÃO E ATENDIMENTO', icon: 'fa-utensils', color: 'color-teal', desc: 'Setor de atendimento ao cliente no salão, recepção e coordenação de mesas.', status: 'Ativo' },
+    { id: 3, name: 'DELIVERY', icon: 'fa-motorcycle', color: 'color-orange', desc: 'Setor de atendimento de pedidos externos e entregas rápidas.', status: 'Ativo' },
+    { id: 4, name: 'PRODUÇÃO', icon: 'fa-fire-burner', color: 'color-red', desc: 'Setor de preparação de massas, pizzas, molhos e pratos da cozinha.', status: 'Ativo' },
+    { id: 5, name: 'BAR', icon: 'fa-wine-bottle', color: 'color-lightblue', desc: 'Setor de preparo de drinks, coquetéis e bebidas em geral.', status: 'Ativo' },
+    { id: 6, name: 'ESTOQUE E SUPRIMENTOS', icon: 'fa-boxes-stacked', color: 'color-blue', desc: 'Setor de recebimento, cotação, compras e controle de insumos.', status: 'Ativo' },
+    { id: 7, name: 'SERVIÇOS GERAIS', icon: 'fa-spray-can', color: 'color-green', desc: 'Setor de higienização, limpeza e conservação das instalações.', status: 'Ativo' }
 ];
 export const areas = [
-    { id: 1, name: 'Grelha e Fogões', desc: 'Área de cocção quente de carnes e guarnições.', sectorId: 1, status: 'Ativo', userIds: [] },
-    { id: 2, name: 'Pia e Higienização', desc: 'Área de lavagem de louças, talheres e panelas.', sectorId: 1, status: 'Ativo', userIds: [] },
-    { id: 3, name: 'Preparação de Frios', desc: 'Montagem de saladas, sobremesas e porções frias.', sectorId: 1, status: 'Ativo', userIds: [] },
-    { id: 4, name: 'Balcão e Copa', desc: 'Preparo de bebidas, cafés e entrega de pedidos rápidos.', sectorId: 2, status: 'Ativo', userIds: [] },
-    { id: 5, name: 'Área de Mesas Interna', desc: 'Mesas do salão climatizado principal.', sectorId: 2, status: 'Ativo', userIds: [] },
-    { id: 6, name: 'Área de Mesas Externa', desc: 'Mesas do terraço e calçada ao ar livre.', sectorId: 2, status: 'Ativo', userIds: [] },
-    { id: 7, name: 'Câmara Resfriada', desc: 'Armazenamento refrigerado de laticínios e hortifruti.', sectorId: 3, status: 'Ativo', userIds: [] },
-    { id: 8, name: 'Câmara de Congelados', desc: 'Armazenamento de proteínas congeladas.', sectorId: 3, status: 'Ativo', userIds: [] },
-    { id: 9, name: 'Almoxarifado Seco', desc: 'Estoque de massas, grãos, temperos e descartáveis.', sectorId: 3, status: 'Ativo', userIds: [] },
-    { id: 10, name: 'Escritório Geral', desc: 'Área de gerência, RH, compras e faturamento.', sectorId: 4, status: 'Ativo', userIds: [] }
+    // ADMINISTRATIVO E FINANCEIRO (sectorId = 1)
+    { id: 1, name: 'Gerente de Pizzaria', desc: 'Responsável pela administração geral da pizzaria, coordenando equipes, recursos e resultados.', sectorId: 1, status: 'Ativo', userIds: [] },
+    { id: 2, name: 'Supervisor de Turno', desc: 'Responsável por supervisionar as operações durante seu turno de trabalho.', sectorId: 1, status: 'Ativo', userIds: [] },
+    { id: 3, name: 'Analista Administrativo', desc: 'Responsável por atividades administrativas e suporte à gestão.', sectorId: 1, status: 'Ativo', userIds: [] },
+    { id: 4, name: 'Assistente Financeiro', desc: 'Responsável pelo apoio às rotinas financeiras da empresa.', sectorId: 1, status: 'Ativo', userIds: [] },
+
+    // SALÃO E ATENDIMENTO (sectorId = 2)
+    { id: 5, name: 'Maître', desc: 'Responsável pela coordenação do salão e supervisão da equipe de atendimento.', sectorId: 2, status: 'Ativo', userIds: [] },
+    { id: 6, name: 'Recepcionista', desc: 'Responsável pela recepção e organização da entrada dos clientes.', sectorId: 2, status: 'Ativo', userIds: [] },
+    { id: 7, name: 'Garçom', desc: 'Responsável pelo atendimento direto aos clientes nas mesas.', sectorId: 2, status: 'Ativo', userIds: [] },
+    { id: 8, name: 'Cumim', desc: 'Auxilia os garçons e apoia a organização do salão.', sectorId: 2, status: 'Ativo', userIds: [] },
+    { id: 9, name: 'Operador de Caixa', desc: 'Responsável pelo controle das vendas e recebimentos da pizzaria.', sectorId: 2, status: 'Ativo', userIds: [] },
+
+    // DELIVERY (sectorId = 3)
+    { id: 10, name: 'Atendente de Delivery', desc: 'Responsável pelo recebimento e acompanhamento dos pedidos de entrega.', sectorId: 3, status: 'Ativo', userIds: [] },
+    { id: 11, name: 'Entregador', desc: 'Responsável pela entrega dos pedidos aos clientes.', sectorId: 3, status: 'Ativo', userIds: [] },
+
+    // PRODUÇÃO (sectorId = 4)
+    { id: 12, name: 'Pizzaiolo', desc: 'Responsável pela preparação e finalização das pizzas.', sectorId: 4, status: 'Ativo', userIds: [] },
+    { id: 13, name: 'Auxiliar de Pizzaiolo', desc: 'Auxilia o pizzaiolo na produção das pizzas.', sectorId: 4, status: 'Ativo', userIds: [] },
+    { id: 14, name: 'Cozinheiro', desc: 'Responsável pelo preparo dos pratos e produtos da cozinha.', sectorId: 4, status: 'Ativo', userIds: [] },
+    { id: 15, name: 'Auxiliar de Cozinha', desc: 'Presta apoio às atividades da cozinha.', sectorId: 4, status: 'Ativo', userIds: [] },
+
+    // BAR (sectorId = 5)
+    { id: 16, name: 'Barman', desc: 'Responsável pela preparação e serviço de bebidas.', sectorId: 5, status: 'Ativo', userIds: [] },
+    { id: 17, name: 'Auxiliar de Bar', desc: 'Auxilia as atividades operacionais do bar.', sectorId: 5, status: 'Ativo', userIds: [] },
+
+    // ESTOQUE E SUPRIMENTOS (sectorId = 6)
+    { id: 18, name: 'Estoquista', desc: 'Responsável pelo controle e armazenamento de materiais e insumos.', sectorId: 6, status: 'Ativo', userIds: [] },
+    { id: 19, name: 'Comprador', desc: 'Responsável pelas aquisições da empresa.', sectorId: 6, status: 'Ativo', userIds: [] },
+
+    // SERVIÇOS GERAIS (sectorId = 7)
+    { id: 20, name: 'Auxiliar de Limpeza', desc: 'Responsável pela limpeza e conservação das instalações.', sectorId: 7, status: 'Ativo', userIds: [] }
 ];
 export const stockBatches = [
     {
