@@ -39,7 +39,30 @@ CREATE TABLE categories (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- 4. CRIAR TABELA DE PRODUTOS
+-- 4. CRIAR TABELA DE FORNECEDORES
+CREATE TABLE suppliers (
+    id SERIAL PRIMARY KEY,
+    razao_social VARCHAR(200) NOT NULL,
+    nome_fantasia VARCHAR(150),
+    cnpj VARCHAR(20) UNIQUE,
+    ie VARCHAR(50),
+    im VARCHAR(50),
+    tipo_fornecedor VARCHAR(100),
+    situacao VARCHAR(50) DEFAULT 'Ativo',
+    data_cadastro DATE DEFAULT CURRENT_DATE,
+    contato JSONB, -- telefone, whatsapp, emails, site
+    endereco JSONB, -- cep, rua, numero, bairro, cidade, etc
+    financeiro JSONB, -- formaPagamento, limiteCredito, pix, etc
+    logistica JSONB, -- prazoEntrega, diasEntrega, pedidoMinimo, etc
+    linked_products TEXT[], -- SKUs vinculados
+    ratings JSONB, -- qualidade, prazo, etc
+    notes JSONB[], -- anotações
+    history JSONB[], -- histórico de compras/atrasos
+    block_info JSONB, -- status de bloqueio, motivo
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- 5. CRIAR TABELA DE PRODUTOS
 CREATE TABLE products (
     sku VARCHAR(50) PRIMARY KEY,
     name VARCHAR(150) NOT NULL,
@@ -61,29 +84,6 @@ CREATE TABLE products (
     primary_supplier_id INTEGER REFERENCES suppliers(id),
     secondary_supplier_id INTEGER REFERENCES suppliers(id),
     other_supplier_ids INTEGER[] DEFAULT '{}',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
-);
-
--- 5. CRIAR TABELA DE FORNECEDORES
-CREATE TABLE suppliers (
-    id SERIAL PRIMARY KEY,
-    razao_social VARCHAR(200) NOT NULL,
-    nome_fantasia VARCHAR(150),
-    cnpj VARCHAR(20) UNIQUE,
-    ie VARCHAR(50),
-    im VARCHAR(50),
-    tipo_fornecedor VARCHAR(100),
-    situacao VARCHAR(50) DEFAULT 'Ativo',
-    data_cadastro DATE DEFAULT CURRENT_DATE,
-    contato JSONB, -- telefone, whatsapp, emails, site
-    endereco JSONB, -- cep, rua, numero, bairro, cidade, etc
-    financeiro JSONB, -- formaPagamento, limiteCredito, pix, etc
-    logistica JSONB, -- prazoEntrega, diasEntrega, pedidoMinimo, etc
-    linked_products TEXT[], -- SKUs vinculados
-    ratings JSONB, -- qualidade, prazo, etc
-    notes JSONB[], -- anotações
-    history JSONB[], -- histórico de compras/atrasos
-    block_info JSONB, -- status de bloqueio, motivo
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
