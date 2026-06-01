@@ -5370,3 +5370,20 @@ main {
     box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
 }
 
+.btn-header-action.pink {
+    background-color: var(--accent-pink);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(236, 72, 153, 0.25);
+}
+
+.btn-header-action.pink:hover {
+    background-color: #db2777;
+    color: #ffffff;
+    box-shadow: 0 6px 16px rgba(236, 72, 153, 0.4);
+}
+
+.btn-header-action.pink:active {
+    box-shadow: 0 2px 8px rgba(236, 72, 153, 0.2);
+}
+
+

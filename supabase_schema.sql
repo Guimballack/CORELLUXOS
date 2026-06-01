@@ -9,6 +9,7 @@ DROP TABLE IF EXISTS categories CASCADE;
 DROP TABLE IF EXISTS areas CASCADE;
 DROP TABLE IF EXISTS sectors CASCADE;
 DROP TABLE IF EXISTS app_users CASCADE;
+DROP TABLE IF EXISTS sale_products CASCADE;
 
 -- 2. CRIAR TABELA DE USUÁRIOS (Funcionários)
 CREATE TABLE app_users (
@@ -198,6 +199,25 @@ INSERT INTO stock_batches (item_sku, lot, brand, supplier, manufacturing_date, e
 ('LAC-001', 'LT-9485', 'Itambé', 'MASTER ALIMENTOS', '2026-03-05', '2026-11-15', 'B-02-06', 8, 'Unidade'),
 ('BEB-001', 'LT-5757', 'Coca-Cola', 'VALE VERDE', '2026-04-13', '2026-08-21', 'A-06-01', 28, 'Unidade'),
 ('MAS-001', 'LT-2918', 'Prato Fino', 'MASTER ALIMENTOS', '2026-03-05', '2026-11-26', 'B-05-01', 16, 'Pacote');
+
+-- 8. CRIAR TABELA DE PRODUTOS PARA VENDA (Produtos Finais)
+CREATE TABLE sale_products (
+    code VARCHAR(50) PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    description TEXT,
+    price NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+    unit VARCHAR(50) NOT NULL DEFAULT 'UN',
+    status VARCHAR(50) DEFAULT 'Ativo',
+    controla_producao BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Inserir produtos finais para venda padrão
+INSERT INTO sale_products (code, name, category, description, price, unit, status, controla_producao) VALUES
+('PIZ001', 'Pizza Calabresa G', 'PIZZAS', 'Molho de tomate, queijo muçarela, calabresa fatiada, cebola e orégano.', 49.90, 'UN', 'Ativo', true),
+('PIZ002', 'Pizza Margherita G', 'PIZZAS', 'Molho de tomate, queijo muçarela, rodelas de tomate fresco, manjericão e azeite.', 45.00, 'UN', 'Ativo', true),
+('BEB001', 'Refrigerante Lata 350ml', 'BEBIDAS', 'Refrigerante lata gelado (diversos sabores).', 6.00, 'UN', 'Ativo', false);
 
 -- 9. TABELAS DE ESTRUTURA DO WMS (ARMAZÉNS, ZONAS E ENDEREÇAMENTOS)
 DROP TABLE IF EXISTS wms_locations CASCADE;

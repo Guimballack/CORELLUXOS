@@ -945,6 +945,142 @@ export const DbService = {
         }
     },
 
+    // SALE PRODUCT CRUD (PRODUTOS FINAIS DE VENDA)
+    async getSaleProducts() {
+        try {
+            console.log('[DbService] Carregando produtos de venda...');
+            const { data, error } = await supabase
+                .from('sale_products')
+                .select('*')
+                .order('name', { ascending: true });
+
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_sale_products');
+                if (local) return JSON.parse(local);
+                const initialSales = [
+                    { code: 'PIZ001', name: 'Pizza Calabresa G', category: 'PIZZAS', description: 'Molho de tomate, queijo muçarela, calabresa fatiada, cebola e orégano.', price: 49.90, unit: 'UN', status: 'Ativo', controlaProducao: true },
+                    { code: 'PIZ002', name: 'Pizza Margherita G', category: 'PIZZAS', description: 'Molho de tomate, queijo muçarela, rodelas de tomate fresco, manjericão e azeite.', price: 45.00, unit: 'UN', status: 'Ativo', controlaProducao: true },
+                    { code: 'BEB001', name: 'Refrigerante Lata 350ml', category: 'BEBIDAS', description: 'Refrigerante lata gelado (diversos sabores).', price: 6.00, unit: 'UN', status: 'Ativo', controlaProducao: false }
+                ];
+                localStorage.setItem('corellux_sale_products', JSON.stringify(initialSales));
+                return initialSales;
+            }
+            const camelProds = toCamelCase(data);
+            localStorage.setItem('corellux_sale_products', JSON.stringify(camelProds));
+            return camelProds;
+        } catch (e) {
+            console.error('[DbService] Erro ao buscar produtos de venda. Usando fallback local:', e.message || e);
+            const local = localStorage.getItem('corellux_sale_products');
+            if (local) {
+                try {
+                    return JSON.parse(local);
+                } catch (err) {
+                    console.error('[DbService] Erro ao analisar produtos de venda locais:', err);
+                }
+            }
+            const initialSales = [
+                { code: 'PIZ001', name: 'Pizza Calabresa G', category: 'PIZZAS', description: 'Molho de tomate, queijo muçarela, calabresa fatiada, cebola e orégano.', price: 49.90, unit: 'UN', status: 'Ativo', controlaProducao: true },
+                { code: 'PIZ002', name: 'Pizza Margherita G', category: 'PIZZAS', description: 'Molho de tomate, queijo muçarela, rodelas de tomate fresco, manjericão e azeite.', price: 45.00, unit: 'UN', status: 'Ativo', controlaProducao: true },
+                { code: 'BEB001', name: 'Refrigerante Lata 350ml', category: 'BEBIDAS', description: 'Refrigerante lata gelado (diversos sabores).', price: 6.00, unit: 'UN', status: 'Ativo', controlaProducao: false }
+            ];
+            localStorage.setItem('corellux_sale_products', JSON.stringify(initialSales));
+            return initialSales;
+        }
+    },
+
+    async saveSaleProduct(product, oldCode = null) {
+        try {
+            const snakeProduct = toSnakeCase(product);
+            let result;
+            if (oldCode) {
+                result = await supabase
+                    .from('sale_products')
+                    .update(snakeProduct)
+                    .eq('code', oldCode)
+                    .select();
+            } else {
+                result = await supabase
+                    .from('sale_products')
+                    .insert([snakeProduct])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            const saved = toCamelCase(result.data[0]);
+
+            // Sync local
+            const local = localStorage.getItem('corellux_sale_products');
+            let list = [];
+            if (local) {
+                try {
+                    list = JSON.parse(local);
+                } catch (err) {
+                    list = [];
+                }
+            }
+            const idx = list.findIndex(p => p.code === (oldCode || product.code));
+            if (idx !== -1) {
+                list[idx] = saved;
+            } else {
+                list.push(saved);
+            }
+            localStorage.setItem('corellux_sale_products', JSON.stringify(list));
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar produto de venda no Supabase. Gravando localmente:', e.message || e);
+            const local = localStorage.getItem('corellux_sale_products');
+            let list = [];
+            if (local) {
+                try {
+                    list = JSON.parse(local);
+                } catch (err) {
+                    list = [];
+                }
+            }
+            const idx = list.findIndex(p => p.code === (oldCode || product.code));
+            if (idx !== -1) {
+                list[idx] = product;
+            } else {
+                list.push(product);
+            }
+            localStorage.setItem('corellux_sale_products', JSON.stringify(list));
+            return { success: true, data: product };
+        }
+    },
+
+    async deleteSaleProduct(code) {
+        try {
+            const { error } = await supabase
+                .from('sale_products')
+                .delete()
+                .eq('code', code);
+            if (error) throw error;
+
+            // Sync local
+            const local = localStorage.getItem('corellux_sale_products');
+            if (local) {
+                const list = JSON.parse(local);
+                const updated = list.filter(p => p.code !== code);
+                localStorage.setItem('corellux_sale_products', JSON.stringify(updated));
+            }
+            return { success: true };
+        } catch (e) {
+            console.warn(`[DbService] Erro ao deletar produto de venda ${code} no Supabase. Removendo localmente:`, e.message || e);
+            const local = localStorage.getItem('corellux_sale_products');
+            if (local) {
+                try {
+                    const list = JSON.parse(local);
+                    const updated = list.filter(p => p.code !== code);
+                    localStorage.setItem('corellux_sale_products', JSON.stringify(updated));
+                    return { success: true };
+                } catch (err) {
+                    console.error('[DbService] Erro ao atualizar local:', err);
+                }
+            }
+            return { success: false, error: e };
+        }
+    },
+
     // CATEGORY CRUD
     async saveCategory(category) {
         try {

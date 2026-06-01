@@ -89,6 +89,7 @@ export default function SettingsHub() {
     const [fornecedores, setFornecedores] = useState([]);
     const [setores, setSetores] = useState([]);
     const [cargos, setCargos] = useState([]);
+    const [saleProducts, setSaleProducts] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // =============================================
@@ -154,6 +155,7 @@ export default function SettingsHub() {
     const [searchForn, setSearchForn] = useState('');
     const [searchSector, setSearchSector] = useState('');
     const [searchCargo, setSearchCargo] = useState('');
+    const [searchSaleProd, setSearchSaleProd] = useState('');
     const [fomentProdSearch, setFomentProdSearch] = useState('');
 
     // Modals control
@@ -165,11 +167,19 @@ export default function SettingsHub() {
     const [fornToDelete, setFornToDelete] = useState(null);
     const [sectorToDelete, setSectorToDelete] = useState(null);
     const [cargoToDelete, setCargoToDelete] = useState(null);
+    const [saleProdToDelete, setSaleProdToDelete] = useState(null);
     const [genericConfirm, setGenericConfirm] = useState(null);
     const [toast, setToast] = useState(null);
 
     const [showProdModal, setShowProdModal] = useState(false);
     const [editingProd, setEditingProd] = useState(null);
+
+    const [showSaleProdModal, setShowSaleProdModal] = useState(false);
+    const [editingSaleProd, setEditingSaleProd] = useState(null);
+    const [saleProdForm, setSaleProdForm] = useState({
+        code: '', name: '', category: '', description: '',
+        price: '', unit: 'UN', status: 'Ativo', controlaProducao: false
+    });
 
     const [showCatModal, setShowCatModal] = useState(false);
     const [editingCat, setEditingCat] = useState(null);
@@ -221,13 +231,14 @@ export default function SettingsHub() {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [usersData, prodsData, catsData, supsData, sectorsData, zonesData] = await Promise.all([
+            const [usersData, prodsData, catsData, supsData, sectorsData, zonesData, saleProdsData] = await Promise.all([
                 loadUsers(),
                 DbService.getProducts(),
                 DbService.getCategories(),
                 DbService.getSuppliers(),
                 DbService.getSectors(),
-                DbService.getWmsZones()
+                DbService.getWmsZones(),
+                DbService.getSaleProducts()
             ]);
             setColaboradores(usersData);
             setProdutos(prodsData);
@@ -235,6 +246,7 @@ export default function SettingsHub() {
             setFornecedores(supsData);
             setSetores(sectorsData);
             setAllZonesList(zonesData || []);
+            setSaleProducts(saleProdsData || []);
 
             // Load cargos
             const areasData = await DbService.getAreas();
@@ -1370,6 +1382,113 @@ export default function SettingsHub() {
     };
 
     // =============================================
+    // CRUD 2.5: PRODUTOS FINAIS (SALE PRODUCTS)
+    // =============================================
+    const openSaleProdModalForEdit = (prod) => {
+        setEditingSaleProd(prod);
+        setSaleProdForm({
+            code: prod.code || '',
+            name: prod.name || '',
+            category: prod.category || '',
+            description: prod.description || '',
+            price: prod.price !== undefined ? String(prod.price) : '',
+            unit: prod.unit || 'UN',
+            status: prod.status || 'Ativo',
+            controlaProducao: !!prod.controlaProducao
+        });
+        setShowSaleProdModal(true);
+    };
+
+    const openSaleProdModalForCreate = () => {
+        setEditingSaleProd(null);
+        setSaleProdForm({
+            code: '', name: '', category: '', description: '',
+            price: '', unit: 'UN', status: 'Ativo', controlaProducao: false
+        });
+        setShowSaleProdModal(true);
+    };
+
+    const handleSaveSaleProd = async (e) => {
+        e.preventDefault();
+        
+        const codeClean = saleProdForm.code.trim().toUpperCase();
+        const nameClean = saleProdForm.name.trim();
+        const categoryClean = saleProdForm.category.trim().toUpperCase();
+        const descriptionClean = saleProdForm.description.trim();
+        
+        let priceFloat = 0;
+        if (typeof saleProdForm.price === 'string') {
+            let val = saleProdForm.price.replace('R$', '').replace(/\s/g, '');
+            if (val.includes(',') && val.includes('.')) {
+                val = val.replace(/\./g, '').replace(',', '.');
+            } else if (val.includes(',')) {
+                val = val.replace(',', '.');
+            }
+            priceFloat = parseFloat(val) || 0;
+        } else {
+            priceFloat = parseFloat(saleProdForm.price) || 0;
+        }
+
+        if (!editingSaleProd && saleProducts.some(p => p.code.toLowerCase() === codeClean.toLowerCase())) {
+            showToast('Erro: Já existe um produto de venda cadastrado com este Código.', 'error');
+            return;
+        }
+
+        const payload = {
+            code: codeClean,
+            name: nameClean,
+            category: categoryClean,
+            description: descriptionClean,
+            price: priceFloat,
+            unit: saleProdForm.unit,
+            status: saleProdForm.status,
+            controlaProducao: !!saleProdForm.controlaProducao
+        };
+
+        const result = await DbService.saveSaleProduct(payload, editingSaleProd ? editingSaleProd.code : null);
+        if (result.success) {
+            showToast('Produto final gravado com sucesso!', 'success');
+        } else {
+            showToast('[Aviso] Gravado em cache local offline.', 'warning');
+        }
+
+        setShowSaleProdModal(false);
+        const saleProdsData = await DbService.getSaleProducts();
+        setSaleProducts(saleProdsData || []);
+    };
+
+    const handleDeleteSaleProd = (prod) => {
+        setSaleProdToDelete(prod);
+    };
+
+    const confirmDeleteSaleProd = async () => {
+        if (!saleProdToDelete) return;
+        const prod = saleProdToDelete;
+        setSaleProdToDelete(null);
+
+        const result = await DbService.deleteSaleProduct(prod.code);
+        if (result.success) {
+            showToast('Produto final excluído com sucesso.', 'success');
+        } else {
+            showToast('[Aviso] Removido no cache local offline.', 'warning');
+        }
+        
+        const saleProdsData = await DbService.getSaleProducts();
+        setSaleProducts(saleProdsData || []);
+    };
+
+    const handleToggleSaleProdStatus = async (prod) => {
+        const newStatus = prod.status === 'Ativo' ? 'Inativo' : 'Ativo';
+        const updated = { ...prod, status: newStatus };
+        
+        setSaleProducts(prev => prev.map(p => p.code === prod.code ? updated : p));
+        
+        await DbService.saveSaleProduct(updated, prod.code);
+        const saleProdsData = await DbService.getSaleProducts();
+        setSaleProducts(saleProdsData || []);
+    };
+
+    // =============================================
     // CRUD 3: CATEGORIAS (CATEGORIES)
     // =============================================
 
@@ -2199,6 +2318,12 @@ export default function SettingsHub() {
         (c.description && c.description.toLowerCase().includes(searchCargo.toLowerCase()))
     );
 
+    const filteredSaleProducts = saleProducts.filter(p => 
+        (p.code || '').toLowerCase().includes(searchSaleProd.toLowerCase()) ||
+        (p.name || '').toLowerCase().includes(searchSaleProd.toLowerCase()) ||
+        (p.category || '').toLowerCase().includes(searchSaleProd.toLowerCase())
+    );
+
     return (
         <div className="screen active with-header" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
             
@@ -2983,26 +3108,122 @@ export default function SettingsHub() {
                             <div className="products-container">
                                 <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                     <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <ShoppingBag style={{ color: 'var(--accent-orange)' }} /> Cadastro de Produto
+                                        <ShoppingBag style={{ color: 'var(--accent-pink)' }} /> Cadastro de Produtos Finais
                                     </h2>
+                                    
+                                    <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
+                                        <div className="search-box" style={{ margin: 0 }}>
+                                            <Search size={16} />
+                                            <input 
+                                                type="text" 
+                                                placeholder="Buscar produto..."
+                                                value={searchSaleProd}
+                                                onChange={(e) => setSearchSaleProd(e.target.value)}
+                                            />
+                                        </div>
+                                        {isAdminUser && (
+                                            <button className="btn-header-action pink" onClick={openSaleProdModalForCreate}>
+                                                <PlusCircle size={16} /> NOVO PRODUTO
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
-                                <div style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    padding: '5rem 2rem',
-                                    background: 'rgba(0, 0, 0, 0.12)',
-                                    borderRadius: '12px',
-                                    border: '1.5px dashed var(--border-color)',
-                                    textAlign: 'center',
-                                    gap: '1rem'
-                                }}>
-                                    <ShoppingBag size={48} style={{ color: 'var(--text-secondary)', opacity: 0.5 }} />
-                                    <h3 style={{ margin: 0, color: 'var(--text-primary)' }}>Módulo de Produtos para Venda</h3>
-                                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '400px' }}>
-                                        Esta funcionalidade está em fase de planejamento e estará disponível em breve para o cadastro de produtos finais e cardápio.
-                                    </p>
+
+                                <div className="table-responsive">
+                                    <table className="products-table">
+                                        <thead>
+                                            <tr>
+                                                <th style={{ width: '120px' }}>Código</th>
+                                                <th>Nome</th>
+                                                <th>Categoria</th>
+                                                <th>Descrição</th>
+                                                <th style={{ textAlign: 'right', width: '120px' }}>Preço Venda</th>
+                                                <th style={{ width: '80px', textAlign: 'center' }}>Unidade</th>
+                                                <th style={{ width: '100px', textAlign: 'center' }}>Contr. Prod.</th>
+                                                <th style={{ width: '110px', textAlign: 'center' }}>Status</th>
+                                                <th style={{ textAlign: 'center', width: '130px' }}>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredSaleProducts.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan="9" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                                        Nenhum produto final encontrado.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                filteredSaleProducts.map(prod => (
+                                                    <tr key={prod.code}>
+                                                        <td style={{ fontWeight: '700', color: 'var(--accent-pink)' }}>{prod.code}</td>
+                                                        <td>
+                                                            <strong style={{ fontSize: '1.05rem', color: 'var(--text-primary)' }}>{prod.name}</strong>
+                                                        </td>
+                                                        <td>
+                                                            <span style={{ 
+                                                                background: 'rgba(236, 72, 153, 0.12)', 
+                                                                color: 'var(--accent-pink)', 
+                                                                padding: '3px 8px', 
+                                                                borderRadius: '4px', 
+                                                                fontSize: '0.75rem', 
+                                                                fontWeight: '700',
+                                                                textTransform: 'uppercase'
+                                                            }}>
+                                                                {prod.category}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                            {prod.description || '-'}
+                                                        </td>
+                                                        <td style={{ textAlign: 'right', fontWeight: '700', color: 'var(--accent-green)' }}>
+                                                            R$ {formatCurrencyValue(prod.price)}
+                                                        </td>
+                                                        <td style={{ textAlign: 'center', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                                                            {prod.unit}
+                                                        </td>
+                                                        <td style={{ textAlign: 'center' }}>
+                                                            <span style={{
+                                                                color: prod.controlaProducao ? 'var(--accent-green)' : 'var(--text-secondary)',
+                                                                fontWeight: '700',
+                                                                fontSize: '0.85rem'
+                                                            }}>
+                                                                {prod.controlaProducao ? 'Sim' : 'Não'}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ textAlign: 'center' }}>
+                                                            <span className={`status-badge ${prod.status === 'Ativo' ? 'badge-ativo' : 'badge-desligado'}`} style={{
+                                                                background: prod.status === 'Ativo' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                                color: prod.status === 'Ativo' ? 'var(--accent-green)' : 'var(--accent-red)',
+                                                                width: '85px',
+                                                                display: 'inline-block',
+                                                                textAlign: 'center'
+                                                            }}>
+                                                                {prod.status}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ textAlign: 'center' }}>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
+                                                                <button className="action-btn-sm edit" onClick={() => openSaleProdModalForEdit(prod)} title="Editar">
+                                                                    <Edit size={16} />
+                                                                </button>
+                                                                <button 
+                                                                    className={`switch-toggle-btn ${prod.status === 'Ativo' ? 'active' : ''}`}
+                                                                    onClick={() => handleToggleSaleProdStatus(prod)}
+                                                                    title={prod.status === 'Ativo' ? 'Inativar' : 'Ativar'}
+                                                                >
+                                                                    <div className="switch-toggle-track">
+                                                                        <div className="switch-toggle-handle"></div>
+                                                                    </div>
+                                                                </button>
+                                                                <button className="action-btn-sm delete" onClick={() => handleDeleteSaleProd(prod)} title="Excluir">
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
                             </div>
                         )}
@@ -5307,6 +5528,256 @@ export default function SettingsHub() {
                                 <button type="submit" className="btn-confirm-modal">SALVAR CATEGORIA</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* =============================================
+                MODAL: CADASTRO/EDIÇÃO PRODUTO FINAL
+            ============================================= */}
+            {showSaleProdModal && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '600px', width: '90%' }}>
+                        <button className="btn-close-modal" onClick={() => setShowSaleProdModal(false)}><X size={18} /></button>
+                        
+                        <form onSubmit={handleSaveSaleProd} style={{ padding: '1.5rem' }}>
+                            <h3 style={{ fontSize: '1.4rem', color: 'var(--accent-pink)', marginBottom: '1.5rem', textTransform: 'uppercase', fontWeight: '800' }}>
+                                {editingSaleProd ? 'Editar Produto Final' : 'Novo Produto Final'}
+                            </h3>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem', marginBottom: '1rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Código</label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        maxLength="15"
+                                        disabled={!!editingSaleProd}
+                                        placeholder="Ex: PIZ001"
+                                        value={saleProdForm.code} 
+                                        onChange={(e) => setSaleProdForm(prev => ({ ...prev, code: e.target.value.toUpperCase().replace(/\s/g, '') }))}
+                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Nome do Produto</label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        maxLength="100"
+                                        placeholder="Ex: Pizza Calabresa G"
+                                        value={saleProdForm.name} 
+                                        onChange={(e) => setSaleProdForm(prev => ({ ...prev, name: e.target.value }))}
+                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                    />
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Categoria</label>
+                                    <select 
+                                        required
+                                        value={saleProdForm.category}
+                                        onChange={(e) => setSaleProdForm(prev => ({ ...prev, category: e.target.value }))}
+                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                    >
+                                        <option value="">Selecione...</option>
+                                        <option value="PIZZAS">PIZZAS</option>
+                                        <option value="BEBIDAS">BEBIDAS</option>
+                                        <option value="SOBREMESAS">SOBREMESAS</option>
+                                        <option value="LANCHES">LANCHES</option>
+                                        <option value="OUTROS">OUTROS</option>
+                                        {categorias.filter(c => !['PIZZAS', 'BEBIDAS', 'SOBREMESAS', 'LANCHES', 'OUTROS'].includes(c.name.toUpperCase())).map(c => (
+                                            <option key={c.id} value={c.name.toUpperCase()}>{c.name.toUpperCase()}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Unidade</label>
+                                    <select 
+                                        required
+                                        value={saleProdForm.unit}
+                                        onChange={(e) => setSaleProdForm(prev => ({ ...prev, unit: e.target.value }))}
+                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                    >
+                                        <option value="UN">UN (Unidade)</option>
+                                        <option value="KG">KG (Quilograma)</option>
+                                        <option value="G">G (Grama)</option>
+                                        <option value="L">L (Litro)</option>
+                                        <option value="ML">ML (Mililitro)</option>
+                                        <option value="PCT">PCT (Pacote)</option>
+                                        <option value="CX">CX (Caixa)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Preço de Venda (R$)</label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        placeholder="Ex: 49,90"
+                                        value={saleProdForm.price} 
+                                        onChange={(e) => {
+                                            let val = e.target.value;
+                                            val = val.replace(/[^\d.,R$\s]/g, '');
+                                            setSaleProdForm(prev => ({ ...prev, price: val }));
+                                        }}
+                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Status</label>
+                                    <select 
+                                        required
+                                        value={saleProdForm.status}
+                                        onChange={(e) => setSaleProdForm(prev => ({ ...prev, status: e.target.value }))}
+                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                    >
+                                        <option value="Ativo">Ativo</option>
+                                        <option value="Inativo">Inativo</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '1.2rem' }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Descrição</label>
+                                <textarea 
+                                    rows="3"
+                                    placeholder="Descrição detalhada do produto final..."
+                                    value={saleProdForm.description} 
+                                    onChange={(e) => setSaleProdForm(prev => ({ ...prev, description: e.target.value }))}
+                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', resize: 'none', fontFamily: 'inherit' }}
+                                />
+                            </div>
+
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '1rem',
+                                background: 'rgba(255, 255, 255, 0.02)',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: '8px',
+                                padding: '1rem',
+                                marginBottom: '1.5rem'
+                            }}>
+                                <div style={{ flex: 1 }}>
+                                    <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-primary)', display: 'block' }}>Controla Produção</span>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                        Determina se o sistema deve monitorar e requisitar ordens de produção para este item.
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSaleProdForm(prev => ({ ...prev, controlaProducao: false }))}
+                                        style={{
+                                            padding: '0.4rem 1rem',
+                                            borderRadius: '6px',
+                                            border: '1px solid var(--border-color)',
+                                            background: !saleProdForm.controlaProducao ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+                                            color: !saleProdForm.controlaProducao ? 'var(--accent-red)' : 'var(--text-secondary)',
+                                            fontWeight: '700',
+                                            fontSize: '0.8rem',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        NÃO
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSaleProdForm(prev => ({ ...prev, controlaProducao: true }))}
+                                        style={{
+                                            padding: '0.4rem 1rem',
+                                            borderRadius: '6px',
+                                            border: '1px solid var(--border-color)',
+                                            background: saleProdForm.controlaProducao ? 'rgba(34, 197, 94, 0.15)' : 'transparent',
+                                            color: saleProdForm.controlaProducao ? 'var(--accent-green)' : 'var(--text-secondary)',
+                                            fontWeight: '700',
+                                            fontSize: '0.8rem',
+                                            cursor: 'pointer'
+                                        }}
+                                    >
+                                        SIM
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                                <button type="button" className="btn-clear-modal" onClick={() => setShowSaleProdModal(false)}>CANCELAR</button>
+                                <button type="submit" className="btn-confirm-modal" style={{ backgroundColor: 'var(--accent-pink)', borderColor: 'var(--accent-pink)', color: '#ffffff' }}>
+                                    SALVAR PRODUTO
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            , document.body)}
+
+            {/* MODAL: CONFIRMAR EXCLUSÃO DE PRODUTO FINAL */}
+            {saleProdToDelete && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 10010 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '450px', width: '90%', textAlign: 'center', padding: '2rem' }}>
+                        <div style={{
+                            width: '70px',
+                            height: '70px',
+                            borderRadius: '50%',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '2px solid #ef4444',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 1.5rem auto',
+                            boxShadow: '0 0 20px rgba(239, 68, 68, 0.2)'
+                        }}>
+                            <Trash2 size={36} color="#ef4444" />
+                        </div>
+                        
+                        <h3 style={{ fontSize: '1.4rem', color: 'var(--text-primary)', marginBottom: '0.8rem', fontWeight: '800' }}>
+                            Excluir Produto Final?
+                        </h3>
+                        
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: '1.5', marginBottom: '2rem' }}>
+                            Tem certeza que deseja excluir o produto <strong style={{ color: 'var(--text-primary)' }}>{saleProdToDelete.name} ({saleProdToDelete.code})</strong>?<br/>
+                            Esta ação removerá permanentemente o cadastro e não poderá ser desfeita.
+                        </p>
+                        
+                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                            <button 
+                                type="button" 
+                                className="btn-confirm-modal" 
+                                onClick={() => setSaleProdToDelete(null)}
+                                style={{ 
+                                    flex: 1, 
+                                    background: 'rgba(255, 255, 255, 0.05)', 
+                                    border: '1.5px solid var(--border-color)', 
+                                    color: 'var(--text-primary)',
+                                    boxShadow: '0 4px 0px rgba(0,0,0,0.3)',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                CANCELAR
+                            </button>
+                            <button 
+                                type="button" 
+                                className="btn-clear-modal" 
+                                onClick={confirmDeleteSaleProd}
+                                style={{ 
+                                    flex: 1, 
+                                    background: '#ef4444', 
+                                    border: '1.5px solid #000000', 
+                                    color: '#ffffff',
+                                    boxShadow: '0 4px 0px #000000',
+                                    height: '42px',
+                                    padding: '0 1rem'
+                                }}
+                            >
+                                SIM, EXCLUIR
+                            </button>
+                        </div>
                     </div>
                 </div>
             , document.body)}
