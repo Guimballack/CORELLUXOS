@@ -255,6 +255,19 @@ export const DbService = {
 
             if (error) throw error;
             if (!data || data.length === 0) {
+                try {
+                    console.log('[DbService] Banco de fornecedores vazio. Semeando dados padrão...');
+                    const snakeSups = mockData.suppliers.map(s => toSnakeCase({ ...s }));
+                    const seedRes = await supabase.from('suppliers').insert(snakeSups).select();
+                    if (!seedRes.error && seedRes.data && seedRes.data.length > 0) {
+                        const camelSups = toCamelCase(seedRes.data);
+                        localStorage.setItem('corellux_suppliers', JSON.stringify(camelSups));
+                        return camelSups;
+                    }
+                } catch (seedErr) {
+                    console.warn('[DbService] Falha ao semear fornecedores no Supabase:', seedErr);
+                }
+
                 const local = localStorage.getItem('corellux_suppliers');
                 if (local) return JSON.parse(local);
                 localStorage.setItem('corellux_suppliers', JSON.stringify(mockData.suppliers));
