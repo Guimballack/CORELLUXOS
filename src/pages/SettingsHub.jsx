@@ -5058,7 +5058,7 @@ export default function SettingsHub() {
                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                                     <div style={{ height: '28px' }} />
                                                     {(hasHeights ? heightLetters : ['—']).map(h => (
-                                                        <div key={h} style={{ height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '6px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--accent-blue)', minWidth: '40px' }}>
+                                                        <div key={h} style={{ height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '6px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--accent-blue)', minWidth: '40px' }}>
                                                             Alt. {h}
                                                         </div>
                                                     ))}
@@ -5069,7 +5069,7 @@ export default function SettingsHub() {
                                                     {/* X axis (Shelves) */}
                                                     <div style={{ display: 'flex', gap: '4px' }}>
                                                         {shelfNums.map(num => (
-                                                            <div key={num} style={{ flex: 1, height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: '800', color: 'var(--accent-blue)', background: 'rgba(59,130,246,0.08)', borderRadius: '4px', minWidth: '60px' }}>
+                                                            <div key={num} style={{ flex: 1, height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: '800', color: 'var(--accent-blue)', background: 'rgba(59,130,246,0.08)', borderRadius: '4px', minWidth: '70px' }}>
                                                                 Prat. {num}
                                                             </div>
                                                         ))}
@@ -5082,10 +5082,13 @@ export default function SettingsHub() {
                                                                 const shelfCode = hasHeights ? `${num}${h}` : String(num);
                                                                 
                                                                 // Check if this shelf code exists in filtered locations
-                                                                const cellExists = filtered.some(l => l.shelf === shelfCode);
-                                                                if (!cellExists) {
+                                                                const cellLocs = filtered
+                                                                    .filter(l => l.shelf === shelfCode)
+                                                                    .sort((a,b) => (a.position||'').localeCompare(b.position||''));
+                                                                
+                                                                if (cellLocs.length === 0) {
                                                                     return (
-                                                                        <div key={num} style={{ flex: 1, minWidth: '60px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '6px' }}>
+                                                                        <div key={num} style={{ flex: 1, minWidth: '70px', height: '64px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '6px' }}>
                                                                             <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.05)' }}>—</span>
                                                                         </div>
                                                                     );
@@ -5094,14 +5097,22 @@ export default function SettingsHub() {
                                                                 const cellKey = `${selectorSelectedZoneId}_${selectorSelectedAisle}_${selectorSelectedRow}_${shelfCode}`;
                                                                 const isSelected = prodForm.allowedCells?.includes(cellKey);
                                                                 
-                                                                const cellBg = isSelected ? 'rgba(34, 197, 94, 0.25)' : 'rgba(0,0,0,0.18)';
-                                                                const cellBorder = isSelected ? '1px solid var(--accent-green)' : '1px solid var(--border-color)';
-                                                                const cellTextColor = isSelected ? 'var(--accent-green)' : 'var(--text-secondary)';
+                                                                const allAtivo = cellLocs.every(l => l.status === 'Ativo');
+                                                                const allBloq  = cellLocs.every(l => l.status === 'Bloqueado');
+                                                                
+                                                                const outerBorder = isSelected 
+                                                                    ? 'var(--accent-green)' 
+                                                                    : allAtivo  ? 'rgba(34,197,94,0.45)'
+                                                                    : allBloq   ? 'rgba(239,68,68,0.45)'
+                                                                    : 'rgba(251,191,36,0.45)';
+                                                                
+                                                                const outerBg = isSelected 
+                                                                    ? 'rgba(34, 197, 94, 0.08)' 
+                                                                    : 'rgba(0,0,0,0.18)';
 
                                                                 return (
                                                                     <div
                                                                         key={num}
-                                                                        type="button"
                                                                         onClick={() => {
                                                                             setProdForm(prev => {
                                                                                 const current = prev.allowedCells || [];
@@ -5112,23 +5123,70 @@ export default function SettingsHub() {
                                                                             });
                                                                         }}
                                                                         style={{
-                                                                            flex: 1, minWidth: '60px', height: '50px',
-                                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                                            background: cellBg, border: cellBorder, borderRadius: '6px',
-                                                                            cursor: 'pointer', transition: 'all 0.15s',
-                                                                            color: cellTextColor, fontSize: '0.85rem', fontWeight: '800'
+                                                                            flex: 1, minWidth: '70px', height: '64px',
+                                                                            display: 'flex', flexDirection: 'column',
+                                                                            borderRadius: '6px', overflow: 'hidden',
+                                                                            border: isSelected ? '2px solid var(--accent-green)' : `1px solid ${outerBorder}`,
+                                                                            background: outerBg,
+                                                                            boxShadow: isSelected ? '0 0 10px rgba(34, 197, 94, 0.4)' : 'none',
+                                                                            transition: 'border-color 0.15s, box-shadow 0.15s',
+                                                                            boxSizing: 'border-box',
+                                                                            cursor: 'pointer'
                                                                         }}
                                                                         onMouseEnter={e => {
-                                                                            e.currentTarget.style.borderColor = 'var(--accent-blue)';
-                                                                            e.currentTarget.style.boxShadow = '0 0 0 2px rgba(59,130,246,0.3)';
+                                                                            if (!isSelected) {
+                                                                                e.currentTarget.style.borderColor = 'var(--accent-blue)';
+                                                                                e.currentTarget.style.boxShadow = '0 0 0 2px rgba(59,130,246,0.3)';
+                                                                            }
                                                                         }}
                                                                         onMouseLeave={e => {
-                                                                            e.currentTarget.style.borderColor = isSelected ? 'var(--accent-green)' : 'var(--border-color)';
-                                                                            e.currentTarget.style.boxShadow = 'none';
+                                                                            e.currentTarget.style.borderColor = isSelected ? 'var(--accent-green)' : `1px solid ${outerBorder}`;
+                                                                            e.currentTarget.style.boxShadow = isSelected ? '0 0 10px rgba(34, 197, 94, 0.4)' : 'none';
                                                                         }}
                                                                         title={`Célula ${shelfCode} · Clique para marcar/desmarcar`}
                                                                     >
-                                                                        {shelfCode}
+                                                                        {/* ── TOP: position strips ── */}
+                                                                        <div style={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden', minHeight: '44px' }}>
+                                                                            {cellLocs.map((loc, idx) => {
+                                                                                const isAtivo = loc.status === 'Ativo';
+                                                                                const stripColor = isAtivo ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)';
+                                                                                const stripBorder = isAtivo ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)';
+                                                                                const textClr = isAtivo ? 'var(--accent-green)' : 'var(--accent-red)';
+                                                                                return (
+                                                                                    <div
+                                                                                        key={loc.id}
+                                                                                        style={{
+                                                                                            flex: 1, height: '100%',
+                                                                                            display: 'flex', flexDirection: 'column',
+                                                                                            alignItems: 'center', justifyContent: 'center',
+                                                                                            background: stripColor,
+                                                                                            borderLeft: idx > 0 ? `1px solid ${stripBorder}` : 'none',
+                                                                                            transition: 'background 0.12s',
+                                                                                        }}
+                                                                                    >
+                                                                                        <span style={{ fontSize: '0.65rem', fontWeight: '800', color: textClr, lineHeight: 1 }}>{loc.position || '1'}</span>
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+
+                                                                        {/* ── BOTTOM: fixed shelfCode label ── */}
+                                                                        <div
+                                                                            style={{
+                                                                                flexShrink: 0,
+                                                                                height: '20px',
+                                                                                width: '100%',
+                                                                                background: isSelected ? 'var(--accent-green)' : 'rgba(15,23,42,0.75)',
+                                                                                borderTop: isSelected ? '1px solid rgba(34,197,94,0.5)' : '1px solid rgba(59,130,246,0.25)',
+                                                                                color: isSelected ? 'white' : 'rgba(147,197,253,0.85)',
+                                                                                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+                                                                                fontSize: '0.62rem', fontWeight: '800', letterSpacing: '0.09em', textTransform: 'uppercase',
+                                                                                boxSizing: 'border-box'
+                                                                            }}
+                                                                        >
+                                                                            {isSelected && <Check size={8} strokeWidth={3} />}
+                                                                            {shelfCode}
+                                                                        </div>
                                                                     </div>
                                                                 );
                                                             })}
