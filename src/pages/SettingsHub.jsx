@@ -1146,7 +1146,7 @@ export default function SettingsHub() {
     const [prodForm, setProdForm] = useState({
         sku: '', name: '', brand: '', category: '', 
         unit: 'KG', stock: 0, minStock: 0, avgStock: 0, maxStock: 0,
-        status: 'Ativo', desc: '', primarySupplierId: '', secondarySupplierId: '',
+        status: 'Ativo', desc: '', primarySupplierId: '',
         controlaProducao: false,
         volumeOcupado: 0,
         allowedZones: [],
@@ -1277,7 +1277,6 @@ export default function SettingsHub() {
             status: prod.status || 'Ativo',
             desc: prod.desc || '',
             primarySupplierId: prod.primarySupplierId || '',
-            secondarySupplierId: prod.secondarySupplierId || '',
             controlaProducao: !!prod.controlaProducao,
             volumeOcupado: prod.volumeOcupado || 0,
             allowedZones: prod.allowedZones || [],
@@ -1297,7 +1296,7 @@ export default function SettingsHub() {
             sku: '', name: '', brand: '', 
             category: categorias[0]?.name || '', 
             unit: 'KG', stock: 0, minStock: 0, avgStock: 0, maxStock: 0,
-            status: 'Ativo', desc: '', primarySupplierId: '', secondarySupplierId: '',
+            status: 'Ativo', desc: '', primarySupplierId: '',
             controlaProducao: false,
             volumeOcupado: 0,
             allowedZones: [],
@@ -1321,7 +1320,7 @@ export default function SettingsHub() {
         const payload = {
             ...prodForm,
             primarySupplierId: prodForm.primarySupplierId ? Number(prodForm.primarySupplierId) : null,
-            secondarySupplierId: prodForm.secondarySupplierId ? Number(prodForm.secondarySupplierId) : null,
+            secondarySupplierId: null,
             volumeOcupado: parseFloat(prodForm.volumeOcupado) || 0,
             allowedZones: prodForm.allowedZones || [],
             podeEmpilhar: !!prodForm.podeEmpilhar,
@@ -4656,33 +4655,18 @@ export default function SettingsHub() {
                                 </div>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Fornecedor Principal</label>
-                                    <select 
-                                        value={prodForm.primarySupplierId || ''}
-                                        onChange={(e) => setProdForm(prev => ({ ...prev, primarySupplierId: e.target.value }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
-                                    >
-                                        <option value="">Sem Fornecedor</option>
-                                        {fornecedores.map(f => (
-                                            <option key={f.id} value={f.id}>{f.nomeFantasia || f.razaoSocial}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Fornecedor Secundário</label>
-                                    <select 
-                                        value={prodForm.secondarySupplierId || ''}
-                                        onChange={(e) => setProdForm(prev => ({ ...prev, secondarySupplierId: e.target.value }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
-                                    >
-                                        <option value="">Sem Fornecedor</option>
-                                        {fornecedores.map(f => (
-                                            <option key={f.id} value={f.id}>{f.nomeFantasia || f.razaoSocial}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                            <div style={{ marginBottom: '1rem' }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Fornecedor Principal</label>
+                                <select 
+                                    value={prodForm.primarySupplierId || ''}
+                                    onChange={(e) => setProdForm(prev => ({ ...prev, primarySupplierId: e.target.value }))}
+                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                >
+                                    <option value="">Sem Fornecedor</option>
+                                    {fornecedores.map(f => (
+                                        <option key={f.id} value={f.id}>{f.nomeFantasia || f.razaoSocial}</option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div style={{ marginBottom: '1.2rem' }}>
@@ -4699,7 +4683,7 @@ export default function SettingsHub() {
                                     gap: '0.4rem'
                                 }}>
                                     {fornecedores
-                                        .filter(f => String(f.id) !== String(prodForm.primarySupplierId) && String(f.id) !== String(prodForm.secondarySupplierId))
+                                        .filter(f => String(f.id) !== String(prodForm.primarySupplierId))
                                         .map(f => {
                                             const isChecked = (prodForm.otherSupplierIds || []).includes(f.id);
                                             return (
@@ -4737,7 +4721,7 @@ export default function SettingsHub() {
                                             );
                                         })
                                     }
-                                    {fornecedores.filter(f => String(f.id) !== String(prodForm.primarySupplierId) && String(f.id) !== String(prodForm.secondarySupplierId)).length === 0 && (
+                                    {fornecedores.filter(f => String(f.id) !== String(prodForm.primarySupplierId)).length === 0 && (
                                         <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '0.2rem' }}>
                                             Nenhum outro fornecedor disponível.
                                         </div>
