@@ -85,6 +85,7 @@ CREATE TABLE products (
     primary_supplier_id INTEGER REFERENCES suppliers(id),
     secondary_supplier_id INTEGER REFERENCES suppliers(id),
     other_supplier_ids INTEGER[] DEFAULT '{}',
+    recipe JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -121,6 +122,7 @@ CREATE TABLE stock_batches (
     expiration_date DATE,
     address VARCHAR(100),
     quantity NUMERIC(10,2) DEFAULT 0.00,
+    price_per_unit NUMERIC(10,2) NOT NULL DEFAULT 0.00,
     unit VARCHAR(50) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
@@ -210,14 +212,15 @@ CREATE TABLE sale_products (
     unit VARCHAR(50) NOT NULL DEFAULT 'UN',
     status VARCHAR(50) DEFAULT 'Ativo',
     controla_producao BOOLEAN DEFAULT TRUE,
+    recipe JSONB DEFAULT '[]'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
 -- Inserir produtos finais para venda padrão
-INSERT INTO sale_products (code, name, category, description, price, unit, status, controla_producao) VALUES
-('PIZ001', 'Pizza Calabresa G', 'PIZZAS', 'Molho de tomate, queijo muçarela, calabresa fatiada, cebola e orégano.', 49.90, 'UN', 'Ativo', true),
-('PIZ002', 'Pizza Margherita G', 'PIZZAS', 'Molho de tomate, queijo muçarela, rodelas de tomate fresco, manjericão e azeite.', 45.00, 'UN', 'Ativo', true),
-('BEB001', 'Refrigerante Lata 350ml', 'BEBIDAS', 'Refrigerante lata gelado (diversos sabores).', 6.00, 'UN', 'Ativo', false);
+INSERT INTO sale_products (code, name, category, description, price, unit, status, controla_producao, recipe) VALUES
+('PIZ001', 'Pizza Calabresa G', 'PIZZAS', 'Molho de tomate, queijo muçarela, calabresa fatiada, cebola e orégano.', 49.90, 'UN', 'Ativo', true, '[{"ingredient_sku": "LAC-005", "quantity": 0.25, "unit": "KG"}, {"ingredient_sku": "HOR-003", "quantity": 0.1, "unit": "KG"}]'::jsonb),
+('PIZ002', 'Pizza Margherita G', 'PIZZAS', 'Molho de tomate, queijo muçarela, rodelas de tomate fresco, manjericão e azeite.', 45.00, 'UN', 'Ativo', true, '[{"ingredient_sku": "LAC-005", "quantity": 0.3, "unit": "KG"}, {"ingredient_sku": "HOR-004", "quantity": 0.15, "unit": "KG"}]'::jsonb),
+('BEB001', 'Refrigerante Lata 350ml', 'BEBIDAS', 'Refrigerante lata gelado (diversos sabores).', 6.00, 'UN', 'Ativo', false, '[]'::jsonb);
 
 -- 9. TABELAS DE ESTRUTURA DO WMS (ARMAZÉNS, ZONAS E ENDEREÇAMENTOS)
 DROP TABLE IF EXISTS wms_locations CASCADE;

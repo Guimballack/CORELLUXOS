@@ -180,6 +180,11 @@ export default function SettingsHub() {
         code: '', name: '', category: '', description: '',
         price: '', unit: 'UN', status: 'Ativo', controlaProducao: false
     });
+    const [saleProdActiveSection, setSaleProdActiveSection] = useState('geral'); // geral, receita
+    const [prodActiveSection, setProdActiveSection] = useState('geral'); // geral, receita
+    const [recipeItems, setRecipeItems] = useState([]); // [{ ingredientSku, name, quantity, unit }]
+    const [recipeNewItem, setRecipeNewItem] = useState({ ingredientSku: '', quantity: '', unit: 'G' });
+    const [recipeIngredientSearch, setRecipeIngredientSearch] = useState('');
 
     const [showCatModal, setShowCatModal] = useState(false);
     const [editingCat, setEditingCat] = useState(null);
@@ -1298,6 +1303,19 @@ export default function SettingsHub() {
             otherSupplierIds: prod.otherSupplierIds || []
         });
         setLimitToSpecificCells(prod.allowedCells && prod.allowedCells.length > 0);
+        
+        // Load recipe if it exists
+        const existingRecipe = Array.isArray(prod.recipe) ? prod.recipe.map(r => ({
+            ingredientSku: r.ingredientSku || r.ingredient_sku || '',
+            name: r.name || '',
+            quantity: r.quantity !== undefined ? String(r.quantity) : '',
+            unit: r.unit || 'G'
+        })) : [];
+        setRecipeItems(existingRecipe);
+        setRecipeNewItem({ ingredientSku: '', quantity: '', unit: 'G' });
+        setRecipeIngredientSearch('');
+        setProdActiveSection('geral');
+
         setShowProdModal(true);
     };
 
@@ -1318,6 +1336,10 @@ export default function SettingsHub() {
             otherSupplierIds: []
         });
         setLimitToSpecificCells(false);
+        setRecipeItems([]);
+        setRecipeNewItem({ ingredientSku: '', quantity: '', unit: 'G' });
+        setRecipeIngredientSearch('');
+        setProdActiveSection('geral');
         setShowProdModal(true);
     };
 
@@ -1329,6 +1351,17 @@ export default function SettingsHub() {
             return;
         }
 
+        const recipePayload = prodForm.controlaProducao
+            ? recipeItems
+                .filter(r => r.ingredientSku && parseFloat(r.quantity) > 0)
+                .map(r => ({
+                    ingredientSku: r.ingredientSku,
+                    name: r.name || '',
+                    quantity: parseFloat(r.quantity),
+                    unit: r.unit
+                }))
+            : [];
+
         const payload = {
             ...prodForm,
             primarySupplierId: prodForm.primarySupplierId ? Number(prodForm.primarySupplierId) : null,
@@ -1338,7 +1371,8 @@ export default function SettingsHub() {
             podeEmpilhar: !!prodForm.podeEmpilhar,
             maxEmpilhamento: parseInt(prodForm.maxEmpilhamento, 10) || 1,
             allowedCells: prodForm.allowedCells || [],
-            otherSupplierIds: (prodForm.otherSupplierIds || []).map(Number)
+            otherSupplierIds: (prodForm.otherSupplierIds || []).map(Number),
+            recipe: recipePayload
         };
 
         const result = await DbService.saveProduct(payload, editingProd ? editingProd.sku : null);
@@ -1396,6 +1430,17 @@ export default function SettingsHub() {
             status: prod.status || 'Ativo',
             controlaProducao: !!prod.controlaProducao
         });
+        // Load recipe if it exists
+        const existingRecipe = Array.isArray(prod.recipe) ? prod.recipe.map(r => ({
+            ingredientSku: r.ingredientSku || '',
+            name: r.name || '',
+            quantity: r.quantity !== undefined ? String(r.quantity) : '',
+            unit: r.unit || 'G'
+        })) : [];
+        setRecipeItems(existingRecipe);
+        setRecipeNewItem({ ingredientSku: '', quantity: '', unit: 'G' });
+        setRecipeIngredientSearch('');
+        setSaleProdActiveSection('geral');
         setShowSaleProdModal(true);
     };
 
@@ -1405,6 +1450,10 @@ export default function SettingsHub() {
             code: '', name: '', category: '', description: '',
             price: '', unit: 'UN', status: 'Ativo', controlaProducao: false
         });
+        setRecipeItems([]);
+        setRecipeNewItem({ ingredientSku: '', quantity: '', unit: 'G' });
+        setRecipeIngredientSearch('');
+        setSaleProdActiveSection('geral');
         setShowSaleProdModal(true);
     };
 
@@ -1434,6 +1483,16 @@ export default function SettingsHub() {
             return;
         }
 
+        // Build recipe payload — only include items with valid sku and quantity
+        const recipePayload = recipeItems
+            .filter(r => r.ingredientSku && parseFloat(r.quantity) > 0)
+            .map(r => ({
+                ingredientSku: r.ingredientSku,
+                name: r.name || '',
+                quantity: parseFloat(r.quantity),
+                unit: r.unit
+            }));
+
         const payload = {
             code: codeClean,
             name: nameClean,
@@ -1442,7 +1501,8 @@ export default function SettingsHub() {
             price: priceFloat,
             unit: saleProdForm.unit,
             status: saleProdForm.status,
-            controlaProducao: !!saleProdForm.controlaProducao
+            controlaProducao: !!saleProdForm.controlaProducao,
+            recipe: recipePayload
         };
 
         const result = await DbService.saveSaleProduct(payload, editingSaleProd ? editingSaleProd.code : null);
@@ -4788,391 +4848,614 @@ export default function SettingsHub() {
             ============================================= */}
             {showProdModal && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
-                    <div className="pin-modal-card" style={{ maxWidth: '650px', width: '90%' }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '650px', width: '90%', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                         <button className="btn-close-modal" onClick={() => setShowProdModal(false)}><X size={18} /></button>
                         
-                        <form onSubmit={handleSaveProd} style={{ padding: '1.5rem' }}>
-                            <h3 id="item-modal-title" style={{ fontSize: '1.4rem', color: 'var(--accent-orange)', marginBottom: '1.5rem', textTransform: 'uppercase', fontWeight: '800' }}>
+                        {/* Modal Header */}
+                        <div style={{ padding: '1.5rem 1.5rem 0 1.5rem', flexShrink: 0 }}>
+                            <h3 id="item-modal-title" style={{ fontSize: '1.4rem', color: 'var(--accent-orange)', marginBottom: '1rem', textTransform: 'uppercase', fontWeight: '800' }}>
                                 {editingProd ? 'Editar Produto' : 'Novo Produto'}
                             </h3>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>SKU (Código Único)</label>
-                                    <input 
-                                        type="text" 
-                                        required 
-                                        maxLength="12"
-                                        disabled={!!editingProd} // SKU cannot be changed after creation
-                                        placeholder="Ex: INS-001"
-                                        value={prodForm.sku} 
-                                        onChange={(e) => setProdForm(prev => ({ ...prev, sku: e.target.value.toUpperCase() }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Nome do Produto</label>
-                                    <input 
-                                        type="text" 
-                                        required 
-                                        maxLength="35"
-                                        value={prodForm.name} 
-                                        onChange={(e) => setProdForm(prev => ({ ...prev, name: e.target.value }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                    />
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Marca / Fabricante</label>
-                                    <input 
-                                        type="text" 
-                                        maxLength="15"
-                                        value={prodForm.brand} 
-                                        onChange={(e) => setProdForm(prev => ({ ...prev, brand: e.target.value }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Categoria</label>
-                                    <select 
-                                        value={prodForm.category}
-                                        onChange={(e) => setProdForm(prev => ({ ...prev, category: e.target.value }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                            {/* Tab Navigation */}
+                            <div style={{ display: 'flex', gap: '0', borderBottom: '2px solid var(--border-color)', marginBottom: '0' }}>
+                                {[{ id: 'geral', label: 'Dados Gerais' }, ...(prodForm.controlaProducao ? [{ id: 'receita', label: `Receita (${recipeItems.length})` }] : [])].map(tab => (
+                                    <button
+                                        key={tab.id}
+                                        type="button"
+                                        onClick={() => setProdActiveSection(tab.id)}
+                                        style={{
+                                            padding: '0.6rem 1.2rem',
+                                            border: 'none',
+                                            borderBottom: prodActiveSection === tab.id ? '2px solid var(--accent-orange)' : '2px solid transparent',
+                                            marginBottom: '-2px',
+                                            background: 'transparent',
+                                            color: prodActiveSection === tab.id ? 'var(--accent-orange)' : 'var(--text-secondary)',
+                                            fontWeight: prodActiveSection === tab.id ? '700' : '400',
+                                            fontSize: '0.85rem',
+                                            cursor: 'pointer',
+                                            letterSpacing: '0.03em',
+                                            transition: 'color 0.2s'
+                                        }}
                                     >
-                                        {categorias.map(c => (
-                                            <option key={c.id} value={c.name}>{c.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Unidade de Medida</label>
-                                    <select 
-                                        value={prodForm.unit}
-                                        onChange={(e) => setProdForm(prev => ({ ...prev, unit: e.target.value }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
-                                    >
-                                        <option value="KG">Kilograma (KG)</option>
-                                        <option value="Unidade">Unidade (UN)</option>
-                                        <option value="Litro">Litro (L)</option>
-                                        <option value="Pacote">Pacote (PCT)</option>
-                                        <option value="Bandeja">Bandeja (BDJ)</option>
-                                        <option value="Fardo">Fardo (FRD)</option>
-                                        <option value="Galão">Galão (GL)</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Volume Ocupado (m³/un)</label>
-                                    <input 
-                                        type="number" 
-                                        step="any"
-                                        min="0"
-                                        placeholder="Ex: 0.005"
-                                        value={prodForm.volumeOcupado || ''} 
-                                        onChange={(e) => setProdForm(prev => ({ ...prev, volumeOcupado: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                    />
-                                </div>
+                                        {tab.label}
+                                    </button>
+                                ))}
                             </div>
+                        </div>
 
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Fornecedor Principal</label>
-                                <select 
-                                    value={prodForm.primarySupplierId || ''}
-                                    onChange={(e) => setProdForm(prev => ({ ...prev, primarySupplierId: e.target.value }))}
-                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
-                                >
-                                    <option value="">Sem Fornecedor</option>
-                                    {fornecedores.map(f => (
-                                        <option key={f.id} value={f.id}>{f.nomeFantasia || f.razaoSocial}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div style={{ marginBottom: '1.2rem' }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.4rem' }}>Outros Fornecedores Adicionais (Opcional)</label>
-                                <div style={{ 
-                                    maxHeight: '120px', 
-                                    overflowY: 'auto', 
-                                    border: '1px solid var(--border-color)', 
-                                    borderRadius: '8px', 
-                                    padding: '0.5rem 0.8rem', 
-                                    background: 'var(--bg-input)',
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                                    gap: '0.4rem'
-                                }}>
-                                    {fornecedores
-                                        .filter(f => String(f.id) !== String(prodForm.primarySupplierId))
-                                        .map(f => {
-                                            const isChecked = (prodForm.otherSupplierIds || []).includes(f.id);
-                                            return (
-                                                <label key={f.id} style={{ 
-                                                    display: 'flex', 
-                                                    alignItems: 'center', 
-                                                    gap: '0.5rem', 
-                                                    fontSize: '0.75rem', 
-                                                    color: 'var(--text-primary)', 
-                                                    cursor: 'pointer',
-                                                    padding: '0.2rem 0.4rem',
-                                                    borderRadius: '4px',
-                                                    background: isChecked ? 'rgba(255, 255, 255, 0.05)' : 'transparent'
-                                                }}>
-                                                    <input 
-                                                        type="checkbox" 
-                                                        checked={isChecked}
-                                                        onChange={(e) => {
-                                                            const checked = e.target.checked;
-                                                            setProdForm(prev => {
-                                                                const current = prev.otherSupplierIds || [];
-                                                                if (checked) {
-                                                                    return { ...prev, otherSupplierIds: [...current, f.id] };
-                                                                } else {
-                                                                    return { ...prev, otherSupplierIds: current.filter(id => id !== f.id) };
-                                                                }
-                                                            });
-                                                        }}
-                                                        style={{ cursor: 'pointer' }}
-                                                    />
-                                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={f.nomeFantasia || f.razaoSocial}>
-                                                        {f.nomeFantasia || f.razaoSocial}
-                                                    </span>
-                                                </label>
-                                            );
-                                        })
-                                    }
-                                    {fornecedores.filter(f => String(f.id) !== String(prodForm.primarySupplierId)).length === 0 && (
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '0.2rem' }}>
-                                            Nenhum outro fornecedor disponível.
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Section: Stock triggers */}
-                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', padding: '1.2rem', borderRadius: '10px', marginBottom: '1rem' }}>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '0.8rem' }}>
-                                    LIMITES ALERTA DE ESTOQUE ({prodForm.unit})
-                                </div>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
-                                    <div>
-                                        <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Estoque Mínimo</label>
-                                        <input 
-                                            type="number" 
-                                            required 
-                                            value={prodForm.minStock} 
-                                            onChange={(e) => setProdForm(prev => ({ ...prev, minStock: parseFloat(e.target.value) || 0 }))}
-                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Estoque Médio</label>
-                                        <input 
-                                            type="number" 
-                                            required 
-                                            value={prodForm.avgStock} 
-                                            onChange={(e) => setProdForm(prev => ({ ...prev, avgStock: parseFloat(e.target.value) || 0 }))}
-                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Estoque Máximo</label>
-                                        <input 
-                                            type="number" 
-                                            required 
-                                            value={prodForm.maxStock} 
-                                            onChange={(e) => setProdForm(prev => ({ ...prev, maxStock: parseFloat(e.target.value) || 0 }))}
-                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                        />
-                                    </div>
-                                    {!editingProd && (
+                        <form onSubmit={handleSaveProd} style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+                            {prodActiveSection === 'geral' && (
+                                <>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
                                         <div>
-                                            <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Estoque Inicial</label>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>SKU (Código Único)</label>
                                             <input 
-                                                type="number" 
+                                                type="text" 
                                                 required 
-                                                value={prodForm.stock} 
-                                                onChange={(e) => setProdForm(prev => ({ ...prev, stock: parseFloat(e.target.value) || 0 }))}
+                                                maxLength="12"
+                                                disabled={!!editingProd} // SKU cannot be changed after creation
+                                                placeholder="Ex: INS-001"
+                                                value={prodForm.sku} 
+                                                onChange={(e) => setProdForm(prev => ({ ...prev, sku: e.target.value.toUpperCase() }))}
                                                 style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
                                             />
                                         </div>
-                                    )}
-                                </div>
-                            </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Nome do Produto</label>
+                                            <input 
+                                                type="text" 
+                                                required 
+                                                maxLength="35"
+                                                value={prodForm.name} 
+                                                onChange={(e) => setProdForm(prev => ({ ...prev, name: e.target.value }))}
+                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                            />
+                                        </div>
+                                    </div>
 
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>Controla produção?</label>
-                                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: !prodForm.controlaProducao ? 'var(--accent-orange)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: '700' }}>
-                                        <input 
-                                            type="radio"
-                                            name="controlaProducao"
-                                            checked={!prodForm.controlaProducao}
-                                            onChange={() => setProdForm(prev => ({ ...prev, controlaProducao: false }))}
-                                            style={{ accentColor: 'var(--accent-orange)', cursor: 'pointer', width: '16px', height: '16px' }}
-                                        />
-                                        Não
-                                    </label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: prodForm.controlaProducao ? 'var(--accent-orange)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: '700' }}>
-                                        <input 
-                                            type="radio"
-                                            name="controlaProducao"
-                                            checked={prodForm.controlaProducao}
-                                            onChange={() => setProdForm(prev => ({ ...prev, controlaProducao: true }))}
-                                            style={{ accentColor: 'var(--accent-orange)', cursor: 'pointer', width: '16px', height: '16px' }}
-                                        />
-                                        Sim
-                                    </label>
-                                </div>
-                            </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Marca / Fabricante</label>
+                                            <input 
+                                                type="text" 
+                                                maxLength="15"
+                                                value={prodForm.brand} 
+                                                onChange={(e) => setProdForm(prev => ({ ...prev, brand: e.target.value }))}
+                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Categoria</label>
+                                            <select 
+                                                value={prodForm.category}
+                                                onChange={(e) => setProdForm(prev => ({ ...prev, category: e.target.value }))}
+                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                            >
+                                                {categorias.map(c => (
+                                                    <option key={c.id} value={c.name}>{c.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Unidade de Medida</label>
+                                            <select 
+                                                value={prodForm.unit}
+                                                onChange={(e) => setProdForm(prev => ({ ...prev, unit: e.target.value }))}
+                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                            >
+                                                <option value="KG">Kilograma (KG)</option>
+                                                <option value="Unidade">Unidade (UN)</option>
+                                                <option value="Litro">Litro (L)</option>
+                                                <option value="Pacote">Pacote (PCT)</option>
+                                                <option value="Bandeja">Bandeja (BDJ)</option>
+                                                <option value="Fardo">Fardo (FRD)</option>
+                                                <option value="Galão">Galão (GL)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Volume Ocupado (m³/un)</label>
+                                            <input 
+                                                type="number" 
+                                                step="any"
+                                                min="0"
+                                                placeholder="Ex: 0.005"
+                                                value={prodForm.volumeOcupado || ''} 
+                                                onChange={(e) => setProdForm(prev => ({ ...prev, volumeOcupado: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
+                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                            />
+                                        </div>
+                                    </div>
 
-                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', padding: '1.2rem', borderRadius: '10px', marginBottom: '1rem' }}>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '0.8rem', textTransform: 'uppercase' }}>
-                                    Zonas Permitidas de Armazenamento
-                                </div>
-                                {allZonesList.length === 0 ? (
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Nenhuma zona WMS cadastrada no sistema.</div>
-                                ) : (
-                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.8rem' }}>
-                                        {allZonesList.map(zone => {
-                                            const isChecked = prodForm.allowedZones?.includes(zone.id);
-                                            return (
-                                                <label key={zone.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Fornecedor Principal</label>
+                                        <select 
+                                            value={prodForm.primarySupplierId || ''}
+                                            onChange={(e) => setProdForm(prev => ({ ...prev, primarySupplierId: e.target.value }))}
+                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                        >
+                                            <option value="">Sem Fornecedor</option>
+                                            {fornecedores.map(f => (
+                                                <option key={f.id} value={f.id}>{f.nomeFantasia || f.razaoSocial}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div style={{ marginBottom: '1.2rem' }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.4rem' }}>Outros Fornecedores Adicionais (Opcional)</label>
+                                        <div style={{ 
+                                            maxHeight: '120px', 
+                                            overflowY: 'auto', 
+                                            border: '1px solid var(--border-color)', 
+                                            borderRadius: '8px', 
+                                            padding: '0.5rem 0.8rem', 
+                                            background: 'var(--bg-input)',
+                                            display: 'grid',
+                                            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                                            gap: '0.4rem'
+                                        }}>
+                                            {fornecedores
+                                                .filter(f => String(f.id) !== String(prodForm.primarySupplierId))
+                                                .map(f => {
+                                                    const isChecked = (prodForm.otherSupplierIds || []).includes(f.id);
+                                                    return (
+                                                        <label key={f.id} style={{ 
+                                                            display: 'flex', 
+                                                            alignItems: 'center', 
+                                                            gap: '0.5rem', 
+                                                            fontSize: '0.75rem', 
+                                                            color: 'var(--text-primary)', 
+                                                            cursor: 'pointer',
+                                                            padding: '0.2rem 0.4rem',
+                                                            borderRadius: '4px',
+                                                            background: isChecked ? 'rgba(255, 255, 255, 0.05)' : 'transparent'
+                                                        }}>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={isChecked}
+                                                                onChange={(e) => {
+                                                                    const checked = e.target.checked;
+                                                                    setProdForm(prev => {
+                                                                        const current = prev.otherSupplierIds || [];
+                                                                        if (checked) {
+                                                                            return { ...prev, otherSupplierIds: [...current, f.id] };
+                                                                        } else {
+                                                                            return { ...prev, otherSupplierIds: current.filter(id => id !== f.id) };
+                                                                        }
+                                                                    });
+                                                                }}
+                                                                style={{ cursor: 'pointer' }}
+                                                            />
+                                                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={f.nomeFantasia || f.razaoSocial}>
+                                                                {f.nomeFantasia || f.razaoSocial}
+                                                            </span>
+                                                        </label>
+                                                    );
+                                                })
+                                            }
+                                            {fornecedores.filter(f => String(f.id) !== String(prodForm.primarySupplierId)).length === 0 && (
+                                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '0.2rem' }}>
+                                                    Nenhum outro fornecedor disponível.
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Section: Stock triggers */}
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', padding: '1.2rem', borderRadius: '10px', marginBottom: '1rem' }}>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '0.8rem' }}>
+                                            LIMITES ALERTA DE ESTOQUE ({prodForm.unit})
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Estoque Mínimo</label>
+                                                <input 
+                                                    type="number" 
+                                                    required 
+                                                    value={prodForm.minStock} 
+                                                    onChange={(e) => setProdForm(prev => ({ ...prev, minStock: parseFloat(e.target.value) || 0 }))}
+                                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Estoque Médio</label>
+                                                <input 
+                                                    type="number" 
+                                                    required 
+                                                    value={prodForm.avgStock} 
+                                                    onChange={(e) => setProdForm(prev => ({ ...prev, avgStock: parseFloat(e.target.value) || 0 }))}
+                                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Estoque Máximo</label>
+                                                <input 
+                                                    type="number" 
+                                                    required 
+                                                    value={prodForm.maxStock} 
+                                                    onChange={(e) => setProdForm(prev => ({ ...prev, maxStock: parseFloat(e.target.value) || 0 }))}
+                                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                                />
+                                            </div>
+                                            {!editingProd && (
+                                                <div>
+                                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Estoque Inicial</label>
                                                     <input 
-                                                        type="checkbox"
-                                                        checked={isChecked}
-                                                        onChange={(e) => {
-                                                            const checked = e.target.checked;
-                                                            setProdForm(prev => {
-                                                                const current = prev.allowedZones || [];
-                                                                const updated = checked 
-                                                                    ? [...current, zone.id]
-                                                                    : current.filter(id => id !== zone.id);
-                                                                return { ...prev, allowedZones: updated };
+                                                        type="number" 
+                                                        required 
+                                                        value={prodForm.stock} 
+                                                        onChange={(e) => setProdForm(prev => ({ ...prev, stock: parseFloat(e.target.value) || 0 }))}
+                                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>Controla produção?</label>
+                                        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: !prodForm.controlaProducao ? 'var(--accent-orange)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: '700' }}>
+                                                <input 
+                                                    type="radio"
+                                                    name="controlaProducao"
+                                                    checked={!prodForm.controlaProducao}
+                                                    onChange={() => { setProdForm(prev => ({ ...prev, controlaProducao: false })); setProdActiveSection('geral'); }}
+                                                    style={{ accentColor: 'var(--accent-orange)', cursor: 'pointer', width: '16px', height: '16px' }}
+                                                />
+                                                Não
+                                            </label>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: prodForm.controlaProducao ? 'var(--accent-orange)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: '700' }}>
+                                                <input 
+                                                    type="radio"
+                                                    name="controlaProducao"
+                                                    checked={prodForm.controlaProducao}
+                                                    onChange={() => setProdForm(prev => ({ ...prev, controlaProducao: true }))}
+                                                    style={{ accentColor: 'var(--accent-orange)', cursor: 'pointer', width: '16px', height: '16px' }}
+                                                />
+                                                Sim
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', padding: '1.2rem', borderRadius: '10px', marginBottom: '1rem' }}>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '0.8rem', textTransform: 'uppercase' }}>
+                                            Zonas Permitidas de Armazenamento
+                                        </div>
+                                        {allZonesList.length === 0 ? (
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Nenhuma zona WMS cadastrada no sistema.</div>
+                                        ) : (
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.8rem' }}>
+                                                {allZonesList.map(zone => {
+                                                    const isChecked = prodForm.allowedZones?.includes(zone.id);
+                                                    return (
+                                                        <label key={zone.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>
+                                                            <input 
+                                                                type="checkbox"
+                                                                checked={isChecked}
+                                                                onChange={(e) => {
+                                                                    const checked = e.target.checked;
+                                                                    setProdForm(prev => {
+                                                                        const current = prev.allowedZones || [];
+                                                                        const updated = checked 
+                                                                            ? [...current, zone.id]
+                                                                            : current.filter(id => id !== zone.id);
+                                                                        return { ...prev, allowedZones: updated };
+                                                                    });
+                                                                }}
+                                                                style={{ accentColor: 'var(--accent-blue)', width: '16px', height: '16px', cursor: 'pointer' }}
+                                                            />
+                                                            <span><strong>{zone.name}</strong> · <span style={{ color: 'var(--text-secondary)' }}>{zone.acronymDescription || zone.description || ''}</span></span>
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Stacking Options */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>Pode ser empilhado?</label>
+                                            <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: !prodForm.podeEmpilhar ? 'var(--accent-orange)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: '700' }}>
+                                                    <input 
+                                                        type="radio"
+                                                        name="podeEmpilhar"
+                                                        checked={!prodForm.podeEmpilhar}
+                                                        onChange={() => setProdForm(prev => ({ ...prev, podeEmpilhar: false, maxEmpilhamento: 1 }))}
+                                                        style={{ accentColor: 'var(--accent-orange)', cursor: 'pointer', width: '16px', height: '16px' }}
+                                                    />
+                                                    Não
+                                                </label>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: prodForm.podeEmpilhar ? 'var(--accent-orange)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: '700' }}>
+                                                    <input 
+                                                        type="radio"
+                                                        name="podeEmpilhar"
+                                                        checked={prodForm.podeEmpilhar}
+                                                        onChange={() => setProdForm(prev => ({ ...prev, podeEmpilhar: true }))}
+                                                        style={{ accentColor: 'var(--accent-orange)', cursor: 'pointer', width: '16px', height: '16px' }}
+                                                    />
+                                                    Sim
+                                                </label>
+                                            </div>
+                                        </div>
+                                        {prodForm.podeEmpilhar && (
+                                            <div>
+                                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Quantas unidades (empilhamento máx.)?</label>
+                                                <input 
+                                                    type="number" 
+                                                    required 
+                                                    min="1"
+                                                    value={prodForm.maxEmpilhamento} 
+                                                    onChange={(e) => setProdForm(prev => ({ ...prev, maxEmpilhamento: parseInt(e.target.value, 10) || 1 }))}
+                                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* WMS Cell Restrictions */}
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', padding: '1.2rem', borderRadius: '10px', marginBottom: '1rem' }}>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '0.8rem', textTransform: 'uppercase' }}>
+                                            Restrição de Células no WMS
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>
+                                                <input 
+                                                    type="checkbox"
+                                                    checked={limitToSpecificCells}
+                                                    onChange={(e) => {
+                                                        const checked = e.target.checked;
+                                                        setLimitToSpecificCells(checked);
+                                                        if (!checked) {
+                                                            setProdForm(prev => ({ ...prev, allowedCells: [] }));
+                                                        }
+                                                    }}
+                                                    style={{ accentColor: 'var(--accent-blue)', width: '16px', height: '16px', cursor: 'pointer' }}
+                                                />
+                                                <span>Limitar este insumo a células específicas?</span>
+                                            </label>
+                                            
+                                            {limitToSpecificCells && (
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            loadWmsDataForSelector().then(() => {
+                                                                setShowCellSelectorModal(true);
                                                             });
                                                         }}
-                                                        style={{ accentColor: 'var(--accent-blue)', width: '16px', height: '16px', cursor: 'pointer' }}
-                                                    />
-                                                    <span><strong>{zone.name}</strong> · <span style={{ color: 'var(--text-secondary)' }}>{zone.acronymDescription || zone.description || ''}</span></span>
-                                                </label>
-                                            );
-                                        })}
+                                                        style={{
+                                                            padding: '0.5rem 1rem',
+                                                            background: 'var(--accent-blue)',
+                                                            color: 'white',
+                                                            border: 'none',
+                                                            borderRadius: '6px',
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: '700',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '6px'
+                                                        }}
+                                                    >
+                                                        <Grid3X3 size={14} /> Selecionar Células Permitidas
+                                                    </button>
+                                                    
+                                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                        {prodForm.allowedCells?.length > 0 
+                                                            ? `${prodForm.allowedCells.length} célula(s) selecionada(s)`
+                                                            : 'Nenhuma célula selecionada (insumo não poderá ser guardado!)'}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                )}
-                            </div>
 
-                            {/* Stacking Options */}
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>Pode ser empilhado?</label>
-                                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: !prodForm.podeEmpilhar ? 'var(--accent-orange)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: '700' }}>
-                                            <input 
-                                                type="radio"
-                                                name="podeEmpilhar"
-                                                checked={!prodForm.podeEmpilhar}
-                                                onChange={() => setProdForm(prev => ({ ...prev, podeEmpilhar: false, maxEmpilhamento: 1 }))}
-                                                style={{ accentColor: 'var(--accent-orange)', cursor: 'pointer', width: '16px', height: '16px' }}
-                                            />
-                                            Não
-                                        </label>
-                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: prodForm.podeEmpilhar ? 'var(--accent-orange)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: '700' }}>
-                                            <input 
-                                                type="radio"
-                                                name="podeEmpilhar"
-                                                checked={prodForm.podeEmpilhar}
-                                                onChange={() => setProdForm(prev => ({ ...prev, podeEmpilhar: true }))}
-                                                style={{ accentColor: 'var(--accent-orange)', cursor: 'pointer', width: '16px', height: '16px' }}
-                                            />
-                                            Sim
-                                        </label>
-                                    </div>
-                                </div>
-                                {prodForm.podeEmpilhar && (
-                                    <div>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Quantas unidades (empilhamento máx.)?</label>
-                                        <input 
-                                            type="number" 
-                                            required 
-                                            min="1"
-                                            value={prodForm.maxEmpilhamento} 
-                                            onChange={(e) => setProdForm(prev => ({ ...prev, maxEmpilhamento: parseInt(e.target.value, 10) || 1 }))}
-                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Descrição do Insumo</label>
+                                        <textarea 
+                                            value={prodForm.desc} 
+                                            onChange={(e) => setProdForm(prev => ({ ...prev, desc: e.target.value }))}
+                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', height: '80px', resize: 'vertical' }}
                                         />
                                     </div>
-                                )}
-                            </div>
+                                </>
+                            )}
 
-                            {/* WMS Cell Restrictions */}
-                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', padding: '1.2rem', borderRadius: '10px', marginBottom: '1rem' }}>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '0.8rem', textTransform: 'uppercase' }}>
-                                    Restrição de Células no WMS
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>
-                                        <input 
-                                            type="checkbox"
-                                            checked={limitToSpecificCells}
-                                            onChange={(e) => {
-                                                const checked = e.target.checked;
-                                                setLimitToSpecificCells(checked);
-                                                if (!checked) {
-                                                    setProdForm(prev => ({ ...prev, allowedCells: [] }));
-                                                }
-                                            }}
-                                            style={{ accentColor: 'var(--accent-blue)', width: '16px', height: '16px', cursor: 'pointer' }}
-                                        />
-                                        <span>Limitar este insumo a células específicas?</span>
-                                    </label>
-                                    
-                                    {limitToSpecificCells && (
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                            {prodActiveSection === 'receita' && prodForm.controlaProducao && (
+                                <>
+                                    <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: '1.5' }}>
+                                        Defina os insumos que compõem <strong style={{ color: 'var(--text-primary)' }}>{prodForm.name || 'este insumo'}</strong>. Selecione apenas insumos cadastrados no estoque.
+                                    </p>
+
+                                    {/* Ingredient Adder */}
+                                    <div style={{
+                                        background: 'rgba(255,255,255,0.03)',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: '10px',
+                                        padding: '1rem',
+                                        marginBottom: '1rem'
+                                    }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--accent-orange)', fontWeight: '700', letterSpacing: '0.05em', marginBottom: '0.75rem', textTransform: 'uppercase' }}>Adicionar Insumo</div>
+
+                                        {/* Ingredient search dropdown */}
+                                        <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
+                                            <label style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Insumo (Estoque)</label>
+                                            <div style={{ position: 'relative' }}>
+                                                <Search size={14} style={{ position: 'absolute', left: '0.7rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Buscar insumo pelo nome ou SKU..."
+                                                    value={recipeIngredientSearch}
+                                                    onChange={e => {
+                                                        setRecipeIngredientSearch(e.target.value);
+                                                        setRecipeNewItem(prev => ({ ...prev, ingredientSku: '', name: '' }));
+                                                    }}
+                                                    style={{ width: '100%', paddingLeft: '2rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.75rem 0.45rem 2rem', borderRadius: '7px', outline: 'none', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                            {/* Dropdown list of matching products */}
+                                            {recipeIngredientSearch.length > 1 && !recipeNewItem.ingredientSku && (() => {
+                                                const q = recipeIngredientSearch.toLowerCase();
+                                                const matches = produtos.filter(p =>
+                                                    p.sku !== prodForm.sku && ( // Prevent self-referencing in recipe
+                                                        (p.name && p.name.toLowerCase().includes(q)) ||
+                                                        (p.sku && p.sku.toLowerCase().includes(q))
+                                                    )
+                                                ).slice(0, 8);
+                                                if (matches.length === 0) return (
+                                                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px', zIndex: 1000, padding: '0.75rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                        Nenhum insumo encontrado.
+                                                    </div>
+                                                );
+                                                return (
+                                                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
+                                                        {matches.map(p => (
+                                                            <div
+                                                                key={p.sku}
+                                                                onClick={() => {
+                                                                    setRecipeNewItem(prev => ({ ...prev, ingredientSku: p.sku, name: p.name, unit: p.unit || 'G' }));
+                                                                    setRecipeIngredientSearch(p.name);
+                                                                }}
+                                                                style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem', transition: 'background 0.15s' }}
+                                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                            >
+                                                                <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{p.name}</span>
+                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{p.sku} · {p.unit || 'UN'}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+
+                                        {/* Quantity + unit + Add button */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px auto', gap: '0.5rem', alignItems: 'flex-end' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Quantidade</label>
+                                                <input
+                                                    type="number"
+                                                    min="0.001"
+                                                    step="any"
+                                                    placeholder="Ex: 300"
+                                                    value={recipeNewItem.quantity}
+                                                    onChange={e => setRecipeNewItem(prev => ({ ...prev, quantity: e.target.value }))}
+                                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.75rem', borderRadius: '7px', outline: 'none', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Unidade</label>
+                                                <select
+                                                    value={recipeNewItem.unit}
+                                                    onChange={e => setRecipeNewItem(prev => ({ ...prev, unit: e.target.value }))}
+                                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.5rem', borderRadius: '7px', outline: 'none', fontSize: '0.82rem', cursor: 'pointer' }}
+                                                >
+                                                    <option value="G">G</option>
+                                                    <option value="KG">KG</option>
+                                                    <option value="ML">ML</option>
+                                                    <option value="L">L</option>
+                                                    <option value="UN">UN</option>
+                                                    <option value="PCT">PCT</option>
+                                                    <option value="CX">CX</option>
+                                                </select>
+                                            </div>
                                             <button
                                                 type="button"
                                                 onClick={() => {
-                                                    loadWmsDataForSelector().then(() => {
-                                                        setShowCellSelectorModal(true);
-                                                    });
+                                                    if (!recipeNewItem.ingredientSku) { showToast('Selecione um insumo da lista.', 'error'); return; }
+                                                    if (!recipeNewItem.quantity || parseFloat(recipeNewItem.quantity) <= 0) { showToast('Informe uma quantidade válida.', 'error'); return; }
+                                                    if (recipeItems.some(r => r.ingredientSku === recipeNewItem.ingredientSku)) { showToast('Este insumo já foi adicionado.', 'error'); return; }
+                                                    setRecipeItems(prev => [...prev, { ...recipeNewItem }]);
+                                                    setRecipeNewItem({ ingredientSku: '', quantity: '', unit: 'G' });
+                                                    setRecipeIngredientSearch('');
                                                 }}
                                                 style={{
-                                                    padding: '0.5rem 1rem',
-                                                    background: 'var(--accent-blue)',
-                                                    color: 'white',
+                                                    padding: '0.45rem 1rem',
+                                                    background: 'var(--accent-orange)',
                                                     border: 'none',
-                                                    borderRadius: '6px',
-                                                    fontSize: '0.8rem',
+                                                    borderRadius: '7px',
+                                                    color: '#fff',
                                                     fontWeight: '700',
+                                                    fontSize: '0.82rem',
                                                     cursor: 'pointer',
                                                     display: 'flex',
                                                     alignItems: 'center',
-                                                    gap: '6px'
+                                                    gap: '0.3rem',
+                                                    whiteSpace: 'nowrap'
                                                 }}
                                             >
-                                                <Grid3X3 size={14} /> Selecionar Células Permitidas
+                                                <Plus size={14} /> Adicionar
                                             </button>
-                                            
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                {prodForm.allowedCells?.length > 0 
-                                                    ? `${prodForm.allowedCells.length} célula(s) selecionada(s)`
-                                                    : 'Nenhuma célula selecionada (insumo não poderá ser guardado!)'}
-                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Recipe Items List */}
+                                    {recipeItems.length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.85rem', border: '1px dashed var(--border-color)', borderRadius: '8px' }}>
+                                            <Layers size={28} style={{ marginBottom: '0.5rem', opacity: 0.4 }} />
+                                            <div>Nenhum insumo adicionado à receita ainda.</div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                            {recipeItems.map((item, idx) => (
+                                                <div key={item.ingredientSku} style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.75rem',
+                                                    background: 'rgba(255,255,255,0.03)',
+                                                    border: '1px solid var(--border-color)',
+                                                    borderRadius: '8px',
+                                                    padding: '0.6rem 0.9rem'
+                                                }}>
+                                                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(243, 107, 29, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                        <span style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--accent-orange)' }}>{idx + 1}</span>
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ fontSize: '0.88rem', fontWeight: '600', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name || item.ingredientSku}</div>
+                                                        <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>SKU: {item.ingredientSku}</div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                                                        <input
+                                                            type="number"
+                                                            min="0.001"
+                                                            step="any"
+                                                            value={item.quantity}
+                                                            onChange={e => setRecipeItems(prev => prev.map((r, i) => i === idx ? { ...r, quantity: e.target.value } : r))}
+                                                            style={{ width: '70px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.3rem 0.5rem', borderRadius: '6px', outline: 'none', fontSize: '0.82rem', textAlign: 'right' }}
+                                                        />
+                                                        <select
+                                                            value={item.unit}
+                                                            onChange={e => setRecipeItems(prev => prev.map((r, i) => i === idx ? { ...r, unit: e.target.value } : r))}
+                                                            style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.3rem 0.4rem', borderRadius: '6px', outline: 'none', fontSize: '0.78rem', cursor: 'pointer' }}
+                                                        >
+                                                            <option value="G">G</option>
+                                                            <option value="KG">KG</option>
+                                                            <option value="ML">ML</option>
+                                                            <option value="L">L</option>
+                                                            <option value="UN">UN</option>
+                                                            <option value="PCT">PCT</option>
+                                                            <option value="CX">CX</option>
+                                                        </select>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setRecipeItems(prev => prev.filter((_, i) => i !== idx))}
+                                                            style={{ background: 'none', border: 'none', color: 'var(--accent-red)', cursor: 'pointer', padding: '0.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
-                                </div>
-                            </div>
-
-                            <div style={{ marginBottom: '1rem' }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Descrição do Insumo</label>
-                                <textarea 
-                                    value={prodForm.desc} 
-                                    onChange={(e) => setProdForm(prev => ({ ...prev, desc: e.target.value }))}
-                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', height: '80px', resize: 'vertical' }}
-                                />
-                            </div>
+                                </>
+                            )}
 
                             {/* Actions */}
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', flexShrink: 0 }}>
                                 <button type="button" className="btn-clear-modal" onClick={() => setShowProdModal(false)}>CANCELAR</button>
                                 <button type="submit" className="btn-confirm-modal">SALVAR PRODUTO</button>
                             </div>
@@ -5537,175 +5820,401 @@ export default function SettingsHub() {
             ============================================= */}
             {showSaleProdModal && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
-                    <div className="pin-modal-card" style={{ maxWidth: '600px', width: '90%' }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '680px', width: '95%', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                         <button className="btn-close-modal" onClick={() => setShowSaleProdModal(false)}><X size={18} /></button>
                         
-                        <form onSubmit={handleSaveSaleProd} style={{ padding: '1.5rem' }}>
-                            <h3 style={{ fontSize: '1.4rem', color: 'var(--accent-pink)', marginBottom: '1.5rem', textTransform: 'uppercase', fontWeight: '800' }}>
+                        {/* Modal Header */}
+                        <div style={{ padding: '1.5rem 1.5rem 0 1.5rem', flexShrink: 0 }}>
+                            <h3 style={{ fontSize: '1.4rem', color: 'var(--accent-pink)', marginBottom: '1rem', textTransform: 'uppercase', fontWeight: '800' }}>
                                 {editingSaleProd ? 'Editar Produto Final' : 'Novo Produto Final'}
                             </h3>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem', marginBottom: '1rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Código</label>
-                                    <input 
-                                        type="text" 
-                                        required 
-                                        maxLength="15"
-                                        disabled={!!editingSaleProd}
-                                        placeholder="Ex: PIZ001"
-                                        value={saleProdForm.code} 
-                                        onChange={(e) => setSaleProdForm(prev => ({ ...prev, code: e.target.value.toUpperCase().replace(/\s/g, '') }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Nome do Produto</label>
-                                    <input 
-                                        type="text" 
-                                        required 
-                                        maxLength="100"
-                                        placeholder="Ex: Pizza Calabresa G"
-                                        value={saleProdForm.name} 
-                                        onChange={(e) => setSaleProdForm(prev => ({ ...prev, name: e.target.value }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                    />
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Categoria</label>
-                                    <select 
-                                        required
-                                        value={saleProdForm.category}
-                                        onChange={(e) => setSaleProdForm(prev => ({ ...prev, category: e.target.value }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
-                                    >
-                                        <option value="">Selecione...</option>
-                                        <option value="PIZZAS">PIZZAS</option>
-                                        <option value="BEBIDAS">BEBIDAS</option>
-                                        <option value="SOBREMESAS">SOBREMESAS</option>
-                                        <option value="LANCHES">LANCHES</option>
-                                        <option value="OUTROS">OUTROS</option>
-                                        {categorias.filter(c => !['PIZZAS', 'BEBIDAS', 'SOBREMESAS', 'LANCHES', 'OUTROS'].includes(c.name.toUpperCase())).map(c => (
-                                            <option key={c.id} value={c.name.toUpperCase()}>{c.name.toUpperCase()}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Unidade</label>
-                                    <select 
-                                        required
-                                        value={saleProdForm.unit}
-                                        onChange={(e) => setSaleProdForm(prev => ({ ...prev, unit: e.target.value }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
-                                    >
-                                        <option value="UN">UN (Unidade)</option>
-                                        <option value="KG">KG (Quilograma)</option>
-                                        <option value="G">G (Grama)</option>
-                                        <option value="L">L (Litro)</option>
-                                        <option value="ML">ML (Mililitro)</option>
-                                        <option value="PCT">PCT (Pacote)</option>
-                                        <option value="CX">CX (Caixa)</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Preço de Venda (R$)</label>
-                                    <input 
-                                        type="text" 
-                                        required 
-                                        placeholder="Ex: 49,90"
-                                        value={saleProdForm.price} 
-                                        onChange={(e) => {
-                                            let val = e.target.value;
-                                            val = val.replace(/[^\d.,R$\s]/g, '');
-                                            setSaleProdForm(prev => ({ ...prev, price: val }));
-                                        }}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
-                                    />
-                                </div>
-                                <div>
-                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Status</label>
-                                    <select 
-                                        required
-                                        value={saleProdForm.status}
-                                        onChange={(e) => setSaleProdForm(prev => ({ ...prev, status: e.target.value }))}
-                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
-                                    >
-                                        <option value="Ativo">Ativo</option>
-                                        <option value="Inativo">Inativo</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div style={{ marginBottom: '1.2rem' }}>
-                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Descrição</label>
-                                <textarea 
-                                    rows="3"
-                                    placeholder="Descrição detalhada do produto final..."
-                                    value={saleProdForm.description} 
-                                    onChange={(e) => setSaleProdForm(prev => ({ ...prev, description: e.target.value }))}
-                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', resize: 'none', fontFamily: 'inherit' }}
-                                />
-                            </div>
-
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '1rem',
-                                background: 'rgba(255, 255, 255, 0.02)',
-                                border: '1px solid var(--border-color)',
-                                borderRadius: '8px',
-                                padding: '1rem',
-                                marginBottom: '1.5rem'
-                            }}>
-                                <div style={{ flex: 1 }}>
-                                    <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-primary)', display: 'block' }}>Controla Produção</span>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                        Determina se o sistema deve monitorar e requisitar ordens de produção para este item.
-                                    </span>
-                                </div>
-                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            {/* Tab Navigation */}
+                            <div style={{ display: 'flex', gap: '0', borderBottom: '2px solid var(--border-color)', marginBottom: '0' }}>
+                                {[{ id: 'geral', label: 'Dados Gerais' }, ...(saleProdForm.controlaProducao ? [{ id: 'receita', label: `Receita (${recipeItems.length})` }] : [])].map(tab => (
                                     <button
+                                        key={tab.id}
                                         type="button"
-                                        onClick={() => setSaleProdForm(prev => ({ ...prev, controlaProducao: false }))}
+                                        onClick={() => setSaleProdActiveSection(tab.id)}
                                         style={{
-                                            padding: '0.4rem 1rem',
-                                            borderRadius: '6px',
-                                            border: '1px solid var(--border-color)',
-                                            background: !saleProdForm.controlaProducao ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
-                                            color: !saleProdForm.controlaProducao ? 'var(--accent-red)' : 'var(--text-secondary)',
-                                            fontWeight: '700',
-                                            fontSize: '0.8rem',
-                                            cursor: 'pointer'
+                                            padding: '0.6rem 1.2rem',
+                                            border: 'none',
+                                            borderBottom: saleProdActiveSection === tab.id ? '2px solid var(--accent-pink)' : '2px solid transparent',
+                                            marginBottom: '-2px',
+                                            background: 'transparent',
+                                            color: saleProdActiveSection === tab.id ? 'var(--accent-pink)' : 'var(--text-secondary)',
+                                            fontWeight: saleProdActiveSection === tab.id ? '700' : '400',
+                                            fontSize: '0.85rem',
+                                            cursor: 'pointer',
+                                            letterSpacing: '0.03em',
+                                            transition: 'color 0.2s'
                                         }}
                                     >
-                                        NÃO
+                                        {tab.label}
                                     </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setSaleProdForm(prev => ({ ...prev, controlaProducao: true }))}
-                                        style={{
-                                            padding: '0.4rem 1rem',
-                                            borderRadius: '6px',
-                                            border: '1px solid var(--border-color)',
-                                            background: saleProdForm.controlaProducao ? 'rgba(34, 197, 94, 0.15)' : 'transparent',
-                                            color: saleProdForm.controlaProducao ? 'var(--accent-green)' : 'var(--text-secondary)',
-                                            fontWeight: '700',
-                                            fontSize: '0.8rem',
-                                            cursor: 'pointer'
-                                        }}
-                                    >
-                                        SIM
-                                    </button>
-                                </div>
+                                ))}
                             </div>
+                        </div>
 
-                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                        {/* Modal Body — scrollable */}
+                        <form onSubmit={handleSaveSaleProd} style={{ flex: 1, overflowY: 'auto', padding: '1.5rem' }}>
+
+                            {/* ========== TAB: DADOS GERAIS ========== */}
+                            {saleProdActiveSection === 'geral' && (
+                                <>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem', marginBottom: '1rem' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Código</label>
+                                            <input 
+                                                type="text" 
+                                                required 
+                                                maxLength="15"
+                                                disabled={!!editingSaleProd}
+                                                placeholder="Ex: PIZ001"
+                                                value={saleProdForm.code} 
+                                                onChange={(e) => setSaleProdForm(prev => ({ ...prev, code: e.target.value.toUpperCase().replace(/\s/g, '') }))}
+                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Nome do Produto</label>
+                                            <input 
+                                                type="text" 
+                                                required 
+                                                maxLength="100"
+                                                placeholder="Ex: Pizza Calabresa G"
+                                                value={saleProdForm.name} 
+                                                onChange={(e) => setSaleProdForm(prev => ({ ...prev, name: e.target.value }))}
+                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Categoria</label>
+                                            <select 
+                                                required
+                                                value={saleProdForm.category}
+                                                onChange={(e) => setSaleProdForm(prev => ({ ...prev, category: e.target.value }))}
+                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                            >
+                                                <option value="">Selecione...</option>
+                                                <option value="PIZZAS">PIZZAS</option>
+                                                <option value="BEBIDAS">BEBIDAS</option>
+                                                <option value="SOBREMESAS">SOBREMESAS</option>
+                                                <option value="LANCHES">LANCHES</option>
+                                                <option value="OUTROS">OUTROS</option>
+                                                {categorias.filter(c => !['PIZZAS', 'BEBIDAS', 'SOBREMESAS', 'LANCHES', 'OUTROS'].includes(c.name.toUpperCase())).map(c => (
+                                                    <option key={c.id} value={c.name.toUpperCase()}>{c.name.toUpperCase()}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Unidade</label>
+                                            <select 
+                                                required
+                                                value={saleProdForm.unit}
+                                                onChange={(e) => setSaleProdForm(prev => ({ ...prev, unit: e.target.value }))}
+                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                            >
+                                                <option value="UN">UN (Unidade)</option>
+                                                <option value="KG">KG (Quilograma)</option>
+                                                <option value="G">G (Grama)</option>
+                                                <option value="L">L (Litro)</option>
+                                                <option value="ML">ML (Mililitro)</option>
+                                                <option value="PCT">PCT (Pacote)</option>
+                                                <option value="CX">CX (Caixa)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Preço de Venda (R$)</label>
+                                            <input 
+                                                type="text" 
+                                                required 
+                                                placeholder="Ex: 49,90"
+                                                value={saleProdForm.price} 
+                                                onChange={(e) => {
+                                                    let val = e.target.value;
+                                                    val = val.replace(/[^\d.,R$\s]/g, '');
+                                                    setSaleProdForm(prev => ({ ...prev, price: val }));
+                                                }}
+                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Status</label>
+                                            <select 
+                                                required
+                                                value={saleProdForm.status}
+                                                onChange={(e) => setSaleProdForm(prev => ({ ...prev, status: e.target.value }))}
+                                                style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
+                                            >
+                                                <option value="Ativo">Ativo</option>
+                                                <option value="Inativo">Inativo</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ marginBottom: '1.2rem' }}>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Descrição</label>
+                                        <textarea 
+                                            rows="3"
+                                            placeholder="Descrição detalhada do produto final..."
+                                            value={saleProdForm.description} 
+                                            onChange={(e) => setSaleProdForm(prev => ({ ...prev, description: e.target.value }))}
+                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', resize: 'none', fontFamily: 'inherit' }}
+                                        />
+                                    </div>
+
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '1rem',
+                                        background: 'rgba(255, 255, 255, 0.02)',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: '8px',
+                                        padding: '1rem',
+                                        marginBottom: '1.5rem'
+                                    }}>
+                                        <div style={{ flex: 1 }}>
+                                            <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-primary)', display: 'block' }}>Controla Produção</span>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                                Quando ativo, a aba <strong>Receita</strong> estará disponível para definir os insumos deste produto.
+                                            </span>
+                                        </div>
+                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setSaleProdForm(prev => ({ ...prev, controlaProducao: false })); setSaleProdActiveSection('geral'); }}
+                                                style={{
+                                                    padding: '0.4rem 1rem',
+                                                    borderRadius: '6px',
+                                                    border: '1px solid var(--border-color)',
+                                                    background: !saleProdForm.controlaProducao ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
+                                                    color: !saleProdForm.controlaProducao ? 'var(--accent-red)' : 'var(--text-secondary)',
+                                                    fontWeight: '700',
+                                                    fontSize: '0.8rem',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                NÃO
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSaleProdForm(prev => ({ ...prev, controlaProducao: true }))}
+                                                style={{
+                                                    padding: '0.4rem 1rem',
+                                                    borderRadius: '6px',
+                                                    border: '1px solid var(--border-color)',
+                                                    background: saleProdForm.controlaProducao ? 'rgba(34, 197, 94, 0.15)' : 'transparent',
+                                                    color: saleProdForm.controlaProducao ? 'var(--accent-green)' : 'var(--text-secondary)',
+                                                    fontWeight: '700',
+                                                    fontSize: '0.8rem',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                SIM
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* ========== TAB: RECEITA ========== */}
+                            {saleProdActiveSection === 'receita' && saleProdForm.controlaProducao && (
+                                <>
+                                    <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: '1.5' }}>
+                                        Defina os insumos que compõem <strong style={{ color: 'var(--text-primary)' }}>{saleProdForm.name || 'este produto'}</strong>. Selecione apenas insumos cadastrados no estoque.
+                                    </p>
+
+                                    {/* Ingredient Adder */}
+                                    <div style={{
+                                        background: 'rgba(255,255,255,0.03)',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: '10px',
+                                        padding: '1rem',
+                                        marginBottom: '1rem'
+                                    }}>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--accent-pink)', fontWeight: '700', letterSpacing: '0.05em', marginBottom: '0.75rem', textTransform: 'uppercase' }}>Adicionar Insumo</div>
+
+                                        {/* Ingredient search dropdown */}
+                                        <div style={{ position: 'relative', marginBottom: '0.75rem' }}>
+                                            <label style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Insumo (Estoque)</label>
+                                            <div style={{ position: 'relative' }}>
+                                                <Search size={14} style={{ position: 'absolute', left: '0.7rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)', pointerEvents: 'none' }} />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Buscar insumo pelo nome ou SKU..."
+                                                    value={recipeIngredientSearch}
+                                                    onChange={e => {
+                                                        setRecipeIngredientSearch(e.target.value);
+                                                        setRecipeNewItem(prev => ({ ...prev, ingredientSku: '', name: '' }));
+                                                    }}
+                                                    style={{ width: '100%', paddingLeft: '2rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.75rem 0.45rem 2rem', borderRadius: '7px', outline: 'none', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                            {/* Dropdown list of matching products */}
+                                            {recipeIngredientSearch.length > 1 && !recipeNewItem.ingredientSku && (() => {
+                                                const q = recipeIngredientSearch.toLowerCase();
+                                                const matches = produtos.filter(p =>
+                                                    (p.name && p.name.toLowerCase().includes(q)) ||
+                                                    (p.sku && p.sku.toLowerCase().includes(q))
+                                                ).slice(0, 8);
+                                                if (matches.length === 0) return (
+                                                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px', zIndex: 1000, padding: '0.75rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                        Nenhum insumo encontrado.
+                                                    </div>
+                                                );
+                                                return (
+                                                    <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px', zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
+                                                        {matches.map(p => (
+                                                            <div
+                                                                key={p.sku}
+                                                                onClick={() => {
+                                                                    setRecipeNewItem(prev => ({ ...prev, ingredientSku: p.sku, name: p.name, unit: p.unit || 'G' }));
+                                                                    setRecipeIngredientSearch(p.name);
+                                                                }}
+                                                                style={{ padding: '0.5rem 0.75rem', cursor: 'pointer', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem', transition: 'background 0.15s' }}
+                                                                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                                                                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                                                            >
+                                                                <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{p.name}</span>
+                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{p.sku} · {p.unit || 'UN'}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
+
+                                        {/* Quantity + unit + Add button */}
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 110px auto', gap: '0.5rem', alignItems: 'flex-end' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Quantidade</label>
+                                                <input
+                                                    type="number"
+                                                    min="0.001"
+                                                    step="any"
+                                                    placeholder="Ex: 300"
+                                                    value={recipeNewItem.quantity}
+                                                    onChange={e => setRecipeNewItem(prev => ({ ...prev, quantity: e.target.value }))}
+                                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.75rem', borderRadius: '7px', outline: 'none', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Unidade</label>
+                                                <select
+                                                    value={recipeNewItem.unit}
+                                                    onChange={e => setRecipeNewItem(prev => ({ ...prev, unit: e.target.value }))}
+                                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.5rem', borderRadius: '7px', outline: 'none', fontSize: '0.82rem', cursor: 'pointer' }}
+                                                >
+                                                    <option value="G">G</option>
+                                                    <option value="KG">KG</option>
+                                                    <option value="ML">ML</option>
+                                                    <option value="L">L</option>
+                                                    <option value="UN">UN</option>
+                                                    <option value="PCT">PCT</option>
+                                                    <option value="CX">CX</option>
+                                                </select>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    if (!recipeNewItem.ingredientSku) { showToast('Selecione um insumo da lista.', 'error'); return; }
+                                                    if (!recipeNewItem.quantity || parseFloat(recipeNewItem.quantity) <= 0) { showToast('Informe uma quantidade válida.', 'error'); return; }
+                                                    if (recipeItems.some(r => r.ingredientSku === recipeNewItem.ingredientSku)) { showToast('Este insumo já foi adicionado.', 'error'); return; }
+                                                    setRecipeItems(prev => [...prev, { ...recipeNewItem }]);
+                                                    setRecipeNewItem({ ingredientSku: '', quantity: '', unit: 'G' });
+                                                    setRecipeIngredientSearch('');
+                                                }}
+                                                style={{
+                                                    padding: '0.45rem 1rem',
+                                                    background: 'var(--accent-pink)',
+                                                    border: 'none',
+                                                    borderRadius: '7px',
+                                                    color: '#fff',
+                                                    fontWeight: '700',
+                                                    fontSize: '0.82rem',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.3rem',
+                                                    whiteSpace: 'nowrap'
+                                                }}
+                                            >
+                                                <Plus size={14} /> Adicionar
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Recipe Items List */}
+                                    {recipeItems.length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)', fontSize: '0.85rem', border: '1px dashed var(--border-color)', borderRadius: '8px' }}>
+                                            <Layers size={28} style={{ marginBottom: '0.5rem', opacity: 0.4 }} />
+                                            <div>Nenhum insumo adicionado à receita ainda.</div>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                            {recipeItems.map((item, idx) => (
+                                                <div key={item.ingredientSku} style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.75rem',
+                                                    background: 'rgba(255,255,255,0.03)',
+                                                    border: '1px solid var(--border-color)',
+                                                    borderRadius: '8px',
+                                                    padding: '0.6rem 0.9rem'
+                                                }}>
+                                                    <div style={{ width: '28px', height: '28px', borderRadius: '6px', background: 'rgba(236, 72, 153, 0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                                        <span style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--accent-pink)' }}>{idx + 1}</span>
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ fontSize: '0.88rem', fontWeight: '600', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name || item.ingredientSku}</div>
+                                                        <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>SKU: {item.ingredientSku}</div>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+                                                        <input
+                                                            type="number"
+                                                            min="0.001"
+                                                            step="any"
+                                                            value={item.quantity}
+                                                            onChange={e => setRecipeItems(prev => prev.map((r, i) => i === idx ? { ...r, quantity: e.target.value } : r))}
+                                                            style={{ width: '70px', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.3rem 0.5rem', borderRadius: '6px', outline: 'none', fontSize: '0.82rem', textAlign: 'right' }}
+                                                        />
+                                                        <select
+                                                            value={item.unit}
+                                                            onChange={e => setRecipeItems(prev => prev.map((r, i) => i === idx ? { ...r, unit: e.target.value } : r))}
+                                                            style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.3rem 0.4rem', borderRadius: '6px', outline: 'none', fontSize: '0.78rem', cursor: 'pointer' }}
+                                                        >
+                                                            <option value="G">G</option>
+                                                            <option value="KG">KG</option>
+                                                            <option value="ML">ML</option>
+                                                            <option value="L">L</option>
+                                                            <option value="UN">UN</option>
+                                                            <option value="PCT">PCT</option>
+                                                            <option value="CX">CX</option>
+                                                        </select>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setRecipeItems(prev => prev.filter((_, i) => i !== idx))}
+                                                            style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '6px', color: 'var(--accent-red)', cursor: 'pointer', padding: '0.3rem 0.5rem', display: 'flex', alignItems: 'center' }}
+                                                        >
+                                                            <Trash2 size={13} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+                            {/* Footer Buttons */}
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)' }}>
                                 <button type="button" className="btn-clear-modal" onClick={() => setShowSaleProdModal(false)}>CANCELAR</button>
                                 <button type="submit" className="btn-confirm-modal" style={{ backgroundColor: 'var(--accent-pink)', borderColor: 'var(--accent-pink)', color: '#ffffff' }}>
                                     SALVAR PRODUTO

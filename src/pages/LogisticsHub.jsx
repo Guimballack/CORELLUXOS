@@ -86,6 +86,7 @@ export default function LogisticsHub() {
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
     const [requests, setRequests] = useState([]);
+    const [suppliers, setSuppliers] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // WMS/FEFO States
@@ -208,11 +209,21 @@ export default function LogisticsHub() {
     // Form fields for Batch Modal
     const [batchLot, setBatchLot] = useState('');
     const [batchQty, setBatchQty] = useState('');
+    const [batchPricePerUnit, setBatchPricePerUnit] = useState('');
     const [batchAddress, setBatchAddress] = useState('');
     const [batchBrand, setBatchBrand] = useState('');
     const [batchSupplier, setBatchSupplier] = useState('');
     const [batchMfgDate, setBatchMfgDate] = useState('');
     const [batchExpDate, setBatchExpDate] = useState('');
+
+    // Form fields for Stock Entry (Entrada) Flow
+    const [entryPricePerUnit, setEntryPricePerUnit] = useState('');
+    const [entryLot, setEntryLot] = useState('');
+    const [entryExpDate, setEntryExpDate] = useState('');
+    const [entrySupplier, setEntrySupplier] = useState('');
+    const [entryBrand, setEntryBrand] = useState('');
+    const [entryAddress, setEntryAddress] = useState('');
+    const [entryMfgDate, setEntryMfgDate] = useState('');
 
     const toggleExpandItem = (sku) => {
         setExpandedItems(prev => {
@@ -315,16 +326,18 @@ export default function LogisticsHub() {
         const loadAllData = async () => {
             setLoading(true);
             try {
-                const [prodsData, catsData, batchesData, sectorsData] = await Promise.all([
+                const [prodsData, catsData, batchesData, sectorsData, suppliersData] = await Promise.all([
                     DbService.getProducts(),
                     DbService.getCategories(),
                     DbService.getStockBatches(),
-                    DbService.getSectors()
+                    DbService.getSectors(),
+                    DbService.getSuppliers()
                 ]);
                 setProducts(prodsData);
                 setCategories(catsData.filter(c => c.status === 'Ativo'));
                 setStockBatches(batchesData);
                 setSectors(sectorsData || []);
+                setSuppliers(suppliersData || []);
                 
                 // Load requests from LocalStorage
                 const savedRequests = localStorage.getItem('corellux_item_requests');
@@ -510,6 +523,7 @@ export default function LogisticsHub() {
         
         setBatchLot('');
         setBatchQty('');
+        setBatchPricePerUnit('');
         setBatchAddress('');
         setBatchBrand(product.brand || '');
         setBatchSupplier('');
@@ -526,6 +540,7 @@ export default function LogisticsHub() {
         
         setBatchLot(batch.lot);
         setBatchQty(batch.quantity);
+        setBatchPricePerUnit(batch.pricePerUnit !== undefined ? batch.pricePerUnit : (batch.price_per_unit || ''));
         setBatchAddress(batch.address || '');
         setBatchBrand(batch.brand || '');
         setBatchSupplier(batch.supplier || '');
@@ -572,6 +587,7 @@ export default function LogisticsHub() {
             lot: batchLot,
             quantity: qtyNum,
             unit: batchProduct.unit,
+            pricePerUnit: parseFloat(batchPricePerUnit) || 0.00,
             address: batchAddress,
             brand: batchBrand,
             supplier: batchSupplier,
@@ -643,14 +659,21 @@ export default function LogisticsHub() {
                         <tr style={{ borderBottom: '1px solid var(--border-color)' }}>
                             <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Lote</th>
                             <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold', textAlign: 'center' }}>Quantidade</th>
+                            <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold', textAlign: 'center' }}>Preço Unitário</th>
+                            <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold', textAlign: 'center' }}>Valor Total</th>
                             <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold', textAlign: 'center' }}>Validade</th>
                             <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold', textAlign: 'center' }}>Endereço</th>
                             <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Marca / Fornecedor</th>
+                            <th style={{ padding: '0.6rem 1rem', color: 'var(--text-secondary)', fontWeight: 'bold', textAlign: 'center' }}>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         {itemBatches.map(b => {
                             const expiry = getBatchExpiryStatus(b.expirationDate);
+                            const priceVal = b.pricePerUnit !== undefined ? b.pricePerUnit : (b.price_per_unit || 0);
+                            const unitPriceFormatted = `R$ ${parseFloat(priceVal).toFixed(2).replace('.', ',')}`;
+                            const totalPriceFormatted = `R$ ${parseFloat(priceVal * b.quantity).toFixed(2).replace('.', ',')}`;
+
                             return (
                                 <tr key={b.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                                     <td style={{ padding: '0.6rem 1rem' }}>
@@ -667,6 +690,12 @@ export default function LogisticsHub() {
                                     <td style={{ padding: '0.6rem 1rem', textAlign: 'center', fontWeight: '700' }}>
                                         {b.quantity} {b.unit || product.unit}
                                     </td>
+                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'center', fontWeight: '600', color: 'var(--accent-green)' }}>
+                                        {unitPriceFormatted}
+                                    </td>
+                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'center', fontWeight: '700', color: 'var(--accent-teal)' }}>
+                                        {totalPriceFormatted}
+                                    </td>
                                     <td style={{ padding: '0.6rem 1rem', textAlign: 'center' }}>
                                         <span className={`stock-badge ${expiry.className}`} style={{ minWidth: '90px', padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}>
                                             {expiry.label}
@@ -682,6 +711,48 @@ export default function LogisticsHub() {
                                         <div style={{ display: 'flex', flexDirection: 'column' }}>
                                             <span style={{ fontWeight: '500' }}>{b.brand || product.brand || 'Sem Marca'}</span>
                                             <small style={{ color: 'var(--text-secondary)' }}>{b.supplier ? limitChars(b.supplier, 15) : 'N/A'}</small>
+                                        </div>
+                                    </td>
+                                    <td style={{ padding: '0.6rem 1rem', textAlign: 'center' }}>
+                                        <div style={{ display: 'inline-flex', gap: '0.3rem' }}>
+                                            <button 
+                                                type="button"
+                                                onClick={() => handleOpenEditBatch(product, b)}
+                                                style={{
+                                                    background: 'rgba(168, 85, 247, 0.1)',
+                                                    border: '1px solid rgba(168, 85, 247, 0.3)',
+                                                    color: '#c084fc',
+                                                    padding: '0.35rem',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                title="Editar Lote"
+                                            >
+                                                <Edit size={13} />
+                                            </button>
+                                            <button 
+                                                type="button"
+                                                onClick={() => handleDeleteBatch(b)}
+                                                style={{
+                                                    background: 'rgba(239, 68, 68, 0.1)',
+                                                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                                                    color: 'var(--accent-red)',
+                                                    padding: '0.35rem',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                title="Excluir Lote"
+                                            >
+                                                <Trash2 size={13} />
+                                            </button>
                                         </div>
                                     </td>
                                 </tr>
@@ -845,6 +916,21 @@ export default function LogisticsHub() {
             // Open confirmation
             setPendingQty(parsedVal);
             setPendingProduct(numpadProduct);
+            
+            if (flowType === 'entrada') {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = String(today.getMonth() + 1).padStart(2, '0');
+                const day = String(today.getDate()).padStart(2, '0');
+                setEntryLot(`LT-${year}${month}${day}`);
+                setEntryPricePerUnit('');
+                setEntryExpDate('');
+                setEntrySupplier('');
+                setEntryBrand(numpadProduct.brand || '');
+                setEntryAddress('');
+                setEntryMfgDate('');
+            }
+            
             setShowConfirm(true);
         }
     };
@@ -923,29 +1009,51 @@ export default function LogisticsHub() {
 
         // ENTRADA / SAIDA: change stock normally
         if (flowType === 'entrada') {
-            newStock += pendingQty;
-        } else if (flowType === 'saida') {
-            newStock -= pendingQty;
-            if (newStock < 0) newStock = 0;
-        }
+            const batchData = {
+                itemSku: sku,
+                lot: entryLot || `LT-${Date.now()}`,
+                quantity: pendingQty,
+                unit: pendingProduct.unit,
+                pricePerUnit: parseFloat(entryPricePerUnit) || 0.00,
+                expirationDate: entryExpDate || null,
+                manufacturingDate: entryMfgDate || null,
+                supplier: entrySupplier || null,
+                brand: entryBrand || null,
+                address: entryAddress || null,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
 
-        const productBatches = stockBatches.filter(b => b.itemSku === sku);
+            const result = await DbService.addStockBatch(batchData);
+            await recalculateProductStockFromBatches();
 
-        if (productBatches.length > 0 && flowType === 'saida') {
-            await deductStockFromBatchesFefo(sku, pendingQty);
-            showSystemAlert(`Estoque atualizado com sucesso via FEFO para o item: ${pendingProduct.name}.`, 'Sucesso');
-        } else {
-            // 1. Update on Supabase
-            const result = await DbService.updateProductStock(sku, newStock);
-
-            // 2. Update local state copy
             if (result.success) {
-                setProducts(prev => prev.map(p => p.sku === sku ? { ...p, stock: newStock } : p));
-                showSystemAlert(`Estoque atualizado com sucesso para o item: ${pendingProduct.name}. Novo estoque: ${newStock} ${pendingProduct.unit}`, 'Sucesso');
+                showSystemAlert(`Entrada registrada com sucesso! Lote ${batchData.lot} cadastrado com preço unitário R$ ${parseFloat(entryPricePerUnit || 0).toFixed(2)}.`, 'Sucesso');
             } else {
-                // Even if Supabase fails, update local memory so the user sees the change
-                setProducts(prev => prev.map(p => p.sku === sku ? { ...p, stock: newStock } : p));
-                showSystemAlert(`[Aviso] Salvo localmente: estoque de ${pendingProduct.name} alterado para ${newStock}.`, 'Salvo Localmente');
+                showSystemAlert(`[Aviso] Salvo localmente: entrada de lote ${batchData.lot} registrada e estoque atualizado.`, 'Salvo Localmente');
+            }
+        } else if (flowType === 'saida') {
+            let newStock = currentStock - pendingQty;
+            if (newStock < 0) newStock = 0;
+
+            const productBatches = stockBatches.filter(b => b.itemSku === sku);
+
+            if (productBatches.length > 0) {
+                await deductStockFromBatchesFefo(sku, pendingQty);
+                showSystemAlert(`Estoque atualizado com sucesso via FEFO para o item: ${pendingProduct.name}.`, 'Sucesso');
+            } else {
+                // 1. Update on Supabase
+                const result = await DbService.updateProductStock(sku, newStock);
+
+                // 2. Update local state copy
+                if (result.success) {
+                    setProducts(prev => prev.map(p => p.sku === sku ? { ...p, stock: newStock } : p));
+                    showSystemAlert(`Estoque atualizado com sucesso para o item: ${pendingProduct.name}. Novo estoque: ${newStock} ${pendingProduct.unit}`, 'Sucesso');
+                } else {
+                    // Even if Supabase fails, update local memory so the user sees the change
+                    setProducts(prev => prev.map(p => p.sku === sku ? { ...p, stock: newStock } : p));
+                    showSystemAlert(`[Aviso] Salvo localmente: estoque de ${pendingProduct.name} alterado para ${newStock}.`, 'Salvo Localmente');
+                }
             }
         }
 
@@ -978,6 +1086,15 @@ export default function LogisticsHub() {
         setPendingProduct(null);
         setPendingQty(0);
         setSelectedReason('');
+        
+        // Reset entry form fields
+        setEntryPricePerUnit('');
+        setEntryLot('');
+        setEntryExpDate('');
+        setEntrySupplier('');
+        setEntryBrand('');
+        setEntryAddress('');
+        setEntryMfgDate('');
     };
 
     const handleConfirmReason = () => {
@@ -1604,6 +1721,36 @@ export default function LogisticsHub() {
                                                                                     <Clock size={10} /> FEFO
                                                                                 </span>
                                                                             </div>
+                                                                            
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleOpenAddBatch(p)}
+                                                                                style={{
+                                                                                    background: 'rgba(168, 85, 247, 0.12)',
+                                                                                    border: '1px solid rgba(168, 85, 247, 0.3)',
+                                                                                    color: '#c084fc',
+                                                                                    padding: '0.35rem 0.75rem',
+                                                                                    borderRadius: '8px',
+                                                                                    fontSize: '0.78rem',
+                                                                                    fontWeight: '700',
+                                                                                    cursor: 'pointer',
+                                                                                    display: 'inline-flex',
+                                                                                    alignItems: 'center',
+                                                                                    gap: '0.3rem',
+                                                                                    transition: 'all 0.2s'
+                                                                                }}
+                                                                                onMouseEnter={(e) => {
+                                                                                    e.currentTarget.style.background = 'rgba(168, 85, 247, 0.2)';
+                                                                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                                                                }}
+                                                                                onMouseLeave={(e) => {
+                                                                                    e.currentTarget.style.background = 'rgba(168, 85, 247, 0.12)';
+                                                                                    e.currentTarget.style.transform = 'none';
+                                                                                }}
+                                                                            >
+                                                                                <Boxes size={13} />
+                                                                                + Novo Lote
+                                                                            </button>
                                                                         </div>
                                                                         
                                                                         {renderLotesSection(p)}
@@ -3063,75 +3210,259 @@ export default function LogisticsHub() {
             ============================================= */}
             {showConfirm && pendingProduct && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
-                    <div className="pin-modal-card" style={{ maxWidth: '450px', padding: '2rem' }}>
-                        <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-                            <AlertTriangle size={48} style={{ color: flowType === 'entrada' ? 'var(--accent-green)' : (flowType === 'saida' ? 'var(--accent-red)' : 'var(--accent-yellow)') }} />
-                            
-                            <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>
-                                Confirmar Movimentação de Estoque
-                            </h3>
+                    <div className="pin-modal-card" style={{ maxWidth: flowType === 'entrada' ? '520px' : '450px', width: '90%', padding: '2rem' }}>
+                        {flowType === 'entrada' ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+                                <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                    <Boxes size={42} style={{ color: 'var(--accent-green)' }} />
+                                    <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: '800' }}>
+                                        Registrar Entrada de Lote
+                                    </h3>
+                                </div>
 
-                            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.5', margin: '0.5rem 0' }}>
-                                Deseja registrar a {flowType === 'entrada' ? 'entrada' : flowType === 'saida' ? 'retirada' : 'perda/descarte'} de{' '}
-                                <strong style={{ color: 'var(--text-primary)' }}>{pendingQty} {pendingProduct.unit}</strong> de{' '}
-                                <strong style={{ color: 'var(--text-primary)' }}>{pendingProduct.name}</strong>?
-                            </p>
+                                <div style={{ background: 'rgba(34, 197, 94, 0.08)', padding: '0.85rem 1.1rem', borderRadius: '10px', border: '1px solid rgba(34, 197, 94, 0.25)', marginBottom: '0.5rem' }}>
+                                    <div style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-secondary)', letterSpacing: '0.5px' }}>PRODUTO</div>
+                                    <div style={{ fontWeight: '800', fontSize: '1.05rem', color: '#fff', margin: '0.15rem 0' }}>{pendingProduct.name}</div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.3rem', fontWeight: '500' }}>
+                                        <span>SKU: {pendingProduct.sku}</span>
+                                        <span style={{ fontWeight: '800', color: 'var(--accent-green)' }}>Entrada: {pendingQty} {pendingProduct.unit}</span>
+                                    </div>
+                                </div>
 
-                            {/* FEFO Allocation Preview */}
-                            {flowType === 'saida' && (() => {
-                                const productBatches = stockBatches.filter(b => b.itemSku === pendingProduct.sku);
-                                if (productBatches.length > 0) {
-                                    const fefo = calculateFefoPlan(pendingProduct.sku, pendingQty);
-                                    return (
-                                        <div style={{ 
-                                            width: '100%', 
-                                            background: 'rgba(0, 0, 0, 0.25)', 
-                                            borderRadius: '8px', 
-                                            padding: '0.75rem', 
-                                            border: '1px solid var(--border-color)', 
-                                            textAlign: 'left',
-                                            marginTop: '0.5rem',
-                                            marginBottom: '0.5rem'
-                                        }}>
-                                            <div style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--accent-orange)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                                <Clock size={12} /> PROPOSTA DE SAÍDA FEFO (VENCIMENTO MAIS PRÓXIMO):
-                                            </div>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                                {fefo.plan.map((item, idx) => (
-                                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-primary)' }}>
-                                                        <span>Lote <strong>{item.batch.lot}</strong> (Val. {item.batch.expirationDate ? new Date(item.batch.expirationDate).toLocaleDateString('pt-BR') : 'Sem Data'}):</span>
-                                                        <span><strong>-{item.quantityToTake} {pendingProduct.unit}</strong></span>
-                                                    </div>
-                                                ))}
-                                                {fefo.remainingUnallocated > 0 && (
-                                                    <div style={{ color: 'var(--accent-red)', fontWeight: 'bold', fontSize: '0.8rem', marginTop: '0.2rem' }}>
-                                                        Atenção: {fefo.remainingUnallocated} {pendingProduct.unit} não puderam ser alocados em lotes! (Será deduzido do saldo global)
-                                                    </div>
-                                                )}
+                                <form onSubmit={(e) => { e.preventDefault(); processStockUpdate(); }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', textAlign: 'left' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                            <label style={{ fontSize: '0.72rem', fontWeight: '800', color: 'var(--text-secondary)' }}>CÓDIGO DO LOTE *</label>
+                                            <input 
+                                                type="text"
+                                                placeholder="Ex: LT-2026-A"
+                                                value={entryLot}
+                                                onChange={(e) => setEntryLot(e.target.value.toUpperCase())}
+                                                required
+                                                maxLength="20"
+                                                style={{
+                                                    padding: '0.6rem',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid var(--border-color)',
+                                                    background: 'var(--bg-input)',
+                                                    color: 'var(--text-primary)',
+                                                    outline: 'none',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: '600'
+                                                }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                            <label style={{ fontSize: '0.72rem', fontWeight: '800', color: 'var(--text-secondary)' }}>PREÇO UNITÁRIO (R$) *</label>
+                                            <input 
+                                                type="number"
+                                                step="any"
+                                                min="0"
+                                                placeholder="Ex: 34.90"
+                                                value={entryPricePerUnit}
+                                                onChange={(e) => setEntryPricePerUnit(e.target.value)}
+                                                required
+                                                style={{
+                                                    padding: '0.6rem',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid var(--border-color)',
+                                                    background: 'var(--bg-input)',
+                                                    color: 'var(--text-primary)',
+                                                    outline: 'none',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: '600'
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                        <label style={{ fontSize: '0.72rem', fontWeight: '800', color: 'var(--text-secondary)' }}>FORNECEDOR</label>
+                                        <select
+                                            value={entrySupplier}
+                                            onChange={e => setEntrySupplier(e.target.value)}
+                                            style={{
+                                                padding: '0.6rem',
+                                                borderRadius: '8px',
+                                                border: '1px solid var(--border-color)',
+                                                background: 'var(--bg-input)',
+                                                color: 'var(--text-primary)',
+                                                outline: 'none',
+                                                width: '100%',
+                                                fontSize: '0.85rem',
+                                                fontWeight: '600',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            <option value="">Selecione o fornecedor...</option>
+                                            {suppliers.map(s => (
+                                                <option key={s.id} value={s.nomeFantasia || s.razaoSocial}>{s.nomeFantasia || s.razaoSocial}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                            <label style={{ fontSize: '0.72rem', fontWeight: '800', color: 'var(--text-secondary)' }}>DATA DE VALIDADE</label>
+                                            <div className="custom-date-picker-wrapper">
+                                                <Calendar className="custom-date-picker-icon" size={16} />
+                                                <input 
+                                                    type="date"
+                                                    value={entryExpDate}
+                                                    onChange={(e) => setEntryExpDate(e.target.value)}
+                                                    className="custom-date-picker-input"
+                                                    style={{ fontWeight: '600' }}
+                                                />
                                             </div>
                                         </div>
-                                    );
-                                }
-                                return null;
-                            })()}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                            <label style={{ fontSize: '0.72rem', fontWeight: '800', color: 'var(--text-secondary)' }}>DATA DE FABRICAÇÃO</label>
+                                            <div className="custom-date-picker-wrapper">
+                                                <Calendar className="custom-date-picker-icon" size={16} />
+                                                <input 
+                                                    type="date"
+                                                    value={entryMfgDate}
+                                                    onChange={(e) => setEntryMfgDate(e.target.value)}
+                                                    className="custom-date-picker-input"
+                                                    style={{ fontWeight: '600' }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
 
-                            <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '1.5rem' }}>
-                                <button className="btn-clear-modal" style={{ flex: 1 }} onClick={() => { setShowConfirm(false); setPendingProduct(null); }}>
-                                    CANCELAR
-                                </button>
-                                <button 
-                                    className="btn-confirm-modal" 
-                                    style={{ 
-                                        flex: 1,
-                                        backgroundColor: flowType === 'entrada' ? 'var(--accent-green)' : (flowType === 'saida' ? 'var(--accent-red)' : 'var(--accent-yellow)'),
-                                        color: flowType === 'perdas' ? '#422006' : 'white'
-                                    }} 
-                                    onClick={handleConfirmAction}
-                                >
-                                    CONFIRMAR
-                                </button>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                            <label style={{ fontSize: '0.72rem', fontWeight: '800', color: 'var(--text-secondary)' }}>MARCA / FABRICANTE</label>
+                                            <input 
+                                                type="text"
+                                                placeholder="Ex: Nestlé"
+                                                value={entryBrand}
+                                                onChange={(e) => setEntryBrand(e.target.value)}
+                                                style={{
+                                                    padding: '0.6rem',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid var(--border-color)',
+                                                    background: 'var(--bg-input)',
+                                                    color: 'var(--text-primary)',
+                                                    outline: 'none',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: '600'
+                                                }}
+                                            />
+                                        </div>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                            <label style={{ fontSize: '0.72rem', fontWeight: '800', color: 'var(--text-secondary)' }}>ENDEREÇO WMS</label>
+                                            <input 
+                                                type="text"
+                                                placeholder="Ex: A-12"
+                                                value={entryAddress}
+                                                onChange={(e) => setEntryAddress(e.target.value.toUpperCase())}
+                                                style={{
+                                                    padding: '0.6rem',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid var(--border-color)',
+                                                    background: 'var(--bg-input)',
+                                                    color: 'var(--text-primary)',
+                                                    outline: 'none',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: '600'
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '1.2rem' }}>
+                                        <button type="button" className="btn-clear-modal" style={{ flex: 1, padding: '0.75rem', borderRadius: '8px' }} onClick={() => { setShowConfirm(false); setPendingProduct(null); }}>
+                                            CANCELAR
+                                        </button>
+                                        <button 
+                                            type="submit" 
+                                            className="btn-confirm-modal" 
+                                            style={{ 
+                                                flex: 1,
+                                                backgroundColor: 'var(--accent-green)',
+                                                color: 'white',
+                                                padding: '0.75rem',
+                                                borderRadius: '8px',
+                                                fontWeight: '800'
+                                            }} 
+                                        >
+                                            CONFIRMAR ENTRADA
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
-                        </div>
+                        ) : (
+                            <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                                <AlertTriangle size={48} style={{ color: flowType === 'saida' ? 'var(--accent-red)' : 'var(--accent-yellow)' }} />
+                                
+                                <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>
+                                    Confirmar Movimentação de Estoque
+                                </h3>
+
+                                <p style={{ color: 'var(--text-secondary)', lineHeight: '1.5', margin: '0.5rem 0' }}>
+                                    Deseja registrar a {flowType === 'saida' ? 'retirada' : 'perda/descarte'} de{' '}
+                                    <strong style={{ color: 'var(--text-primary)' }}>{pendingQty} {pendingProduct.unit}</strong> de{' '}
+                                    <strong style={{ color: 'var(--text-primary)' }}>{pendingProduct.name}</strong>?
+                                </p>
+
+                                {/* FEFO Allocation Preview */}
+                                {flowType === 'saida' && (() => {
+                                    const productBatches = stockBatches.filter(b => b.itemSku === pendingProduct.sku);
+                                    if (productBatches.length > 0) {
+                                        const fefo = calculateFefoPlan(pendingProduct.sku, pendingQty);
+                                        return (
+                                            <div style={{ 
+                                                width: '100%', 
+                                                background: 'rgba(0, 0, 0, 0.25)', 
+                                                borderRadius: '8px', 
+                                                padding: '0.75rem', 
+                                                border: '1px solid var(--border-color)', 
+                                                textAlign: 'left',
+                                                marginTop: '0.5rem',
+                                                marginBottom: '0.5rem'
+                                            }}>
+                                                <div style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--accent-orange)', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                    <Clock size={12} /> PROPOSTA DE SAÍDA FEFO (VENCIMENTO MAIS PRÓXIMO):
+                                                </div>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                    {fefo.plan.map((item, idx) => (
+                                                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-primary)' }}>
+                                                            <span>Lote <strong>{item.batch.lot}</strong> (Val. {item.batch.expirationDate ? new Date(item.batch.expirationDate).toLocaleDateString('pt-BR') : 'Sem Data'}):</span>
+                                                            <span><strong>-{item.quantityToTake} {pendingProduct.unit}</strong></span>
+                                                        </div>
+                                                    ))}
+                                                    {fefo.remainingUnallocated > 0 && (
+                                                        <div style={{ color: 'var(--accent-red)', fontWeight: 'bold', fontSize: '0.8rem', marginTop: '0.2rem' }}>
+                                                            Atenção: {fefo.remainingUnallocated} {pendingProduct.unit} não puderam ser alocados em lotes! (Será deduzido do saldo global)
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+
+                                <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '1.5rem' }}>
+                                    <button type="button" className="btn-clear-modal" style={{ flex: 1 }} onClick={() => { setShowConfirm(false); setPendingProduct(null); }}>
+                                        CANCELAR
+                                    </button>
+                                    <button 
+                                        type="button"
+                                        className="btn-confirm-modal" 
+                                        style={{ 
+                                            flex: 1,
+                                            backgroundColor: flowType === 'saida' ? 'var(--accent-red)' : 'var(--accent-yellow)',
+                                            color: flowType === 'perdas' ? '#422006' : 'white'
+                                        }} 
+                                        onClick={handleConfirmAction}
+                                    >
+                                        CONFIRMAR
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             , document.body)}
@@ -3288,6 +3619,7 @@ export default function LogisticsHub() {
                                     CANCELAR
                                 </button>
                                 <button 
+                                    type="button"
                                     className="btn-confirm-modal" 
                                     style={{ flex: 1, backgroundColor: 'var(--accent-yellow)', color: '#422006' }} 
                                     onClick={handleConfirmReason}
@@ -3305,7 +3637,7 @@ export default function LogisticsHub() {
             ============================================= */}
             {showBatchModal && batchProduct && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
-                    <div className="pin-modal-card" style={{ maxWidth: '500px', width: '90%', padding: '2rem' }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '520px', width: '90%', padding: '2rem' }}>
                         <button className="btn-close-modal" onClick={() => setShowBatchModal(false)} title="Fechar">
                             <X size={18} />
                         </button>
@@ -3324,7 +3656,7 @@ export default function LogisticsHub() {
                         </div>
 
                         <form onSubmit={handleSaveBatch} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                                     <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>CÓDIGO DO LOTE *</label>
                                     <input 
@@ -3333,7 +3665,7 @@ export default function LogisticsHub() {
                                         value={batchLot}
                                         onChange={(e) => setBatchLot(e.target.value.toUpperCase())}
                                         required
-                                        maxLength="12"
+                                        maxLength="20"
                                         style={{
                                             padding: '0.6rem',
                                             borderRadius: '6px',
@@ -3352,6 +3684,26 @@ export default function LogisticsHub() {
                                         placeholder="Ex: 50"
                                         value={batchQty}
                                         onChange={(e) => setBatchQty(e.target.value)}
+                                        required
+                                        style={{
+                                            padding: '0.6rem',
+                                            borderRadius: '6px',
+                                            border: '1px solid var(--border-color)',
+                                            background: 'var(--bg-input)',
+                                            color: 'var(--text-primary)',
+                                            outline: 'none'
+                                        }}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>PREÇO UNIT. (R$) *</label>
+                                    <input 
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        placeholder="Ex: 34.90"
+                                        value={batchPricePerUnit}
+                                        onChange={(e) => setBatchPricePerUnit(e.target.value)}
                                         required
                                         style={{
                                             padding: '0.6rem',
@@ -3406,12 +3758,9 @@ export default function LogisticsHub() {
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                                 <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>FORNECEDOR</label>
-                                <input 
-                                    type="text"
-                                    placeholder="Nome do fornecedor ou distribuidora"
+                                <select
                                     value={batchSupplier}
                                     onChange={(e) => setBatchSupplier(e.target.value)}
-                                    maxLength="15"
                                     style={{
                                         padding: '0.6rem',
                                         borderRadius: '6px',
@@ -3419,9 +3768,15 @@ export default function LogisticsHub() {
                                         background: 'var(--bg-input)',
                                         color: 'var(--text-primary)',
                                         outline: 'none',
-                                        width: '100%'
+                                        width: '100%',
+                                        cursor: 'pointer'
                                     }}
-                                />
+                                >
+                                    <option value="">Selecione o fornecedor...</option>
+                                    {suppliers.map(s => (
+                                        <option key={s.id} value={s.nomeFantasia || s.razaoSocial}>{s.nomeFantasia || s.razaoSocial}</option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

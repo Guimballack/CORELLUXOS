@@ -959,9 +959,9 @@ export const DbService = {
                 const local = localStorage.getItem('corellux_sale_products');
                 if (local) return JSON.parse(local);
                 const initialSales = [
-                    { code: 'PIZ001', name: 'Pizza Calabresa G', category: 'PIZZAS', description: 'Molho de tomate, queijo muçarela, calabresa fatiada, cebola e orégano.', price: 49.90, unit: 'UN', status: 'Ativo', controlaProducao: true },
-                    { code: 'PIZ002', name: 'Pizza Margherita G', category: 'PIZZAS', description: 'Molho de tomate, queijo muçarela, rodelas de tomate fresco, manjericão e azeite.', price: 45.00, unit: 'UN', status: 'Ativo', controlaProducao: true },
-                    { code: 'BEB001', name: 'Refrigerante Lata 350ml', category: 'BEBIDAS', description: 'Refrigerante lata gelado (diversos sabores).', price: 6.00, unit: 'UN', status: 'Ativo', controlaProducao: false }
+                    { code: 'PIZ001', name: 'Pizza Calabresa G', category: 'PIZZAS', description: 'Molho de tomate, queijo muçarela, calabresa fatiada, cebola e orégano.', price: 49.90, unit: 'UN', status: 'Ativo', controlaProducao: true, recipe: [{ ingredientSku: 'LAC-005', quantity: 0.25, unit: 'KG' }, { ingredientSku: 'HOR-003', quantity: 0.1, unit: 'KG' }] },
+                    { code: 'PIZ002', name: 'Pizza Margherita G', category: 'PIZZAS', description: 'Molho de tomate, queijo muçarela, rodelas de tomate fresco, manjericão e azeite.', price: 45.00, unit: 'UN', status: 'Ativo', controlaProducao: true, recipe: [{ ingredientSku: 'LAC-005', quantity: 0.3, unit: 'KG' }, { ingredientSku: 'HOR-004', quantity: 0.15, unit: 'KG' }] },
+                    { code: 'BEB001', name: 'Refrigerante Lata 350ml', category: 'BEBIDAS', description: 'Refrigerante lata gelado (diversos sabores).', price: 6.00, unit: 'UN', status: 'Ativo', controlaProducao: false, recipe: [] }
                 ];
                 localStorage.setItem('corellux_sale_products', JSON.stringify(initialSales));
                 return initialSales;
@@ -980,9 +980,9 @@ export const DbService = {
                 }
             }
             const initialSales = [
-                { code: 'PIZ001', name: 'Pizza Calabresa G', category: 'PIZZAS', description: 'Molho de tomate, queijo muçarela, calabresa fatiada, cebola e orégano.', price: 49.90, unit: 'UN', status: 'Ativo', controlaProducao: true },
-                { code: 'PIZ002', name: 'Pizza Margherita G', category: 'PIZZAS', description: 'Molho de tomate, queijo muçarela, rodelas de tomate fresco, manjericão e azeite.', price: 45.00, unit: 'UN', status: 'Ativo', controlaProducao: true },
-                { code: 'BEB001', name: 'Refrigerante Lata 350ml', category: 'BEBIDAS', description: 'Refrigerante lata gelado (diversos sabores).', price: 6.00, unit: 'UN', status: 'Ativo', controlaProducao: false }
+                { code: 'PIZ001', name: 'Pizza Calabresa G', category: 'PIZZAS', description: 'Molho de tomate, queijo muçarela, calabresa fatiada, cebola e orégano.', price: 49.90, unit: 'UN', status: 'Ativo', controlaProducao: true, recipe: [{ ingredientSku: 'LAC-005', quantity: 0.25, unit: 'KG' }, { ingredientSku: 'HOR-003', quantity: 0.1, unit: 'KG' }] },
+                { code: 'PIZ002', name: 'Pizza Margherita G', category: 'PIZZAS', description: 'Molho de tomate, queijo muçarela, rodelas de tomate fresco, manjericão e azeite.', price: 45.00, unit: 'UN', status: 'Ativo', controlaProducao: true, recipe: [{ ingredientSku: 'LAC-005', quantity: 0.3, unit: 'KG' }, { ingredientSku: 'HOR-004', quantity: 0.15, unit: 'KG' }] },
+                { code: 'BEB001', name: 'Refrigerante Lata 350ml', category: 'BEBIDAS', description: 'Refrigerante lata gelado (diversos sabores).', price: 6.00, unit: 'UN', status: 'Ativo', controlaProducao: false, recipe: [] }
             ];
             localStorage.setItem('corellux_sale_products', JSON.stringify(initialSales));
             return initialSales;
