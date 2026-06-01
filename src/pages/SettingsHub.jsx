@@ -97,6 +97,7 @@ export default function SettingsHub() {
     const [armazens, setArmazens] = useState([]);
     const [selectedWarehouse, setSelectedWarehouse] = useState(null);
     const [wmsZones, setWmsZones] = useState([]);
+    const [allZonesList, setAllZonesList] = useState([]);
     const [selectedZone, setSelectedZone] = useState(null);
     const [wmsLocations, setWmsLocations] = useState([]);
     const [activeWmsSubTab, setActiveWmsSubTab] = useState('geral'); // geral, zonas, enderecos
@@ -106,6 +107,7 @@ export default function SettingsHub() {
     // Modal: editar posições fracionadas de uma célula específica
     const [editCellModal, setEditCellModal] = useState(null); // { aisle, row, shelf, currentLocs }
     const [editCellPositions, setEditCellPositions] = useState(''); // e.g. "A;B;C;D;E"
+    const [editCellVolume, setEditCellVolume] = useState('0');
 
     // WMS Modals & Forms
     const [showWarehouseModal, setShowWarehouseModal] = useState(false);
@@ -123,7 +125,8 @@ export default function SettingsHub() {
         tempMin: 0,
         tempMax: 30,
         isAmbient: false,
-        ambientType: 'fechada' // fechada, externa_aberta, externa_coberta
+        ambientType: 'fechada', // fechada, externa_aberta, externa_coberta
+        volumeCubicoPadrao: 0
     });
 
     const [showBatchLocationModal, setShowBatchLocationModal] = useState(false);
@@ -218,18 +221,20 @@ export default function SettingsHub() {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [usersData, prodsData, catsData, supsData, sectorsData] = await Promise.all([
+            const [usersData, prodsData, catsData, supsData, sectorsData, zonesData] = await Promise.all([
                 loadUsers(),
                 DbService.getProducts(),
                 DbService.getCategories(),
                 DbService.getSuppliers(),
-                DbService.getSectors()
+                DbService.getSectors(),
+                DbService.getWmsZones()
             ]);
             setColaboradores(usersData);
             setProdutos(prodsData);
             setCategorias(catsData);
             setFornecedores(supsData);
             setSetores(sectorsData);
+            setAllZonesList(zonesData || []);
 
             // Load cargos
             const areasData = await DbService.getAreas();
@@ -420,7 +425,8 @@ export default function SettingsHub() {
             tempMin: 0,
             tempMax: 30,
             isAmbient: false,
-            ambientType: 'fechada'
+            ambientType: 'fechada',
+            volumeCubicoPadrao: 0
         });
         setShowZoneModal(true);
     };
@@ -436,7 +442,8 @@ export default function SettingsHub() {
             tempMin: zone.tempMin !== undefined ? zone.tempMin : 0,
             tempMax: zone.tempMax !== undefined ? zone.tempMax : 30,
             isAmbient: zone.isAmbient !== undefined ? zone.isAmbient : false,
-            ambientType: zone.ambientType || 'fechada'
+            ambientType: zone.ambientType || 'fechada',
+            volumeCubicoPadrao: zone.volumeCubicoPadrao || 0
         });
         setShowZoneModal(true);
     };
@@ -459,7 +466,8 @@ export default function SettingsHub() {
             tempMin: zoneForm.tempMin !== '' && zoneForm.tempMin !== null && zoneForm.tempMin !== undefined ? parseInt(zoneForm.tempMin, 10) : null,
             tempMax: zoneForm.tempMax !== '' && zoneForm.tempMax !== null && zoneForm.tempMax !== undefined ? parseInt(zoneForm.tempMax, 10) : null,
             isAmbient: zoneForm.isAmbient,
-            ambientType: zoneForm.isAmbient ? zoneForm.ambientType : null
+            ambientType: zoneForm.isAmbient ? zoneForm.ambientType : null,
+            volumeCubicoPadrao: parseFloat(zoneForm.volumeCubicoPadrao) || 0
         };
         
         if (editingZone) {
@@ -471,6 +479,8 @@ export default function SettingsHub() {
             showToast('Zona gravada com sucesso!', 'success');
             setShowZoneModal(false);
             await loadWarehouseZones(selectedWarehouse.id);
+            const allZ = await DbService.getWmsZones();
+            setAllZonesList(allZ || []);
         } else {
             showToast('Erro ao salvar zona.', 'error');
         }
@@ -575,6 +585,9 @@ export default function SettingsHub() {
             return;
         }
 
+        const zoneVolPadrao = parseFloat(selectedZone?.volumeCubicoPadrao) || 0;
+        const volPerPos = zoneVolPadrao / (positions.length || 1);
+
         const combinations = [];
         for (const aisle of aisles) {
             const currentRows = onlyRowAAislesList.includes(String(aisle)) ? ['A'] : ['A', 'B'];
@@ -585,10 +598,10 @@ export default function SettingsHub() {
                         const shelfCode = `${shelf}${height}`;
                         if (positions.length > 0) {
                             for (const pos of positions) {
-                                combinations.push({ aisle, row, shelf: shelfCode, position: pos, status: 'Ativo' });
+                                combinations.push({ aisle, row, shelf: shelfCode, position: pos, status: 'Ativo', volumeCubico: volPerPos });
                             }
                         } else {
-                            combinations.push({ aisle, row, shelf: shelfCode, position: null, status: 'Ativo' });
+                            combinations.push({ aisle, row, shelf: shelfCode, position: null, status: 'Ativo', volumeCubico: zoneVolPadrao });
                         }
                     }
                 }
@@ -621,6 +634,11 @@ export default function SettingsHub() {
     const handleOpenCellEdit = (cellLocs, aisle, row, shelf) => {
         const currentPositions = cellLocs.map(l => l.position).filter(Boolean);
         setEditCellPositions(currentPositions.join(';'));
+        
+        const existingVol = cellLocs.reduce((sum, l) => sum + (parseFloat(l.volumeCubico) || 0), 0);
+        const initialVol = existingVol > 0 ? existingVol : (selectedZone?.volumeCubicoPadrao || 0);
+        setEditCellVolume(initialVol.toString());
+        
         setEditCellModal({ aisle, row, shelf, currentLocs: cellLocs });
     };
 
@@ -656,6 +674,9 @@ export default function SettingsHub() {
         const deletePromises = editCellModal.currentLocs.map(l => DbService.deleteWmsLocation(l.id));
         await Promise.all(deletePromises);
 
+        const totalCellVol = parseFloat(editCellVolume) || 0;
+        const volPerPos = totalCellVol / uniquePositions.length;
+
         // 2. Insere novos registros com as posições definidas
         const newLocs = uniquePositions.map(pos => ({
             zoneId: selectedZone.id,
@@ -664,6 +685,7 @@ export default function SettingsHub() {
             shelf: editCellModal.shelf,
             position: pos,
             status: 'Ativo',
+            volumeCubico: volPerPos,
         }));
         const insertPromises = newLocs.map(l => DbService.saveWmsLocation(l));
         await Promise.all(insertPromises);
@@ -1124,10 +1146,122 @@ export default function SettingsHub() {
     const [prodForm, setProdForm] = useState({
         sku: '', name: '', brand: '', category: '', 
         unit: 'KG', stock: 0, minStock: 0, avgStock: 0, maxStock: 0,
-        status: 'Ativo', desc: '', primarySupplierId: '', secondarySupplierId: ''
+        status: 'Ativo', desc: '', primarySupplierId: '', secondarySupplierId: '',
+        controlaProducao: false,
+        volumeOcupado: 0,
+        allowedZones: [],
+        podeEmpilhar: false,
+        maxEmpilhamento: 1,
+        allowedCells: []
     });
 
+    const [limitToSpecificCells, setLimitToSpecificCells] = useState(false);
+    const [showCellSelectorModal, setShowCellSelectorModal] = useState(false);
+    const [selectorWarehouses, setSelectorWarehouses] = useState([]);
+    const [selectorZones, setSelectorZones] = useState([]);
+    const [selectorLocations, setSelectorLocations] = useState([]);
+    const [selectorSelectedWarehouseId, setSelectorSelectedWarehouseId] = useState('');
+    const [selectorSelectedZoneId, setSelectorSelectedZoneId] = useState('');
+    const [selectorSelectedAisle, setSelectorSelectedAisle] = useState('');
+    const [selectorSelectedRow, setSelectorSelectedRow] = useState('A');
+
+    const loadWmsDataForSelector = async () => {
+        try {
+            const whs = await DbService.getWmsWarehouses();
+            setSelectorWarehouses(whs);
+            if (whs.length > 0) {
+                const defaultWhId = whs[0].id;
+                setSelectorSelectedWarehouseId(defaultWhId);
+                
+                const zones = await DbService.getWmsZones(defaultWhId);
+                setSelectorZones(zones);
+                if (zones.length > 0) {
+                    const defaultZoneId = zones[0].id;
+                    setSelectorSelectedZoneId(defaultZoneId);
+                    
+                    const locs = await DbService.getWmsLocations(defaultZoneId);
+                    setSelectorLocations(locs);
+                    
+                    if (locs.length > 0) {
+                        const uniqueAisles = [...new Set(locs.map(l => l.aisle))].sort((a,b) => {
+                            const numA = parseInt(a, 10);
+                            const numB = parseInt(b, 10);
+                            if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                            return a.localeCompare(b);
+                        });
+                        setSelectorSelectedAisle(uniqueAisles[0] || '');
+                        setSelectorSelectedRow('A');
+                    } else {
+                        setSelectorSelectedAisle('');
+                    }
+                } else {
+                    setSelectorZones([]);
+                    setSelectorLocations([]);
+                    setSelectorSelectedZoneId('');
+                    setSelectorSelectedAisle('');
+                }
+            } else {
+                setSelectorWarehouses([]);
+                setSelectorZones([]);
+                setSelectorLocations([]);
+                setSelectorSelectedWarehouseId('');
+                setSelectorSelectedZoneId('');
+                setSelectorSelectedAisle('');
+            }
+        } catch (e) {
+            console.error('[SettingsHub] Error loading selector WMS data:', e);
+        }
+    };
+
+    const handleSelectorWarehouseChange = async (whId) => {
+        setSelectorSelectedWarehouseId(whId);
+        const zones = await DbService.getWmsZones(whId);
+        setSelectorZones(zones);
+        if (zones.length > 0) {
+            const defaultZoneId = zones[0].id;
+            setSelectorSelectedZoneId(defaultZoneId);
+            const locs = await DbService.getWmsLocations(defaultZoneId);
+            setSelectorLocations(locs);
+            if (locs.length > 0) {
+                const uniqueAisles = [...new Set(locs.map(l => l.aisle))].sort((a,b) => {
+                    const numA = parseInt(a, 10);
+                    const numB = parseInt(b, 10);
+                    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                    return a.localeCompare(b);
+                });
+                setSelectorSelectedAisle(uniqueAisles[0] || '');
+                setSelectorSelectedRow('A');
+            } else {
+                setSelectorSelectedAisle('');
+            }
+        } else {
+            setSelectorZones([]);
+            setSelectorLocations([]);
+            setSelectorSelectedZoneId('');
+            setSelectorSelectedAisle('');
+        }
+    };
+
+    const handleSelectorZoneChange = async (zoneId) => {
+        setSelectorSelectedZoneId(zoneId);
+        const locs = await DbService.getWmsLocations(zoneId);
+        setSelectorLocations(locs);
+        if (locs.length > 0) {
+            const uniqueAisles = [...new Set(locs.map(l => l.aisle))].sort((a,b) => {
+                const numA = parseInt(a, 10);
+                const numB = parseInt(b, 10);
+                if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                return a.localeCompare(b);
+            });
+            setSelectorSelectedAisle(uniqueAisles[0] || '');
+            setSelectorSelectedRow('A');
+        } else {
+            setSelectorSelectedAisle('');
+        }
+    };
+
     const openProdModalForEdit = (prod) => {
+        DbService.getWmsZones().then(setAllZonesList).catch(e => console.warn(e));
         setEditingProd(prod);
         setProdForm({
             sku: prod.sku || '',
@@ -1142,19 +1276,34 @@ export default function SettingsHub() {
             status: prod.status || 'Ativo',
             desc: prod.desc || '',
             primarySupplierId: prod.primarySupplierId || '',
-            secondarySupplierId: prod.secondarySupplierId || ''
+            secondarySupplierId: prod.secondarySupplierId || '',
+            controlaProducao: !!prod.controlaProducao,
+            volumeOcupado: prod.volumeOcupado || 0,
+            allowedZones: prod.allowedZones || [],
+            podeEmpilhar: !!prod.podeEmpilhar,
+            maxEmpilhamento: prod.maxEmpilhamento || 1,
+            allowedCells: prod.allowedCells || []
         });
+        setLimitToSpecificCells(prod.allowedCells && prod.allowedCells.length > 0);
         setShowProdModal(true);
     };
 
     const openProdModalForCreate = () => {
+        DbService.getWmsZones().then(setAllZonesList).catch(e => console.warn(e));
         setEditingProd(null);
         setProdForm({
             sku: '', name: '', brand: '', 
             category: categorias[0]?.name || '', 
             unit: 'KG', stock: 0, minStock: 0, avgStock: 0, maxStock: 0,
-            status: 'Ativo', desc: '', primarySupplierId: '', secondarySupplierId: ''
+            status: 'Ativo', desc: '', primarySupplierId: '', secondarySupplierId: '',
+            controlaProducao: false,
+            volumeOcupado: 0,
+            allowedZones: [],
+            podeEmpilhar: false,
+            maxEmpilhamento: 1,
+            allowedCells: []
         });
+        setLimitToSpecificCells(false);
         setShowProdModal(true);
     };
 
@@ -1169,7 +1318,12 @@ export default function SettingsHub() {
         const payload = {
             ...prodForm,
             primarySupplierId: prodForm.primarySupplierId ? Number(prodForm.primarySupplierId) : null,
-            secondarySupplierId: prodForm.secondarySupplierId ? Number(prodForm.secondarySupplierId) : null
+            secondarySupplierId: prodForm.secondarySupplierId ? Number(prodForm.secondarySupplierId) : null,
+            volumeOcupado: parseFloat(prodForm.volumeOcupado) || 0,
+            allowedZones: prodForm.allowedZones || [],
+            podeEmpilhar: !!prodForm.podeEmpilhar,
+            maxEmpilhamento: parseInt(prodForm.maxEmpilhamento, 10) || 1,
+            allowedCells: prodForm.allowedCells || []
         };
 
         const result = await DbService.saveProduct(payload, editingProd ? editingProd.sku : null);
@@ -2304,6 +2458,7 @@ export default function SettingsHub() {
                                                 <th>Nome</th>
                                                 <th>Marca</th>
                                                 <th>Unidade</th>
+                                                <th>Vol. (m³/un)</th>
                                                 <th>Categoria</th>
                                                 <th>Fornecedores</th>
                                                 <th>Estoque</th>
@@ -2317,12 +2472,70 @@ export default function SettingsHub() {
                                                     <td><strong>{prod.sku}</strong></td>
                                                     <td>
                                                         <div className="product-desc">
-                                                            <span style={{ fontWeight: '700' }}>{prod.name}</span>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                                <span style={{ fontWeight: '700' }}>{prod.name}</span>
+                                                                {prod.controlaProducao && (
+                                                                    <span style={{ 
+                                                                        background: 'rgba(243, 107, 29, 0.15)', 
+                                                                        color: 'var(--accent-orange)', 
+                                                                        padding: '0.1rem 0.4rem', 
+                                                                        borderRadius: '4px', 
+                                                                        fontSize: '0.65rem', 
+                                                                        fontWeight: '700',
+                                                                        letterSpacing: '0.5px'
+                                                                    }}>
+                                                                        PRODUÇÃO
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <span>{prod.desc || 'Sem descrição.'}</span>
+                                                            {prod.allowedZones && prod.allowedZones.length > 0 && (
+                                                                <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.35rem', alignItems: 'center' }}>
+                                                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontWeight: '700' }}>Zonas:</span>
+                                                                    {prod.allowedZones.map(zId => {
+                                                                        const z = allZonesList.find(x => x.id === zId);
+                                                                        return z ? (
+                                                                            <span key={zId} style={{
+                                                                                fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px',
+                                                                                background: 'rgba(59, 130, 246, 0.12)', color: 'var(--accent-blue)',
+                                                                                border: '1px solid rgba(59, 130, 246, 0.25)', fontWeight: '800',
+                                                                                textTransform: 'uppercase'
+                                                                            }} title={z.acronymDescription || z.description || ''}>
+                                                                                {z.name}
+                                                                            </span>
+                                                                        ) : null;
+                                                                    })}
+                                                                </div>
+                                                            )}
+                                                            {(prod.podeEmpilhar || (prod.allowedCells && prod.allowedCells.length > 0)) && (
+                                                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.35rem', alignItems: 'center' }}>
+                                                                    {prod.podeEmpilhar && (
+                                                                        <span style={{
+                                                                            fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px',
+                                                                            background: 'rgba(243, 107, 29, 0.12)', color: 'var(--accent-orange)',
+                                                                            border: '1px solid rgba(243, 107, 29, 0.25)', fontWeight: '800',
+                                                                            textTransform: 'uppercase'
+                                                                        }}>
+                                                                            Empilhável (Lte: {prod.maxEmpilhamento})
+                                                                        </span>
+                                                                    )}
+                                                                    {prod.allowedCells && prod.allowedCells.length > 0 && (
+                                                                        <span style={{
+                                                                            fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px',
+                                                                            background: 'rgba(34, 197, 94, 0.12)', color: 'var(--accent-green)',
+                                                                            border: '1px solid rgba(34, 197, 94, 0.25)', fontWeight: '800',
+                                                                            textTransform: 'uppercase'
+                                                                        }} title={`${prod.allowedCells.length} célula(s) específica(s) permitida(s)`}>
+                                                                            Células Permitidas: {prod.allowedCells.length}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </td>
                                                     <td><span style={{ color: 'var(--accent-orange)', fontWeight: '600', fontSize: '0.75rem', textTransform: 'uppercase' }}>{prod.brand || '-'}</span></td>
                                                     <td>{prod.unit}</td>
+                                                    <td>{(Number(prod.volumeOcupado) || 0).toFixed(4)} m³</td>
                                                     <td><span className="category-tag">{prod.category}</span></td>
                                                     <td>
                                                         <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
@@ -3442,7 +3655,7 @@ export default function SettingsHub() {
                                                                                                                                                 <div
                                                                                                                                                     key={loc.id}
                                                                                                                                                     onClick={() => handleToggleLocationStatus(loc)}
-                                                                                                                                                    title={`${formatAddressVisual(selectedZone,loc.aisle,loc.row,loc.shelf,loc.position)} — clique para alterar`}
+                                                                                                                                                    title={`${formatAddressVisual(selectedZone,loc.aisle,loc.row,loc.shelf,loc.position)} · Volume: ${(Number(loc.volumeCubico) || 0).toFixed(3)} m³ — clique para alterar status`}
                                                                                                                                                     style={{
                                                                                                                                                         flex: 1, height: '100%',
                                                                                                                                                         display: 'flex', flexDirection: 'column',
@@ -3601,6 +3814,33 @@ export default function SettingsHub() {
                                         {preset.split(';').length}x ({preset})
                                     </button>
                                 ))}
+                            </div>
+
+                            {/* Input Volume Cúbico Total */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <label style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                                    Volume Cúbico Total da Célula (m³)
+                                </label>
+                                <input
+                                    type="number"
+                                    step="any"
+                                    min="0"
+                                    value={editCellVolume}
+                                    onChange={e => setEditCellVolume(e.target.value)}
+                                    placeholder="Ex: 12.0"
+                                    className="form-input"
+                                    style={{ fontSize: '1rem', fontWeight: '700', textAlign: 'center' }}
+                                />
+                                {(() => {
+                                    const numPositions = editCellPositions.toUpperCase().split(';').map(p => p.trim()).filter(Boolean).length || 1;
+                                    const parsedVol = parseFloat(editCellVolume) || 0;
+                                    const perPos = parsedVol / numPositions;
+                                    return (
+                                        <div style={{ fontSize: '0.72rem', color: 'var(--accent-green)', fontWeight: '600' }}>
+                                            💡 Cada uma das {numPositions} posições receberá automaticamente: {perPos.toFixed(3)} m³
+                                        </div>
+                                    );
+                                })()}
                             </div>
 
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '0.25rem' }}>
@@ -4408,6 +4648,18 @@ export default function SettingsHub() {
                                         <option value="Galão">Galão (GL)</option>
                                     </select>
                                 </div>
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Volume Ocupado (m³/un)</label>
+                                    <input 
+                                        type="number" 
+                                        step="any"
+                                        min="0"
+                                        placeholder="Ex: 0.005"
+                                        value={prodForm.volumeOcupado || ''} 
+                                        onChange={(e) => setProdForm(prev => ({ ...prev, volumeOcupado: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
+                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                    />
+                                </div>
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
@@ -4491,6 +4743,167 @@ export default function SettingsHub() {
                             </div>
 
                             <div style={{ marginBottom: '1rem' }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>Controla produção?</label>
+                                <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: !prodForm.controlaProducao ? 'var(--accent-orange)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: '700' }}>
+                                        <input 
+                                            type="radio"
+                                            name="controlaProducao"
+                                            checked={!prodForm.controlaProducao}
+                                            onChange={() => setProdForm(prev => ({ ...prev, controlaProducao: false }))}
+                                            style={{ accentColor: 'var(--accent-orange)', cursor: 'pointer', width: '16px', height: '16px' }}
+                                        />
+                                        Não
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: prodForm.controlaProducao ? 'var(--accent-orange)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: '700' }}>
+                                        <input 
+                                            type="radio"
+                                            name="controlaProducao"
+                                            checked={prodForm.controlaProducao}
+                                            onChange={() => setProdForm(prev => ({ ...prev, controlaProducao: true }))}
+                                            style={{ accentColor: 'var(--accent-orange)', cursor: 'pointer', width: '16px', height: '16px' }}
+                                        />
+                                        Sim
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', padding: '1.2rem', borderRadius: '10px', marginBottom: '1rem' }}>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '0.8rem', textTransform: 'uppercase' }}>
+                                    Zonas Permitidas de Armazenamento
+                                </div>
+                                {allZonesList.length === 0 ? (
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Nenhuma zona WMS cadastrada no sistema.</div>
+                                ) : (
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.8rem' }}>
+                                        {allZonesList.map(zone => {
+                                            const isChecked = prodForm.allowedZones?.includes(zone.id);
+                                            return (
+                                                <label key={zone.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>
+                                                    <input 
+                                                        type="checkbox"
+                                                        checked={isChecked}
+                                                        onChange={(e) => {
+                                                            const checked = e.target.checked;
+                                                            setProdForm(prev => {
+                                                                const current = prev.allowedZones || [];
+                                                                const updated = checked 
+                                                                    ? [...current, zone.id]
+                                                                    : current.filter(id => id !== zone.id);
+                                                                return { ...prev, allowedZones: updated };
+                                                            });
+                                                        }}
+                                                        style={{ accentColor: 'var(--accent-blue)', width: '16px', height: '16px', cursor: 'pointer' }}
+                                                    />
+                                                    <span><strong>{zone.name}</strong> · <span style={{ color: 'var(--text-secondary)' }}>{zone.acronymDescription || zone.description || ''}</span></span>
+                                                </label>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Stacking Options */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>Pode ser empilhado?</label>
+                                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: !prodForm.podeEmpilhar ? 'var(--accent-orange)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: '700' }}>
+                                            <input 
+                                                type="radio"
+                                                name="podeEmpilhar"
+                                                checked={!prodForm.podeEmpilhar}
+                                                onChange={() => setProdForm(prev => ({ ...prev, podeEmpilhar: false, maxEmpilhamento: 1 }))}
+                                                style={{ accentColor: 'var(--accent-orange)', cursor: 'pointer', width: '16px', height: '16px' }}
+                                            />
+                                            Não
+                                        </label>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: prodForm.podeEmpilhar ? 'var(--accent-orange)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: '700' }}>
+                                            <input 
+                                                type="radio"
+                                                name="podeEmpilhar"
+                                                checked={prodForm.podeEmpilhar}
+                                                onChange={() => setProdForm(prev => ({ ...prev, podeEmpilhar: true }))}
+                                                style={{ accentColor: 'var(--accent-orange)', cursor: 'pointer', width: '16px', height: '16px' }}
+                                            />
+                                            Sim
+                                        </label>
+                                    </div>
+                                </div>
+                                {prodForm.podeEmpilhar && (
+                                    <div>
+                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Quantas unidades (empilhamento máx.)?</label>
+                                        <input 
+                                            type="number" 
+                                            required 
+                                            min="1"
+                                            value={prodForm.maxEmpilhamento} 
+                                            onChange={(e) => setProdForm(prev => ({ ...prev, maxEmpilhamento: parseInt(e.target.value, 10) || 1 }))}
+                                            style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* WMS Cell Restrictions */}
+                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', padding: '1.2rem', borderRadius: '10px', marginBottom: '1rem' }}>
+                                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '0.8rem', textTransform: 'uppercase' }}>
+                                    Restrição de Células no WMS
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>
+                                        <input 
+                                            type="checkbox"
+                                            checked={limitToSpecificCells}
+                                            onChange={(e) => {
+                                                const checked = e.target.checked;
+                                                setLimitToSpecificCells(checked);
+                                                if (!checked) {
+                                                    setProdForm(prev => ({ ...prev, allowedCells: [] }));
+                                                }
+                                            }}
+                                            style={{ accentColor: 'var(--accent-blue)', width: '16px', height: '16px', cursor: 'pointer' }}
+                                        />
+                                        <span>Limitar este insumo a células específicas?</span>
+                                    </label>
+                                    
+                                    {limitToSpecificCells && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    loadWmsDataForSelector().then(() => {
+                                                        setShowCellSelectorModal(true);
+                                                    });
+                                                }}
+                                                style={{
+                                                    padding: '0.5rem 1rem',
+                                                    background: 'var(--accent-blue)',
+                                                    color: 'white',
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: '700',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px'
+                                                }}
+                                            >
+                                                <Grid3X3 size={14} /> Selecionar Células Permitidas
+                                            </button>
+                                            
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                {prodForm.allowedCells?.length > 0 
+                                                    ? `${prodForm.allowedCells.length} célula(s) selecionada(s)`
+                                                    : 'Nenhuma célula selecionada (insumo não poderá ser guardado!)'}
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '1rem' }}>
                                 <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Descrição do Insumo</label>
                                 <textarea 
                                     value={prodForm.desc} 
@@ -4505,6 +4918,234 @@ export default function SettingsHub() {
                                 <button type="submit" className="btn-confirm-modal">SALVAR PRODUTO</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            , document.body)}
+
+            {showCellSelectorModal && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 11000 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '800px', width: '95%' }}>
+                        <button type="button" className="btn-close-modal" onClick={() => setShowCellSelectorModal(false)}><X size={18} /></button>
+                        
+                        <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                            <h3 style={{ fontSize: '1.3rem', color: 'var(--accent-blue)', textTransform: 'uppercase', fontWeight: '800', margin: 0 }}>
+                                Selecionar Células Permitidas
+                            </h3>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
+                                Selecione as células 2D para limitar a armazenagem deste insumo. As células marcadas em <span style={{ color: 'var(--accent-green)', fontWeight: '700' }}>verde</span> serão as únicas permitidas.
+                            </p>
+
+                            {/* Dropdowns Filter */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', background: 'rgba(0,0,0,0.15)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem', fontWeight: '700' }}>ARMAZÉM</label>
+                                    <select 
+                                        value={selectorSelectedWarehouseId} 
+                                        onChange={(e) => handleSelectorWarehouseChange(Number(e.target.value))}
+                                        style={{ width: '100%', padding: '0.4rem 0.8rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    >
+                                        {selectorWarehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem', fontWeight: '700' }}>ZONA</label>
+                                    <select 
+                                        value={selectorSelectedZoneId} 
+                                        onChange={(e) => handleSelectorZoneChange(Number(e.target.value))}
+                                        style={{ width: '100%', padding: '0.4rem 0.8rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    >
+                                        {selectorZones.map(z => <option key={z.id} value={z.id}>{z.name} ({z.type})</option>)}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Aisle & Row Filters */}
+                            {selectorSelectedZoneId && selectorLocations.length > 0 && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Corredor (Rua):</span>
+                                        <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                            {[...new Set(selectorLocations.map(l => l.aisle))].sort((a,b) => {
+                                                const numA = parseInt(a, 10);
+                                                const numB = parseInt(b, 10);
+                                                if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                                                return a.localeCompare(b);
+                                            }).map(aisle => (
+                                                <button
+                                                    key={aisle}
+                                                    type="button"
+                                                    onClick={() => setSelectorSelectedAisle(aisle)}
+                                                    style={{
+                                                        padding: '0.3rem 0.8rem',
+                                                        borderRadius: '6px',
+                                                        border: selectorSelectedAisle === aisle ? '1px solid var(--accent-blue)' : '1px solid var(--border-color)',
+                                                        background: selectorSelectedAisle === aisle ? 'rgba(59,130,246,0.2)' : 'rgba(0,0,0,0.2)',
+                                                        color: selectorSelectedAisle === aisle ? 'white' : 'var(--text-secondary)',
+                                                        fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    Rua {aisle}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Fileira (Lado):</span>
+                                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                                            {['A', 'B'].map(row => (
+                                                <button
+                                                    key={row}
+                                                    type="button"
+                                                    onClick={() => setSelectorSelectedRow(row)}
+                                                    style={{
+                                                        padding: '0.3rem 1rem',
+                                                        borderRadius: '6px',
+                                                        border: selectorSelectedRow === row ? '1px solid var(--accent-blue)' : '1px solid var(--border-color)',
+                                                        background: selectorSelectedRow === row ? 'rgba(59,130,246,0.2)' : 'rgba(0,0,0,0.2)',
+                                                        color: selectorSelectedRow === row ? 'white' : 'var(--text-secondary)',
+                                                        fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer'
+                                                    }}
+                                                >
+                                                    {row === 'A' ? 'Fileira A (Esquerdo)' : 'Fileira B (Direito)'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 2D Matrix Rendering */}
+                            <div style={{ flex: 1, maxHeight: '350px', overflowY: 'auto' }}>
+                                {selectorLocations.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                                        Nenhuma célula cadastrada nesta zona.
+                                    </div>
+                                ) : !selectorSelectedAisle ? (
+                                    <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
+                                        Selecione um corredor (rua) para visualizar o mapa 2D.
+                                    </div>
+                                ) : (() => {
+                                    const filtered = selectorLocations.filter(l => l.aisle === selectorSelectedAisle && l.row === selectorSelectedRow);
+                                    if (filtered.length === 0) {
+                                        return (
+                                            <div style={{ color: 'var(--text-secondary)', fontStyle: 'italic', textAlign: 'center', padding: '2rem' }}>
+                                                Nenhum endereço encontrado para Rua {selectorSelectedAisle} / Fileira {selectorSelectedRow}.
+                                            </div>
+                                        );
+                                    }
+
+                                    const parseShelf = (shelfCode) => {
+                                        const match = String(shelfCode).match(/^(\d+)([A-Z]?)$/);
+                                        if (match) return { num: parseInt(match[1], 10), height: match[2] || '' };
+                                        return { num: NaN, height: '' };
+                                    };
+
+                                    const shelfNums = [...new Set(filtered.map(l => parseShelf(l.shelf).num))]
+                                        .filter(n => !isNaN(n))
+                                        .sort((a, b) => a - b);
+
+                                    const heightLetters = [...new Set(filtered.map(l => parseShelf(l.shelf).height))]
+                                        .filter(h => h !== '')
+                                        .sort((a, b) => b.localeCompare(a));
+
+                                    const hasHeights = heightLetters.length > 0;
+
+                                    return (
+                                        <div style={{ background: 'rgba(0,0,0,0.25)', padding: '1rem', borderRadius: '10px', border: '1px solid var(--border-color)', overflowX: 'auto' }}>
+                                            <div style={{ display: 'flex', gap: '6px' }}>
+                                                {/* Y axis */}
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                    <div style={{ height: '28px' }} />
+                                                    {(hasHeights ? heightLetters : ['—']).map(h => (
+                                                        <div key={h} style={{ height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '6px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--accent-blue)', minWidth: '40px' }}>
+                                                            Alt. {h}
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                {/* Grid */}
+                                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                    {/* X axis (Shelves) */}
+                                                    <div style={{ display: 'flex', gap: '4px' }}>
+                                                        {shelfNums.map(num => (
+                                                            <div key={num} style={{ flex: 1, height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: '800', color: 'var(--accent-blue)', background: 'rgba(59,130,246,0.08)', borderRadius: '4px', minWidth: '60px' }}>
+                                                                Prat. {num}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+
+                                                    {/* Grid Rows */}
+                                                    {(hasHeights ? heightLetters : ['']).map(h => (
+                                                        <div key={h} style={{ display: 'flex', gap: '4px' }}>
+                                                            {shelfNums.map(num => {
+                                                                const shelfCode = hasHeights ? `${num}${h}` : String(num);
+                                                                
+                                                                // Check if this shelf code exists in filtered locations
+                                                                const cellExists = filtered.some(l => l.shelf === shelfCode);
+                                                                if (!cellExists) {
+                                                                    return (
+                                                                        <div key={num} style={{ flex: 1, minWidth: '60px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '6px' }}>
+                                                                            <span style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.05)' }}>—</span>
+                                                                        </div>
+                                                                    );
+                                                                }
+
+                                                                const cellKey = `${selectorSelectedZoneId}_${selectorSelectedAisle}_${selectorSelectedRow}_${shelfCode}`;
+                                                                const isSelected = prodForm.allowedCells?.includes(cellKey);
+                                                                
+                                                                const cellBg = isSelected ? 'rgba(34, 197, 94, 0.25)' : 'rgba(0,0,0,0.18)';
+                                                                const cellBorder = isSelected ? '1px solid var(--accent-green)' : '1px solid var(--border-color)';
+                                                                const cellTextColor = isSelected ? 'var(--accent-green)' : 'var(--text-secondary)';
+
+                                                                return (
+                                                                    <div
+                                                                        key={num}
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setProdForm(prev => {
+                                                                                const current = prev.allowedCells || [];
+                                                                                const updated = isSelected
+                                                                                    ? current.filter(key => key !== cellKey)
+                                                                                    : [...current, cellKey];
+                                                                                return { ...prev, allowedCells: updated };
+                                                                            });
+                                                                        }}
+                                                                        style={{
+                                                                            flex: 1, minWidth: '60px', height: '50px',
+                                                                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                                            background: cellBg, border: cellBorder, borderRadius: '6px',
+                                                                            cursor: 'pointer', transition: 'all 0.15s',
+                                                                            color: cellTextColor, fontSize: '0.85rem', fontWeight: '800'
+                                                                        }}
+                                                                        onMouseEnter={e => {
+                                                                            e.currentTarget.style.borderColor = 'var(--accent-blue)';
+                                                                            e.currentTarget.style.boxShadow = '0 0 0 2px rgba(59,130,246,0.3)';
+                                                                        }}
+                                                                        onMouseLeave={e => {
+                                                                            e.currentTarget.style.borderColor = isSelected ? 'var(--accent-green)' : 'var(--border-color)';
+                                                                            e.currentTarget.style.boxShadow = 'none';
+                                                                        }}
+                                                                        title={`Célula ${shelfCode} · Clique para marcar/desmarcar`}
+                                                                    >
+                                                                        {shelfCode}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+
+                            {/* Modal actions */}
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                                <button type="button" className="btn-confirm-modal" onClick={() => setShowCellSelectorModal(false)}>CONFIRMAR SELEÇÃO</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             , document.body)}
@@ -6471,6 +7112,22 @@ export default function SettingsHub() {
                                             '2', 'B', '5D', 'D'
                                         )}
                                     </code>
+                                </div>
+                            </div>
+
+                            <div className="card-input-group">
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Volume Cúbico Padrão por Célula (m³)</label>
+                                <input 
+                                    type="number" 
+                                    step="any"
+                                    min="0"
+                                    placeholder="Ex: 10.0"
+                                    value={zoneForm.volumeCubicoPadrao || ''}
+                                    onChange={(e) => setZoneForm({ ...zoneForm, volumeCubicoPadrao: e.target.value === '' ? '' : parseFloat(e.target.value) })}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                />
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
+                                    Este valor será usado como capacidade total padrão para cada célula individual (alt x prat) nesta zona.
                                 </div>
                             </div>
 

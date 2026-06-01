@@ -1335,6 +1335,18 @@ export default function LogisticsHub() {
                                     </div>
                                     <ChevronRight className="chevron" size={20} />
                                 </button>
+
+                                <button 
+                                    className="menu-card gray"
+                                    onClick={() => setActiveTab('wip')}
+                                >
+                                    <div className="card-icon"><Clock size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>WIP</h3>
+                                        <p>Módulo em desenvolvimento. Novas funcionalidades em breve.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
                             </div>
                         )}
                         {/* TAB 1: VISÃO GERAL DO ESTOQUE */}
@@ -2226,6 +2238,27 @@ export default function LogisticsHub() {
                                     <Warehouse size={48} style={{ color: 'rgba(168, 85, 247, 0.4)' }} />
                                     <p style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-secondary)', margin: 0 }}>Nenhum conteúdo disponível ainda.</p>
                                     <p style={{ fontSize: '0.85rem', margin: 0 }}>Este módulo está reservado para o sistema de gerenciamento de armazém.</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: WIP */}
+                        {activeTab === 'wip' && (
+                            <div className="products-container">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                    <div>
+                                        <h2 style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '1.3rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <Clock size={20} /> WIP
+                                        </h2>
+                                        <p style={{ margin: '0.3rem 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                            Módulo em desenvolvimento. Novas funcionalidades serão adicionadas em breve.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '1rem', color: 'var(--text-secondary)', background: 'rgba(148, 163, 184, 0.04)', border: '1px dashed rgba(148, 163, 184, 0.3)', borderRadius: '16px', padding: '3rem' }}>
+                                    <Clock size={48} style={{ color: 'rgba(148, 163, 184, 0.4)' }} />
+                                    <p style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-secondary)', margin: 0 }}>Nenhum conteúdo disponível ainda.</p>
+                                    <p style={{ fontSize: '0.85rem', margin: 0 }}>Este espaço está reservado para novas implementações e testes.</p>
                                 </div>
                             </div>
                         )}

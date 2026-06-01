@@ -52,6 +52,12 @@ CREATE TABLE products (
     min_stock NUMERIC(10,2) DEFAULT 0.00,
     avg_stock NUMERIC(10,2) DEFAULT 0.00,
     max_stock NUMERIC(10,2) DEFAULT 0.00,
+    controla_producao BOOLEAN DEFAULT FALSE,
+    volume_ocupado NUMERIC(10,4) DEFAULT 0.0000,
+    allowed_zones INTEGER[] DEFAULT '{}',
+    pode_empilhar BOOLEAN DEFAULT FALSE,
+    max_empilhamento INTEGER DEFAULT 1,
+    allowed_cells TEXT[] DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -218,6 +224,7 @@ CREATE TABLE wms_zones (
     temp_max INTEGER,
     is_ambient BOOLEAN DEFAULT FALSE,
     ambient_type VARCHAR(50) CHECK (ambient_type IN ('fechada', 'externa_aberta', 'externa_coberta')),
+    volume_cubico_padrao NUMERIC(10,4) DEFAULT 0.0000,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     UNIQUE(warehouse_id, name)
 );
@@ -231,6 +238,7 @@ CREATE TABLE wms_locations (
     shelf VARCHAR(50) NOT NULL,
     position VARCHAR(50),
     status VARCHAR(50) DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Bloqueado', 'Manutenção')),
+    volume_cubico NUMERIC(10,4) DEFAULT 0.0000,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     UNIQUE(zone_id, aisle, row, shelf, position)
 );

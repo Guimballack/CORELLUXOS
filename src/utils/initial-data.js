@@ -333,7 +333,8 @@ export const products = [
         "status": "Ativo",
         "minStock": 15,
         "avgStock": 60,
-        "maxStock": 120
+        "maxStock": 120,
+        "controlaProducao": true
     },
     {
         "sku": "LAC-006",
