@@ -1152,7 +1152,8 @@ export default function SettingsHub() {
         allowedZones: [],
         podeEmpilhar: false,
         maxEmpilhamento: 1,
-        allowedCells: []
+        allowedCells: [],
+        otherSupplierIds: []
     });
 
     const [limitToSpecificCells, setLimitToSpecificCells] = useState(false);
@@ -1282,7 +1283,8 @@ export default function SettingsHub() {
             allowedZones: prod.allowedZones || [],
             podeEmpilhar: !!prod.podeEmpilhar,
             maxEmpilhamento: prod.maxEmpilhamento || 1,
-            allowedCells: prod.allowedCells || []
+            allowedCells: prod.allowedCells || [],
+            otherSupplierIds: prod.otherSupplierIds || []
         });
         setLimitToSpecificCells(prod.allowedCells && prod.allowedCells.length > 0);
         setShowProdModal(true);
@@ -1301,7 +1303,8 @@ export default function SettingsHub() {
             allowedZones: [],
             podeEmpilhar: false,
             maxEmpilhamento: 1,
-            allowedCells: []
+            allowedCells: [],
+            otherSupplierIds: []
         });
         setLimitToSpecificCells(false);
         setShowProdModal(true);
@@ -1323,7 +1326,8 @@ export default function SettingsHub() {
             allowedZones: prodForm.allowedZones || [],
             podeEmpilhar: !!prodForm.podeEmpilhar,
             maxEmpilhamento: parseInt(prodForm.maxEmpilhamento, 10) || 1,
-            allowedCells: prodForm.allowedCells || []
+            allowedCells: prodForm.allowedCells || [],
+            otherSupplierIds: (prodForm.otherSupplierIds || []).map(Number)
         };
 
         const result = await DbService.saveProduct(payload, editingProd ? editingProd.sku : null);
@@ -2538,21 +2542,11 @@ export default function SettingsHub() {
                                                     <td>{(Number(prod.volumeOcupado) || 0).toFixed(4)} m³</td>
                                                     <td><span className="category-tag">{prod.category}</span></td>
                                                     <td>
-                                                        <div style={{ fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                                                            <div>
-                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>1º: </span>
-                                                                <strong>{(() => {
-                                                                    const f = fornecedores.find(sup => String(sup.id) === String(prod.primarySupplierId));
-                                                                    return f ? (f.nomeFantasia || f.razaoSocial) : 'Sem Fornecedor';
-                                                                })()}</strong>
-                                                            </div>
-                                                            <div>
-                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>2º: </span>
-                                                                <span style={{ color: 'var(--text-secondary)' }}>{(() => {
-                                                                    const f = fornecedores.find(sup => String(sup.id) === String(prod.secondarySupplierId));
-                                                                    return f ? (f.nomeFantasia || f.razaoSocial) : 'Sem Fornecedor';
-                                                                })()}</span>
-                                                            </div>
+                                                        <div style={{ fontSize: '0.8rem' }}>
+                                                            <strong>{(() => {
+                                                                const f = fornecedores.find(sup => String(sup.id) === String(prod.primarySupplierId));
+                                                                return f ? (f.nomeFantasia || f.razaoSocial) : 'Sem Fornecedor';
+                                                            })()}</strong>
                                                         </div>
                                                     </td>
                                                     <td>{prod.stock}</td>
@@ -4688,6 +4682,66 @@ export default function SettingsHub() {
                                             <option key={f.id} value={f.id}>{f.nomeFantasia || f.razaoSocial}</option>
                                         ))}
                                     </select>
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '1.2rem' }}>
+                                <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.4rem' }}>Outros Fornecedores Adicionais (Opcional)</label>
+                                <div style={{ 
+                                    maxHeight: '120px', 
+                                    overflowY: 'auto', 
+                                    border: '1px solid var(--border-color)', 
+                                    borderRadius: '8px', 
+                                    padding: '0.5rem 0.8rem', 
+                                    background: 'var(--bg-input)',
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                                    gap: '0.4rem'
+                                }}>
+                                    {fornecedores
+                                        .filter(f => String(f.id) !== String(prodForm.primarySupplierId) && String(f.id) !== String(prodForm.secondarySupplierId))
+                                        .map(f => {
+                                            const isChecked = (prodForm.otherSupplierIds || []).includes(f.id);
+                                            return (
+                                                <label key={f.id} style={{ 
+                                                    display: 'flex', 
+                                                    alignItems: 'center', 
+                                                    gap: '0.5rem', 
+                                                    fontSize: '0.75rem', 
+                                                    color: 'var(--text-primary)', 
+                                                    cursor: 'pointer',
+                                                    padding: '0.2rem 0.4rem',
+                                                    borderRadius: '4px',
+                                                    background: isChecked ? 'rgba(255, 255, 255, 0.05)' : 'transparent'
+                                                }}>
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={isChecked}
+                                                        onChange={(e) => {
+                                                            const checked = e.target.checked;
+                                                            setProdForm(prev => {
+                                                                const current = prev.otherSupplierIds || [];
+                                                                if (checked) {
+                                                                    return { ...prev, otherSupplierIds: [...current, f.id] };
+                                                                } else {
+                                                                    return { ...prev, otherSupplierIds: current.filter(id => id !== f.id) };
+                                                                }
+                                                            });
+                                                        }}
+                                                        style={{ cursor: 'pointer' }}
+                                                    />
+                                                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={f.nomeFantasia || f.razaoSocial}>
+                                                        {f.nomeFantasia || f.razaoSocial}
+                                                    </span>
+                                                </label>
+                                            );
+                                        })
+                                    }
+                                    {fornecedores.filter(f => String(f.id) !== String(prodForm.primarySupplierId) && String(f.id) !== String(prodForm.secondarySupplierId)).length === 0 && (
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', padding: '0.2rem' }}>
+                                            Nenhum outro fornecedor disponível.
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

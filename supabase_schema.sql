@@ -58,6 +58,9 @@ CREATE TABLE products (
     pode_empilhar BOOLEAN DEFAULT FALSE,
     max_empilhamento INTEGER DEFAULT 1,
     allowed_cells TEXT[] DEFAULT '{}',
+    primary_supplier_id INTEGER REFERENCES suppliers(id),
+    secondary_supplier_id INTEGER REFERENCES suppliers(id),
+    other_supplier_ids INTEGER[] DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
