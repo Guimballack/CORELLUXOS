@@ -79,6 +79,52 @@ const HEALTH_SAFETY_ITEMS = [
     { id: 'nrs', label: "NR's" }
 ];
 
+const parseWarehouseDescription = (desc) => {
+    try {
+        if (desc && desc.trim().startsWith('{')) {
+            const parsed = JSON.parse(desc);
+            return {
+                text: parsed.text || '',
+                usablePercentage: parsed.usablePercentage !== undefined ? parseFloat(parsed.usablePercentage) : 90,
+                defaultHeight: parsed.defaultHeight !== undefined ? parseFloat(parsed.defaultHeight) : 0,
+                defaultLength: parsed.defaultLength !== undefined ? parseFloat(parsed.defaultLength) : 0,
+                defaultDepth: parsed.defaultDepth !== undefined ? parseFloat(parsed.defaultDepth) : 0
+            };
+        }
+    } catch (e) {
+        console.warn('Failed to parse warehouse description JSON:', e);
+    }
+    return {
+        text: desc || '',
+        usablePercentage: 90,
+        defaultHeight: 0,
+        defaultLength: 0,
+        defaultDepth: 0
+    };
+};
+
+const parseZoneDescription = (desc) => {
+    try {
+        if (desc && desc.trim().startsWith('{')) {
+            const parsed = JSON.parse(desc);
+            return {
+                text: parsed.text || '',
+                height: parsed.height !== undefined ? parseFloat(parsed.height) : 0,
+                length: parsed.length !== undefined ? parseFloat(parsed.length) : 0,
+                depth: parsed.depth !== undefined ? parseFloat(parsed.depth) : 0
+            };
+        }
+    } catch (e) {
+        console.warn('Failed to parse zone description JSON:', e);
+    }
+    return {
+        text: desc || '',
+        height: 0,
+        length: 0,
+        depth: 0
+    };
+};
+
 export default function SettingsHub() {
     const [globalState, setGlobalKey] = useCorelluxState(['currentUser', 'settingsActiveTab']);
     
@@ -111,11 +157,23 @@ export default function SettingsHub() {
     const [editCellModal, setEditCellModal] = useState(null); // { aisle, row, shelf, currentLocs }
     const [editCellPositions, setEditCellPositions] = useState(''); // e.g. "A;B;C;D;E"
     const [editCellVolume, setEditCellVolume] = useState('0');
+    const [editCellHeight, setEditCellHeight] = useState('');
+    const [editCellLength, setEditCellLength] = useState('');
+    const [editCellDepth, setEditCellDepth] = useState('');
+
+    const updateCellVolumeFromDims = (h, l, d) => {
+        const heightVal = parseFloat(h) || 0;
+        const lengthVal = parseFloat(l) || 0;
+        const depthVal = parseFloat(d) || 0;
+        if (heightVal > 0 && lengthVal > 0 && depthVal > 0) {
+            setEditCellVolume((heightVal * lengthVal * depthVal).toFixed(4));
+        }
+    };
 
     // WMS Modals & Forms
     const [showWarehouseModal, setShowWarehouseModal] = useState(false);
     const [editingWarehouse, setEditingWarehouse] = useState(null);
-    const [warehouseForm, setWarehouseForm] = useState({ name: '', acronym: '', description: '', status: 'Ativo' });
+    const [warehouseForm, setWarehouseForm] = useState({ name: '', acronym: '', description: '', descriptionText: '', usablePercentage: 90, defaultHeight: '', defaultLength: '', defaultDepth: '', status: 'Ativo' });
 
     const [showZoneModal, setShowZoneModal] = useState(false);
     const [editingZone, setEditingZone] = useState(null);
@@ -124,6 +182,10 @@ export default function SettingsHub() {
         acronymDescription: '', // Descrição da sigla
         type: 'Seco',
         description: '',
+        descriptionText: '',
+        height: '',
+        length: '',
+        depth: '',
         status: 'Ativo',
         tempMin: 0,
         tempMax: 30,
@@ -379,13 +441,32 @@ export default function SettingsHub() {
     // Warehouse CRUD Handlers
     const openWarehouseModalForCreate = () => {
         setEditingWarehouse(null);
-        setWarehouseForm({ name: '', acronym: '', description: '', status: 'Ativo' });
+        setWarehouseForm({ 
+            name: '', 
+            acronym: '', 
+            descriptionText: '', 
+            usablePercentage: 90,
+            defaultHeight: '',
+            defaultLength: '',
+            defaultDepth: '',
+            status: 'Ativo' 
+        });
         setShowWarehouseModal(true);
     };
 
     const openWarehouseModalForEdit = (wh) => {
         setEditingWarehouse(wh);
-        setWarehouseForm({ name: wh.name, acronym: wh.acronym || '', description: wh.description || '', status: wh.status || 'Ativo' });
+        const parsedDesc = parseWarehouseDescription(wh.description);
+        setWarehouseForm({ 
+            name: wh.name, 
+            acronym: wh.acronym || '', 
+            descriptionText: parsedDesc.text, 
+            usablePercentage: parsedDesc.usablePercentage,
+            defaultHeight: parsedDesc.defaultHeight || '',
+            defaultLength: parsedDesc.defaultLength || '',
+            defaultDepth: parsedDesc.defaultDepth || '',
+            status: wh.status || 'Ativo' 
+        });
         setShowWarehouseModal(true);
     };
 
@@ -400,10 +481,25 @@ export default function SettingsHub() {
             showToast('A sigla do armazém deve conter exatamente 2 letras (A-Z).', 'error');
             return;
         }
+
+        const descText = warehouseForm.descriptionText || '';
+        const percentage = parseFloat(warehouseForm.usablePercentage) || 90;
+        const h = parseFloat(warehouseForm.defaultHeight) || 0;
+        const l = parseFloat(warehouseForm.defaultLength) || 0;
+        const d = parseFloat(warehouseForm.defaultDepth) || 0;
+        const descJson = JSON.stringify({
+            text: descText,
+            usablePercentage: percentage,
+            defaultHeight: h,
+            defaultLength: l,
+            defaultDepth: d
+        });
+
         const payload = {
-            ...warehouseForm,
             name: warehouseForm.name.trim(),
-            acronym: acroVal
+            acronym: acroVal,
+            description: descJson,
+            status: warehouseForm.status
         };
         if (editingWarehouse) {
             payload.id = editingWarehouse.id;
@@ -441,7 +537,10 @@ export default function SettingsHub() {
             name: '',
             acronymDescription: '',
             type: 'Seco',
-            description: '',
+            descriptionText: '',
+            height: '',
+            length: '',
+            depth: '',
             status: 'Ativo',
             tempMin: 0,
             tempMax: 30,
@@ -454,11 +553,15 @@ export default function SettingsHub() {
 
     const openZoneModalForEdit = (zone) => {
         setEditingZone(zone);
+        const parsedDesc = parseZoneDescription(zone.description);
         setZoneForm({
             name: zone.name || '',
             acronymDescription: zone.acronymDescription || '',
             type: zone.type || 'Seco',
-            description: zone.description || zone.desc || '',
+            descriptionText: parsedDesc.text,
+            height: parsedDesc.height || '',
+            length: parsedDesc.length || '',
+            depth: parsedDesc.depth || '',
             status: zone.status || 'Ativo',
             tempMin: zone.tempMin !== undefined ? zone.tempMin : 0,
             tempMax: zone.tempMax !== undefined ? zone.tempMax : 30,
@@ -479,11 +582,24 @@ export default function SettingsHub() {
             return;
         }
 
+        const descText = zoneForm.descriptionText || '';
+        const h = parseFloat(zoneForm.height) || 0;
+        const l = parseFloat(zoneForm.length) || 0;
+        const d = parseFloat(zoneForm.depth) || 0;
+        const descJson = JSON.stringify({
+            text: descText,
+            height: h,
+            length: l,
+            depth: d
+        });
+
         const payload = {
-            ...zoneForm,
             warehouseId: selectedWarehouse.id,
             name: nameVal,
             acronymDescription: zoneForm.acronymDescription.trim(),
+            description: descJson,
+            type: zoneForm.type,
+            status: zoneForm.status,
             tempMin: zoneForm.tempMin !== '' && zoneForm.tempMin !== null && zoneForm.tempMin !== undefined ? parseInt(zoneForm.tempMin, 10) : null,
             tempMax: zoneForm.tempMax !== '' && zoneForm.tempMax !== null && zoneForm.tempMax !== undefined ? parseInt(zoneForm.tempMax, 10) : null,
             isAmbient: zoneForm.isAmbient,
@@ -651,6 +767,7 @@ export default function SettingsHub() {
             showToast('Erro ao gerar endereços em lote. Pode haver conflito de duplicidade.', 'error');
         }
     };
+
     // === EDITAR POSIÇÕES FRACIONADAS DE UMA CÉLULA ESPECÍFICA ===
     const handleOpenCellEdit = (cellLocs, aisle, row, shelf) => {
         const currentPositions = cellLocs.map(l => l.position).filter(Boolean);
@@ -659,6 +776,17 @@ export default function SettingsHub() {
         const existingVol = cellLocs.reduce((sum, l) => sum + (parseFloat(l.volumeCubico) || 0), 0);
         const initialVol = existingVol > 0 ? existingVol : (selectedZone?.volumeCubicoPadrao || 0);
         setEditCellVolume(initialVol.toString());
+
+        const parsedZone = parseZoneDescription(selectedZone?.description);
+        const parsedWh = parseWarehouseDescription(selectedWarehouse?.description);
+        
+        const defaultHeight = parsedZone.height || parsedWh.defaultHeight || '';
+        const defaultLength = parsedZone.length || parsedWh.defaultLength || '';
+        const defaultDepth = parsedZone.depth || parsedWh.defaultDepth || '';
+
+        setEditCellHeight(defaultHeight.toString());
+        setEditCellLength(defaultLength.toString());
+        setEditCellDepth(defaultDepth.toString());
         
         setEditCellModal({ aisle, row, shelf, currentLocs: cellLocs });
     };
@@ -4269,6 +4397,55 @@ export default function SettingsHub() {
                                         {preset.split(';').length}x ({preset})
                                     </button>
                                 ))}
+                            </div>
+
+                            {/* Dimensões da Célula */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.2rem' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                    <label style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)' }}>ALTURA (m)</label>
+                                    <input 
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        value={editCellHeight}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setEditCellHeight(val);
+                                            updateCellVolumeFromDims(val, editCellLength, editCellDepth);
+                                        }}
+                                        style={{ padding: '0.5rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textAlign: 'center', fontSize: '0.9rem', fontWeight: '600' }}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                    <label style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)' }}>COMP. (m)</label>
+                                    <input 
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        value={editCellLength}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setEditCellLength(val);
+                                            updateCellVolumeFromDims(editCellHeight, val, editCellDepth);
+                                        }}
+                                        style={{ padding: '0.5rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textAlign: 'center', fontSize: '0.9rem', fontWeight: '600' }}
+                                    />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                    <label style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)' }}>PROF. (m)</label>
+                                    <input 
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        value={editCellDepth}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setEditCellDepth(val);
+                                            updateCellVolumeFromDims(editCellHeight, editCellLength, val);
+                                        }}
+                                        style={{ padding: '0.5rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textAlign: 'center', fontSize: '0.9rem', fontWeight: '600' }}
+                                    />
+                                </div>
                             </div>
 
                             {/* Input Volume Cúbico Total */}
@@ -8252,11 +8429,80 @@ export default function SettingsHub() {
                                 <textarea 
                                     placeholder="Descrição ou observações..."
                                     rows={3}
-                                    value={warehouseForm.description}
-                                    onChange={(e) => setWarehouseForm({ ...warehouseForm, description: e.target.value })}
+                                    value={warehouseForm.descriptionText || ''}
+                                    onChange={(e) => setWarehouseForm({ ...warehouseForm, descriptionText: e.target.value })}
                                     style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', resize: 'none' }}
                                 />
                             </div>
+
+                            <div className="card-input-group">
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Limite de Ocupação da Célula (%)</label>
+                                <input 
+                                    type="number"
+                                    min={1}
+                                    max={100}
+                                    placeholder="Ex: 90"
+                                    value={warehouseForm.usablePercentage !== undefined ? warehouseForm.usablePercentage : '90'}
+                                    onChange={(e) => setWarehouseForm({ ...warehouseForm, usablePercentage: e.target.value })}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Alt. Célula Padrão (m)</label>
+                                    <input 
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        placeholder="Ex: 1.0"
+                                        value={warehouseForm.defaultHeight !== undefined ? warehouseForm.defaultHeight : ''}
+                                        onChange={(e) => setWarehouseForm({ ...warehouseForm, defaultHeight: e.target.value })}
+                                        style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Comp. Célula Padrão (m)</label>
+                                    <input 
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        placeholder="Ex: 1.2"
+                                        value={warehouseForm.defaultLength !== undefined ? warehouseForm.defaultLength : ''}
+                                        onChange={(e) => setWarehouseForm({ ...warehouseForm, defaultLength: e.target.value })}
+                                        style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Prof. Célula Padrão (m)</label>
+                                    <input 
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        placeholder="Ex: 1.0"
+                                        value={warehouseForm.defaultDepth !== undefined ? warehouseForm.defaultDepth : ''}
+                                        onChange={(e) => setWarehouseForm({ ...warehouseForm, defaultDepth: e.target.value })}
+                                        style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                            </div>
+
+                            {(() => {
+                                const h = parseFloat(warehouseForm.defaultHeight) || 0;
+                                const l = parseFloat(warehouseForm.defaultLength) || 0;
+                                const d = parseFloat(warehouseForm.defaultDepth) || 0;
+                                const pct = parseFloat(warehouseForm.usablePercentage) || 90;
+                                const totVol = h * l * d;
+                                const usableVol = totVol * (pct / 100);
+                                if (totVol > 0) {
+                                    return (
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--accent-green)', fontWeight: '600', marginTop: '-0.5rem' }}>
+                                            💡 Volume Total Padrão: {totVol.toFixed(3)} m³ | Volume Útil (Margem {pct}%): {usableVol.toFixed(3)} m³
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            })()}
 
                             <div className="card-input-group">
                                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Status</label>
@@ -8511,6 +8757,81 @@ export default function SettingsHub() {
                                 </div>
                             </div>
 
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Alt. Célula (m)</label>
+                                    <input 
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        placeholder="Ex: 1.0"
+                                        value={zoneForm.height !== undefined ? zoneForm.height : ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setZoneForm(prev => {
+                                                const next = { ...prev, height: val };
+                                                const h = parseFloat(val) || 0;
+                                                const l = parseFloat(next.length) || 0;
+                                                const d = parseFloat(next.depth) || 0;
+                                                if (h > 0 && l > 0 && d > 0) {
+                                                    next.volumeCubicoPadrao = h * l * d;
+                                                }
+                                                return next;
+                                            });
+                                        }}
+                                        style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Comp. Célula (m)</label>
+                                    <input 
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        placeholder="Ex: 1.2"
+                                        value={zoneForm.length !== undefined ? zoneForm.length : ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setZoneForm(prev => {
+                                                const next = { ...prev, length: val };
+                                                const h = parseFloat(next.height) || 0;
+                                                const l = parseFloat(val) || 0;
+                                                const d = parseFloat(next.depth) || 0;
+                                                if (h > 0 && l > 0 && d > 0) {
+                                                    next.volumeCubicoPadrao = h * l * d;
+                                                }
+                                                return next;
+                                            });
+                                        }}
+                                        style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Prof. Célula (m)</label>
+                                    <input 
+                                        type="number"
+                                        step="any"
+                                        min="0"
+                                        placeholder="Ex: 1.0"
+                                        value={zoneForm.depth !== undefined ? zoneForm.depth : ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            setZoneForm(prev => {
+                                                const next = { ...prev, depth: val };
+                                                const h = parseFloat(next.height) || 0;
+                                                const l = parseFloat(next.length) || 0;
+                                                const d = parseFloat(val) || 0;
+                                                if (h > 0 && l > 0 && d > 0) {
+                                                    next.volumeCubicoPadrao = h * l * d;
+                                                }
+                                                return next;
+                                            });
+                                        }}
+                                        style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    />
+                                </div>
+                            </div>
+
                             <div className="card-input-group">
                                 <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Volume Cúbico Padrão por Célula (m³)</label>
                                 <input 
@@ -8532,8 +8853,8 @@ export default function SettingsHub() {
                                 <textarea 
                                     placeholder="Descrição detalhada..."
                                     rows={2}
-                                    value={zoneForm.description}
-                                    onChange={(e) => setZoneForm({ ...zoneForm, description: e.target.value })}
+                                    value={zoneForm.descriptionText || ''}
+                                    onChange={(e) => setZoneForm({ ...zoneForm, descriptionText: e.target.value })}
                                     style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', resize: 'none' }}
                                 />
                             </div>

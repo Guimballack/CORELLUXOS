@@ -48,6 +48,52 @@ import {
 
 const indirectEval = eval;
 
+const parseWarehouseDescription = (desc) => {
+    try {
+        if (desc && desc.trim().startsWith('{')) {
+            const parsed = JSON.parse(desc);
+            return {
+                text: parsed.text || '',
+                usablePercentage: parsed.usablePercentage !== undefined ? parseFloat(parsed.usablePercentage) : 90,
+                defaultHeight: parsed.defaultHeight !== undefined ? parseFloat(parsed.defaultHeight) : 0,
+                defaultLength: parsed.defaultLength !== undefined ? parseFloat(parsed.defaultLength) : 0,
+                defaultDepth: parsed.defaultDepth !== undefined ? parseFloat(parsed.defaultDepth) : 0
+            };
+        }
+    } catch (e) {
+        console.warn('Failed to parse warehouse description JSON:', e);
+    }
+    return {
+        text: desc || '',
+        usablePercentage: 90,
+        defaultHeight: 0,
+        defaultLength: 0,
+        defaultDepth: 0
+    };
+};
+
+const parseZoneDescription = (desc) => {
+    try {
+        if (desc && desc.trim().startsWith('{')) {
+            const parsed = JSON.parse(desc);
+            return {
+                text: parsed.text || '',
+                height: parsed.height !== undefined ? parseFloat(parsed.height) : 0,
+                length: parsed.length !== undefined ? parseFloat(parsed.length) : 0,
+                depth: parsed.depth !== undefined ? parseFloat(parsed.depth) : 0
+            };
+        }
+    } catch (e) {
+        console.warn('Failed to parse zone description JSON:', e);
+    }
+    return {
+        text: desc || '',
+        height: 0,
+        length: 0,
+        depth: 0
+    };
+};
+
 const limitChars = (str, limit) => {
     if (!str) return '';
     return str.length > limit ? str.substring(0, limit) + '.' : str;
@@ -88,6 +134,9 @@ export default function LogisticsHub() {
     const [categories, setCategories] = useState([]);
     const [requests, setRequests] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
+    const [wmsWarehouses, setWmsWarehouses] = useState([]);
+    const [wmsZones, setWmsZones] = useState([]);
+    const [wmsLocations, setWmsLocations] = useState([]);
     const [loading, setLoading] = useState(true);
 
     // WMS/FEFO States
@@ -224,6 +273,7 @@ export default function LogisticsHub() {
     const [entryBrand, setEntryBrand] = useState('');
     const [entryAddress, setEntryAddress] = useState('');
     const [entryMfgDate, setEntryMfgDate] = useState('');
+    const [entryBatches, setEntryBatches] = useState([]);
 
     // Barcode & packaging conversion states
     const [barcodeInput, setBarcodeInput] = useState('');
@@ -303,6 +353,249 @@ export default function LogisticsHub() {
     // Custom System dialog state
     const [systemDialog, setSystemDialog] = useState(null);
 
+    // WMS Address formatting and mapping
+    const formattedWmsAddresses = useMemo(() => {
+        if (!wmsLocations || !wmsZones || !wmsWarehouses) return [];
+        return wmsLocations.map(loc => {
+            const zone = wmsZones.find(z => String(z.id) === String(loc.zoneId));
+            const wh = wmsWarehouses.find(w => String(w.id) === String(zone?.warehouseId));
+            
+            const whAcronym = (wh?.acronym || 'AC').substring(0, 2).toUpperCase();
+            const zoneName = (zone?.name || 'ESA').substring(0, 3).toUpperCase();
+            const parts = [`${whAcronym}-${zoneName}`];
+            if (loc.aisle || loc.row) {
+                parts.push(`${loc.aisle || ''}${loc.row || ''}`);
+            }
+            if (loc.shelf) parts.push(loc.shelf);
+            if (loc.position) parts.push(loc.position);
+            
+            return {
+                id: loc.id,
+                formatted: parts.join('-'),
+                zoneName: zone?.name,
+                zoneType: zone?.type || 'Seco',
+                status: loc.status
+            };
+        }).filter(loc => loc.status === 'Ativo');
+    }, [wmsLocations, wmsZones, wmsWarehouses]);
+
+    const suggestWmsLocation = (product, quantity) => {
+        if (!product || !wmsLocations || wmsLocations.length === 0) return '';
+        const qty = parseFloat(quantity) || 0;
+        const incomingVolume = qty * (parseFloat(product.volumeOcupado) || 0);
+
+        const allowedZones = product.allowedZones || [];
+        const allowedCells = product.allowedCells || [];
+
+        // Map locations with their occupied volume
+        const locationsWithOccupiedVolume = wmsLocations.map(loc => {
+            const zone = wmsZones.find(z => String(z.id) === String(loc.zoneId));
+            const wh = wmsWarehouses.find(w => String(w.id) === String(zone?.warehouseId));
+            
+            const whAcronym = (wh?.acronym || 'AC').substring(0, 2).toUpperCase();
+            const zoneName = (zone?.name || 'ESA').substring(0, 3).toUpperCase();
+            const parts = [`${whAcronym}-${zoneName}`];
+            if (loc.aisle || loc.row) {
+                parts.push(`${loc.aisle || ''}${loc.row || ''}`);
+            }
+            if (loc.shelf) parts.push(loc.shelf);
+            if (loc.position) parts.push(loc.position);
+            
+            const formatted = parts.join('-');
+
+            // Get batches in this location
+            const batchesInLoc = stockBatches.filter(b => b.address === formatted);
+            
+            // Sum occupied volume
+            let occupiedVolume = 0;
+            batchesInLoc.forEach(b => {
+                const batchProd = products.find(p => p.sku === b.itemSku);
+                const prodVolUnit = batchProd ? (parseFloat(batchProd.volumeOcupado) || 0) : 0;
+                occupiedVolume += (parseFloat(b.quantity) || 0) * prodVolUnit;
+            });
+
+            // Parse warehouse usablePercentage if exists
+            let usablePercentage = 90;
+            if (wh && wh.description && wh.description.trim().startsWith('{')) {
+                try {
+                    const parsed = JSON.parse(wh.description);
+                    if (parsed.usablePercentage !== undefined) {
+                        usablePercentage = parseFloat(parsed.usablePercentage) || 90;
+                    }
+                } catch (e) {
+                    console.warn('Failed to parse wh description in suggestion:', e);
+                }
+            }
+
+            const totalVol = parseFloat(loc.volumeCubico) || 0;
+            const usableVol = totalVol * (usablePercentage / 100);
+
+            return {
+                ...loc,
+                formatted,
+                occupiedVolume,
+                totalVol,
+                usableVol,
+                remainingVolume: Math.max(0, usableVol - occupiedVolume)
+            };
+        });
+
+        // Filter zoning constraints helper
+        const passesZoningConstraints = (loc) => {
+            if (loc.status !== 'Ativo') return false;
+
+            // Restrict by allowedZones
+            if (allowedZones.length > 0) {
+                const hasZone = allowedZones.some(z => Number(z) === Number(loc.zoneId));
+                if (!hasZone) return false;
+            }
+
+            // Restrict by allowedCells (format zoneId_aisle_row_shelf)
+            if (allowedCells.length > 0) {
+                const matchesAnyCell = allowedCells.some(cellStr => {
+                    const parts = cellStr.split('_');
+                    if (parts.length < 4) return false;
+                    const cZoneId = Number(parts[0]);
+                    const cAisle = parts[1];
+                    const cRow = parts[2];
+                    const cShelf = parts[3];
+                    return Number(cZoneId) === Number(loc.zoneId) &&
+                           String(cAisle || '') === String(loc.aisle || '') &&
+                           String(cRow || '') === String(loc.row || '') &&
+                           String(cShelf || '') === String(loc.shelf || '');
+                });
+                if (!matchesAnyCell) return false;
+            }
+
+            return true;
+        };
+
+        // Filter candidates WITH volume limit
+        let candidates = locationsWithOccupiedVolume.filter(loc => {
+            if (!passesZoningConstraints(loc)) return false;
+
+            // Check usable volume limit
+            if (loc.totalVol > 0 && incomingVolume > 0) {
+                if (loc.remainingVolume + 0.0001 < incomingVolume) return false;
+            }
+
+            return true;
+        });
+
+        // Fallback: If no candidate satisfies the volume constraint, filter ONLY by zoning constraints
+        if (candidates.length === 0) {
+            candidates = locationsWithOccupiedVolume.filter(passesZoningConstraints);
+        }
+
+        if (candidates.length === 0) return '';
+
+        // Sort candidates:
+        // 1. Prioritize locations that already have the same SKU
+        // 2. Prioritize locations with more remaining volume
+        candidates.sort((a, b) => {
+            const aHasSameSKU = stockBatches.some(bat => bat.address === a.formatted && bat.itemSku === product.sku);
+            const bHasSameSKU = stockBatches.some(bat => bat.address === b.formatted && bat.itemSku === product.sku);
+
+            if (aHasSameSKU && !bHasSameSKU) return -1;
+            if (!aHasSameSKU && bHasSameSKU) return 1;
+
+            return b.remainingVolume - a.remainingVolume;
+        });
+
+        return candidates[0].formatted;
+    };
+
+    // WMS Address selector helper component
+    const renderAddressSelector = (value, onChange, placeholder = "Selecione o endereço...") => {
+        if (formattedWmsAddresses.length === 0) {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', width: '100%' }}>
+                    <input 
+                        type="text"
+                        placeholder={placeholder}
+                        value={value}
+                        onChange={(e) => onChange(e.target.value.toUpperCase())}
+                        maxLength="15"
+                        style={{
+                            padding: '0.6rem',
+                            borderRadius: '6px',
+                            border: '1px solid var(--border-color)',
+                            background: 'var(--bg-input)',
+                            color: 'var(--text-primary)',
+                            outline: 'none',
+                            width: '100%'
+                        }}
+                    />
+                    <span style={{ fontSize: '0.68rem', color: 'var(--accent-yellow)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                        <AlertCircle size={10} /> Nenhum endereço cadastrado no WMS. Usando entrada manual.
+                    </span>
+                </div>
+            );
+        }
+
+        const valueExists = formattedWmsAddresses.some(loc => loc.formatted === value);
+        
+        return (
+            <select
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                required
+                style={{
+                    padding: '0.6rem',
+                    borderRadius: '6px',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--bg-input)',
+                    color: 'var(--text-primary)',
+                    outline: 'none',
+                    width: '100%',
+                    cursor: 'pointer'
+                }}
+            >
+                <option value="">-- Selecione o Endereço --</option>
+                {value && !valueExists && (
+                    <option value={value}>{value} (Endereço Atual / Não cadastrado)</option>
+                )}
+                {formattedWmsAddresses.map(loc => (
+                    <option key={loc.id} value={loc.formatted}>
+                        {loc.formatted} ({loc.zoneType})
+                    </option>
+                ))}
+            </select>
+        );
+    };
+
+    // Currency Helpers
+    const formatCurrency = (val) => {
+        if (val === null || val === undefined || val === '') return '0,00';
+        const num = parseFloat(val);
+        if (isNaN(num)) return '0,00';
+        return num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const parseCurrencyToFloat = (str) => {
+        if (!str) return 0.00;
+        let clean = String(str).replace(/[^\d,.-]/g, '');
+        if (clean.includes(',') && clean.includes('.')) {
+            // e.g. "1.234,56" -> remove dots, replace comma with dot
+            clean = clean.replace(/\./g, '').replace(',', '.');
+        } else if (clean.includes(',')) {
+            // e.g. "8,50" -> replace comma with dot
+            clean = clean.replace(',', '.');
+        }
+        return parseFloat(clean) || 0.00;
+    };
+
+    const handleCurrencyInputChange = (value, setter) => {
+        let clean = value.replace(/\D/g, '');
+        if (clean === '') {
+            setter('0,00');
+            return;
+        }
+        const cents = parseInt(clean, 10);
+        const formatted = (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        setter(formatted);
+    };
+
     const showSystemAlert = (message, title = 'Aviso', onConfirm = null) => {
         setSystemDialog({
             type: 'alert',
@@ -333,18 +626,24 @@ export default function LogisticsHub() {
         const loadAllData = async () => {
             setLoading(true);
             try {
-                const [prodsData, catsData, batchesData, sectorsData, suppliersData] = await Promise.all([
+                const [prodsData, catsData, batchesData, sectorsData, suppliersData, whsData, zonesData, locsData] = await Promise.all([
                     DbService.getProducts(),
                     DbService.getCategories(),
                     DbService.getStockBatches(),
                     DbService.getSectors(),
-                    DbService.getSuppliers()
+                    DbService.getSuppliers(),
+                    DbService.getWmsWarehouses(),
+                    DbService.getWmsZones(),
+                    DbService.getWmsLocations()
                 ]);
                 setProducts(prodsData);
                 setCategories(catsData.filter(c => c.status === 'Ativo'));
                 setStockBatches(batchesData);
                 setSectors(sectorsData || []);
                 setSuppliers(suppliersData || []);
+                setWmsWarehouses(whsData || []);
+                setWmsZones(zonesData || []);
+                setWmsLocations(locsData || []);
                 
                 // Load requests from LocalStorage
                 const savedRequests = localStorage.getItem('corellux_item_requests');
@@ -530,8 +829,8 @@ export default function LogisticsHub() {
         
         setBatchLot('');
         setBatchQty('');
-        setBatchPricePerUnit('');
-        setBatchAddress('');
+        setBatchPricePerUnit('0,00');
+        setBatchAddress(suggestWmsLocation(product, 0));
         setBatchBrand(product.brand || '');
         setBatchSupplier('');
         setBatchMfgDate('');
@@ -547,7 +846,7 @@ export default function LogisticsHub() {
         
         setBatchLot(batch.lot);
         setBatchQty(batch.quantity);
-        setBatchPricePerUnit(batch.pricePerUnit !== undefined ? batch.pricePerUnit : (batch.price_per_unit || ''));
+        setBatchPricePerUnit(formatCurrency(batch.pricePerUnit !== undefined ? batch.pricePerUnit : batch.price_per_unit));
         setBatchAddress(batch.address || '');
         setBatchBrand(batch.brand || '');
         setBatchSupplier(batch.supplier || '');
@@ -594,7 +893,7 @@ export default function LogisticsHub() {
             lot: batchLot,
             quantity: qtyNum,
             unit: batchProduct.unit,
-            pricePerUnit: parseFloat(batchPricePerUnit) || 0.00,
+            pricePerUnit: parseCurrencyToFloat(batchPricePerUnit),
             address: batchAddress,
             brand: batchBrand,
             supplier: batchSupplier,
@@ -934,12 +1233,26 @@ export default function LogisticsHub() {
                 const month = String(today.getMonth() + 1).padStart(2, '0');
                 const day = String(today.getDate()).padStart(2, '0');
                 setEntryLot(`LT-${year}${month}${day}`);
-                setEntryPricePerUnit('');
+                setEntryPricePerUnit('0,00');
                 setEntryExpDate('');
                 setEntrySupplier('');
                 setEntryBrand(numpadProduct.brand || '');
-                setEntryAddress('');
+                const initialAddr = suggestWmsLocation(numpadProduct, parsedVal);
+                setEntryAddress(initialAddr);
                 setEntryMfgDate('');
+                
+                setEntryBatches([
+                    {
+                        id: Date.now(),
+                        lot: `LT-${year}${month}${day}`,
+                        quantity: parsedVal.toString(),
+                        pricePerUnit: '0,00',
+                        expirationDate: '',
+                        manufacturingDate: '',
+                        supplier: '',
+                        address: initialAddr
+                    }
+                ]);
             }
             
             setShowConfirm(true);
@@ -1014,12 +1327,26 @@ export default function LogisticsHub() {
             const month = String(today.getMonth() + 1).padStart(2, '0');
             const day = String(today.getDate()).padStart(2, '0');
             setEntryLot(`LT-${year}${month}${day}`);
-            setEntryPricePerUnit('');
+            setEntryPricePerUnit('0,00');
             setEntryExpDate('');
             setEntrySupplier('');
             setEntryBrand(matched.brand || '');
-            setEntryAddress('');
+            const initialAddr = suggestWmsLocation(matched, factor);
+            setEntryAddress(initialAddr);
             setEntryMfgDate('');
+
+            setEntryBatches([
+                {
+                    id: Date.now(),
+                    lot: `LT-${year}${month}${day}`,
+                    quantity: factor.toString(),
+                    pricePerUnit: '0,00',
+                    expirationDate: '',
+                    manufacturingDate: '',
+                    supplier: '',
+                    address: initialAddr
+                }
+            ]);
         } else if (flowType === 'perdas') {
             // Reset loss values
             setSelectedReason('');
@@ -1105,28 +1432,63 @@ export default function LogisticsHub() {
 
         // ENTRADA / SAIDA: change stock normally
         if (flowType === 'entrada') {
-            const batchData = {
-                itemSku: sku,
-                lot: entryLot || `LT-${Date.now()}`,
-                quantity: pendingQty,
-                unit: pendingProduct.unit,
-                pricePerUnit: parseFloat(entryPricePerUnit) || 0.00,
-                expirationDate: entryExpDate || null,
-                manufacturingDate: entryMfgDate || null,
-                supplier: entrySupplier || null,
-                brand: entryBrand || null,
-                address: entryAddress || null,
-                createdAt: new Date().toISOString(),
-                updatedAt: new Date().toISOString()
-            };
+            // Validar distribuição dos lotes
+            const totalDistributed = entryBatches.reduce((sum, b) => sum + (parseFloat(b.quantity) || 0), 0);
+            if (Math.abs(totalDistributed - pendingQty) > 0.0001) {
+                showSystemAlert(`A soma das quantidades dos lotes (${totalDistributed.toFixed(2)}) deve ser exatamente igual à quantidade total informada (${pendingQty}).`, 'Atenção');
+                return;
+            }
 
-            const result = await DbService.addStockBatch(batchData);
+            // Validar se todos os lotes têm código e quantidade válida
+            for (let i = 0; i < entryBatches.length; i++) {
+                const b = entryBatches[i];
+                if (!b.lot.trim()) {
+                    showSystemAlert(`O lote #${i+1} deve ter um código identificador.`, 'Atenção');
+                    return;
+                }
+                const bQty = parseFloat(b.quantity) || 0;
+                if (bQty <= 0) {
+                    showSystemAlert(`A quantidade do lote "${b.lot}" deve ser maior que zero.`, 'Atenção');
+                    return;
+                }
+            }
+
+            // Salvar cada lote no banco de dados
+            let allSuccess = true;
+            let savedLots = [];
+
+            for (const b of entryBatches) {
+                const batchData = {
+                    itemSku: sku,
+                    lot: b.lot.trim(),
+                    quantity: parseFloat(b.quantity) || 0,
+                    unit: pendingProduct.unit,
+                    pricePerUnit: parseCurrencyToFloat(b.pricePerUnit),
+                    expirationDate: b.expirationDate || null,
+                    manufacturingDate: b.manufacturingDate || null,
+                    supplier: b.supplier || null,
+                    brand: pendingProduct.brand || null,
+                    address: b.address || null,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+
+                const result = await DbService.addStockBatch(batchData);
+                if (result.success) {
+                    savedLots.push(b.lot);
+                } else {
+                    allSuccess = false;
+                }
+            }
+
             await recalculateProductStockFromBatches();
 
-            if (result.success) {
-                showSystemAlert(`Entrada registrada com sucesso! Lote ${batchData.lot} cadastrado com preço unitário R$ ${parseFloat(entryPricePerUnit || 0).toFixed(2)}.`, 'Sucesso');
+            if (allSuccess) {
+                showSystemAlert(`Entrada registrada com sucesso! ${entryBatches.length} lote(s) cadastrado(s): ${savedLots.join(', ')}.`, 'Sucesso');
+            } else if (savedLots.length > 0) {
+                showSystemAlert(`Entrada registrada parcialmente. Lotes cadastrados: ${savedLots.join(', ')}. Alguns lotes falharam ao salvar no servidor.`, 'Salvo Parcialmente');
             } else {
-                showSystemAlert(`[Aviso] Salvo localmente: entrada de lote ${batchData.lot} registrada e estoque atualizado.`, 'Salvo Localmente');
+                showSystemAlert(`Erro ao registrar entrada dos lotes.`, 'Erro');
             }
         } else if (flowType === 'saida') {
             let newStock = currentStock - pendingQty;
@@ -1674,6 +2036,7 @@ export default function LogisticsHub() {
                                                         </div>
                                                     )}
                                                 </th>
+                                                <th style={{ textAlign: 'center', minWidth: '120px' }}>Preço Unit. Médio</th>
                                                 <th style={{ textAlign: 'center' }}>Médio</th>
                                                 <th onClick={() => handleSort('avgDailyConsumption')} style={{ cursor: 'pointer', textAlign: 'center', minWidth: '130px' }} className={sortField === 'avgDailyConsumption' ? 'active-sort' : ''}>
                                                     Uso Diário Méd. {sortField === 'avgDailyConsumption' && (sortOrder === 'asc' ? '▲' : '▼')}
@@ -1686,7 +2049,7 @@ export default function LogisticsHub() {
                                         <tbody>
                                             {filteredInventory.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan="9" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
+                                                    <td colSpan="10" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>
                                                         Nenhum produto correspondente aos filtros foi localizado.
                                                     </td>
                                                 </tr>
@@ -1716,6 +2079,19 @@ export default function LogisticsHub() {
                                                     // Expiration checks for FEFO warning tags
                                                     const productBatches = stockBatches.filter(b => b.itemSku === p.sku);
                                                     const hasExpired = productBatches.some(b => getBatchExpiryStatus(b.expirationDate).label === 'VENCIDO');
+
+                                                    // Calcular preço médio ponderado dos lotes
+                                                    let totalQty = 0;
+                                                    let totalCost = 0;
+                                                    productBatches.forEach(b => {
+                                                        const qty = parseFloat(b.quantity) || 0;
+                                                        const priceVal = b.pricePerUnit !== undefined ? b.pricePerUnit : (b.price_per_unit || 0);
+                                                        const price = parseFloat(priceVal) || 0;
+                                                        totalQty += qty;
+                                                        totalCost += qty * price;
+                                                    });
+                                                    const avgUnitPrice = totalQty > 0 ? (totalCost / totalQty) : 0;
+                                                    const avgUnitPriceFormatted = `R$ ${avgUnitPrice.toFixed(2).replace('.', ',')}`;
 
                                                     return (
                                                         <React.Fragment key={p.sku}>
@@ -1763,6 +2139,9 @@ export default function LogisticsHub() {
                                                                 </td>
                                                                 <td style={{ color: 'var(--text-secondary)' }}>{p.unit}</td>
                                                                 <td><span className="category-tag">{limitChars(p.category, 20)}</span></td>
+                                                                <td style={{ textAlign: 'center', fontWeight: '600', color: 'var(--accent-green)' }}>
+                                                                    {avgUnitPriceFormatted}
+                                                                </td>
                                                                 <td style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
                                                                     <div className="sc-tooltip" style={{ cursor: 'pointer', display: 'inline-block' }}>
                                                                         <span style={{ borderBottom: '1px dotted var(--accent-orange)', paddingBottom: '1px' }}>{avgVal}</span>
@@ -3373,7 +3752,7 @@ export default function LogisticsHub() {
             ============================================= */}
             {showConfirm && pendingProduct && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
-                    <div className="pin-modal-card" style={{ maxWidth: flowType === 'entrada' ? '520px' : '450px', width: '90%', padding: '2rem' }}>
+                    <div className="pin-modal-card" style={{ maxWidth: flowType === 'entrada' ? '650px' : '450px', width: '90%', padding: '2rem' }}>
                         {flowType === 'entrada' ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
                                 <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
@@ -3447,147 +3826,234 @@ export default function LogisticsHub() {
                                     </div>
                                 )}
 
-                                <form onSubmit={(e) => { e.preventDefault(); processStockUpdate(); }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', textAlign: 'left' }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                            <label style={{ fontSize: '0.72rem', fontWeight: '800', color: 'var(--text-secondary)' }}>CÓDIGO DO LOTE *</label>
-                                            <input 
-                                                type="text"
-                                                placeholder="Ex: LT-2026-A"
-                                                value={entryLot}
-                                                onChange={(e) => setEntryLot(e.target.value.toUpperCase())}
-                                                required
-                                                maxLength="20"
-                                                style={{
-                                                    padding: '0.6rem',
-                                                    borderRadius: '8px',
-                                                    border: '1px solid var(--border-color)',
-                                                    background: 'var(--bg-input)',
-                                                    color: 'var(--text-primary)',
-                                                    outline: 'none',
-                                                    fontSize: '0.85rem',
-                                                    fontWeight: '600'
-                                                }}
-                                            />
+                                {(() => {
+                                    const totalDistributed = entryBatches.reduce((sum, b) => sum + (parseFloat(b.quantity) || 0), 0);
+                                    const isMatched = Math.abs(totalDistributed - pendingQty) < 0.0001;
+                                    return (
+                                        <div style={{
+                                            background: isMatched ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                            border: `1px solid ${isMatched ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`,
+                                            borderRadius: '8px',
+                                            padding: '0.6rem 0.9rem',
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            fontSize: '0.82rem',
+                                            fontWeight: '700',
+                                            marginBottom: '0.5rem'
+                                        }}>
+                                            <span style={{ color: 'var(--text-secondary)' }}>Total Informado:</span>
+                                            <span style={{ color: isMatched ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                                                {totalDistributed.toFixed(2)} / {pendingQty.toFixed(2)} {pendingProduct.unit}
+                                            </span>
                                         </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                            <label style={{ fontSize: '0.72rem', fontWeight: '800', color: 'var(--text-secondary)' }}>PREÇO UNITÁRIO (R$) *</label>
-                                            <input 
-                                                type="number"
-                                                step="any"
-                                                min="0"
-                                                placeholder="Ex: 34.90"
-                                                value={entryPricePerUnit}
-                                                onChange={(e) => setEntryPricePerUnit(e.target.value)}
-                                                required
-                                                style={{
-                                                    padding: '0.6rem',
-                                                    borderRadius: '8px',
-                                                    border: '1px solid var(--border-color)',
-                                                    background: 'var(--bg-input)',
-                                                    color: 'var(--text-primary)',
-                                                    outline: 'none',
-                                                    fontSize: '0.85rem',
-                                                    fontWeight: '600'
-                                                }}
-                                            />
-                                        </div>
+                                    );
+                                })()}
+
+                                <form onSubmit={(e) => { e.preventDefault(); processStockUpdate(); }} style={{ display: 'flex', flexDirection: 'column', width: '100%', textAlign: 'left' }}>
+                                    <div style={{ maxHeight: '350px', overflowY: 'auto', paddingRight: '6px', marginBottom: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                        {entryBatches.map((batch, index) => {
+                                            return (
+                                                <div key={batch.id} style={{
+                                                    background: 'rgba(255,255,255,0.02)',
+                                                    border: '1.5px solid var(--border-color)',
+                                                    borderRadius: '10px',
+                                                    padding: '1rem',
+                                                    position: 'relative',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '0.8rem'
+                                                }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '0.4rem' }}>
+                                                        <span style={{ fontSize: '0.85rem', fontWeight: '800', color: 'var(--accent-orange)' }}>
+                                                            LOTE #{index + 1}
+                                                        </span>
+                                                        {entryBatches.length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setEntryBatches(prev => prev.filter(b => b.id !== batch.id));
+                                                                }}
+                                                                style={{
+                                                                    background: 'transparent',
+                                                                    border: 'none',
+                                                                    color: 'var(--accent-red)',
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: '700',
+                                                                    cursor: 'pointer',
+                                                                    display: 'flex',
+                                                                    alignItems: 'center',
+                                                                    gap: '2px'
+                                                                }}
+                                                            >
+                                                                <Trash2 size={12} /> REMOVER
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '0.8rem' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                            <label style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)' }}>CÓDIGO DO LOTE *</label>
+                                                            <input
+                                                                type="text"
+                                                                required
+                                                                placeholder="Ex: LT-2026-A"
+                                                                value={batch.lot}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value.toUpperCase();
+                                                                    setEntryBatches(prev => prev.map(b => b.id === batch.id ? { ...b, lot: val } : b));
+                                                                }}
+                                                                style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.8rem', fontWeight: '600', width: '100%', boxSizing: 'border-box' }}
+                                                            />
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                            <label style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)' }}>QTD ({pendingProduct.unit}) *</label>
+                                                            <input
+                                                                type="number"
+                                                                step="any"
+                                                                required
+                                                                placeholder="Ex: 50"
+                                                                value={batch.quantity}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    setEntryBatches(prev => prev.map(b => b.id === batch.id ? { ...b, quantity: val } : b));
+                                                                }}
+                                                                style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.8rem', fontWeight: '600', width: '100%', boxSizing: 'border-box' }}
+                                                            />
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                            <label style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)' }}>PREÇO UNIT. *</label>
+                                                            <input
+                                                                type="text"
+                                                                required
+                                                                placeholder="R$ 0,00"
+                                                                value={batch.pricePerUnit}
+                                                                onChange={(e) => {
+                                                                    const raw = e.target.value;
+                                                                    const clean = raw.replace(/\D/g, '');
+                                                                    let formatted = '0,00';
+                                                                    if (clean !== '') {
+                                                                        const cents = parseInt(clean, 10);
+                                                                        formatted = (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                                                                    }
+                                                                    setEntryBatches(prev => prev.map(b => b.id === batch.id ? { ...b, pricePerUnit: formatted } : b));
+                                                                }}
+                                                                style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.8rem', fontWeight: '600', width: '100%', boxSizing: 'border-box' }}
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                            <label style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)' }}>DATA DE VALIDADE *</label>
+                                                            <input
+                                                                type="date"
+                                                                required
+                                                                value={batch.expirationDate}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    setEntryBatches(prev => prev.map(b => b.id === batch.id ? { ...b, expirationDate: val } : b));
+                                                                }}
+                                                                style={{ padding: '0.45rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.8rem', fontWeight: '600', width: '100%', boxSizing: 'border-box' }}
+                                                            />
+                                                        </div>
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                            <label style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)' }}>DATA DE FABRICAÇÃO</label>
+                                                            <input
+                                                                type="date"
+                                                                value={batch.manufacturingDate}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    setEntryBatches(prev => prev.map(b => b.id === batch.id ? { ...b, manufacturingDate: val } : b));
+                                                                }}
+                                                                style={{ padding: '0.45rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.8rem', fontWeight: '600', width: '100%', boxSizing: 'border-box' }}
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                        <label style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)' }}>FORNECEDOR</label>
+                                                        <select
+                                                            value={batch.supplier}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                setEntryBatches(prev => prev.map(b => b.id === batch.id ? { ...b, supplier: val } : b));
+                                                            }}
+                                                            style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-input)', color: 'var(--text-primary)', outline: 'none', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer', width: '100%', boxSizing: 'border-box' }}
+                                                        >
+                                                            <option value="">Selecione o fornecedor...</option>
+                                                            {suppliers.map(s => (
+                                                                <option key={s.id} value={s.nomeFantasia || s.razaoSocial}>
+                                                                    {s.nomeFantasia || s.razaoSocial}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                        <label style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)' }}>ENDEREÇO WMS</label>
+                                                        {renderAddressSelector(batch.address, (val) => {
+                                                            setEntryBatches(prev => prev.map(b => b.id === batch.id ? { ...b, address: val } : b));
+                                                        }, "Selecione o endereço...")}
+                                                        {(() => {
+                                                            const suggestion = suggestWmsLocation(pendingProduct, batch.quantity);
+                                                            if (suggestion) {
+                                                                return (
+                                                                    <span style={{ fontSize: '0.72rem', color: 'var(--accent-green)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '0.1rem' }}>
+                                                                        💡 Sugestão WMS: <strong>{suggestion}</strong> (Posição recomendada)
+                                                                    </span>
+                                                                );
+                                                            }
+                                                            return null;
+                                                        })()}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
 
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                        <label style={{ fontSize: '0.72rem', fontWeight: '800', color: 'var(--text-secondary)' }}>FORNECEDOR</label>
-                                        <select
-                                            value={entrySupplier}
-                                            onChange={e => setEntrySupplier(e.target.value)}
-                                            style={{
-                                                padding: '0.6rem',
-                                                borderRadius: '8px',
-                                                border: '1px solid var(--border-color)',
-                                                background: 'var(--bg-input)',
-                                                color: 'var(--text-primary)',
-                                                outline: 'none',
-                                                width: '100%',
-                                                fontSize: '0.85rem',
-                                                fontWeight: '600',
-                                                cursor: 'pointer'
-                                            }}
-                                        >
-                                            <option value="">Selecione o fornecedor...</option>
-                                            {suppliers.map(s => (
-                                                <option key={s.id} value={s.nomeFantasia || s.razaoSocial}>{s.nomeFantasia || s.razaoSocial}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                            <label style={{ fontSize: '0.72rem', fontWeight: '800', color: 'var(--text-secondary)' }}>DATA DE VALIDADE</label>
-                                            <div className="custom-date-picker-wrapper">
-                                                <Calendar className="custom-date-picker-icon" size={16} />
-                                                <input 
-                                                    type="date"
-                                                    value={entryExpDate}
-                                                    onChange={(e) => setEntryExpDate(e.target.value)}
-                                                    className="custom-date-picker-input"
-                                                    style={{ fontWeight: '600' }}
-                                                />
-                                            </div>
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                            <label style={{ fontSize: '0.72rem', fontWeight: '800', color: 'var(--text-secondary)' }}>DATA DE FABRICAÇÃO</label>
-                                            <div className="custom-date-picker-wrapper">
-                                                <Calendar className="custom-date-picker-icon" size={16} />
-                                                <input 
-                                                    type="date"
-                                                    value={entryMfgDate}
-                                                    onChange={(e) => setEntryMfgDate(e.target.value)}
-                                                    className="custom-date-picker-input"
-                                                    style={{ fontWeight: '600' }}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                            <label style={{ fontSize: '0.72rem', fontWeight: '800', color: 'var(--text-secondary)' }}>MARCA / FABRICANTE</label>
-                                            <input 
-                                                type="text"
-                                                placeholder="Ex: Nestlé"
-                                                value={entryBrand}
-                                                onChange={(e) => setEntryBrand(e.target.value)}
-                                                style={{
-                                                    padding: '0.6rem',
-                                                    borderRadius: '8px',
-                                                    border: '1px solid var(--border-color)',
-                                                    background: 'var(--bg-input)',
-                                                    color: 'var(--text-primary)',
-                                                    outline: 'none',
-                                                    fontSize: '0.85rem',
-                                                    fontWeight: '600'
-                                                }}
-                                            />
-                                        </div>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                            <label style={{ fontSize: '0.72rem', fontWeight: '800', color: 'var(--text-secondary)' }}>ENDEREÇO WMS</label>
-                                            <input 
-                                                type="text"
-                                                placeholder="Ex: A-12"
-                                                value={entryAddress}
-                                                onChange={(e) => setEntryAddress(e.target.value.toUpperCase())}
-                                                style={{
-                                                    padding: '0.6rem',
-                                                    borderRadius: '8px',
-                                                    border: '1px solid var(--border-color)',
-                                                    background: 'var(--bg-input)',
-                                                    color: 'var(--text-primary)',
-                                                    outline: 'none',
-                                                    fontSize: '0.85rem',
-                                                    fontWeight: '600'
-                                                }}
-                                            />
-                                        </div>
-                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const totalDistributed = entryBatches.reduce((sum, b) => sum + (parseFloat(b.quantity) || 0), 0);
+                                            const remaining = Math.max(0, pendingQty - totalDistributed);
+                                            const today = new Date();
+                                            const year = today.getFullYear();
+                                            const month = String(today.getMonth() + 1).padStart(2, '0');
+                                            const day = String(today.getDate()).padStart(2, '0');
+                                            
+                                            setEntryBatches(prev => [
+                                                ...prev,
+                                                {
+                                                    id: Date.now() + Math.random(),
+                                                    lot: `LT-${year}${month}${day}-${prev.length + 1}`,
+                                                    quantity: remaining > 0 ? remaining.toString() : '0',
+                                                    pricePerUnit: '0,00',
+                                                    expirationDate: '',
+                                                    manufacturingDate: '',
+                                                    supplier: '',
+                                                    address: suggestWmsLocation(pendingProduct, remaining > 0 ? remaining : 1)
+                                                }
+                                            ]);
+                                        }}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem',
+                                            borderRadius: '8px',
+                                            border: '1px dashed var(--accent-orange)',
+                                            background: 'rgba(235, 94, 40, 0.05)',
+                                            color: 'var(--accent-orange)',
+                                            fontWeight: '700',
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '0.5rem',
+                                            marginBottom: '1rem',
+                                            fontSize: '0.85rem'
+                                        }}
+                                    >
+                                        ➕ DIVIDIR ENTRADA / ADICIONAR LOTE ADICIONAL
+                                    </button>
 
                                     <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '1.2rem' }}>
                                         <button type="button" className="btn-clear-modal" style={{ flex: 1, padding: '0.75rem', borderRadius: '8px' }} onClick={closeConfirmModal}>
@@ -3930,7 +4396,7 @@ export default function LogisticsHub() {
                         </div>
 
                         <form onSubmit={handleSaveBatch} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1.8fr', gap: '1rem' }}>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                                     <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>CÓDIGO DO LOTE *</label>
                                     <input 
@@ -3946,88 +4412,71 @@ export default function LogisticsHub() {
                                             border: '1px solid var(--border-color)',
                                             background: 'var(--bg-input)',
                                             color: 'var(--text-primary)',
-                                            outline: 'none'
+                                            outline: 'none',
+                                            width: '100%',
+                                            boxSizing: 'border-box'
                                         }}
                                     />
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                    <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>QUANTIDADE ({batchProduct.unit}) *</label>
-                                    <input 
-                                        type="number"
-                                        step="any"
-                                        placeholder="Ex: 50"
-                                        value={batchQty}
-                                        onChange={(e) => setBatchQty(e.target.value)}
-                                        required
-                                        style={{
-                                            padding: '0.6rem',
-                                            borderRadius: '6px',
-                                            border: '1px solid var(--border-color)',
-                                            background: 'var(--bg-input)',
-                                            color: 'var(--text-primary)',
-                                            outline: 'none'
-                                        }}
-                                    />
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                    <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>PREÇO UNIT. (R$) *</label>
-                                    <input 
-                                        type="number"
-                                        step="any"
-                                        min="0"
-                                        placeholder="Ex: 34.90"
-                                        value={batchPricePerUnit}
-                                        onChange={(e) => setBatchPricePerUnit(e.target.value)}
-                                        required
-                                        style={{
-                                            padding: '0.6rem',
-                                            borderRadius: '6px',
-                                            border: '1px solid var(--border-color)',
-                                            background: 'var(--bg-input)',
-                                            color: 'var(--text-primary)',
-                                            outline: 'none'
-                                        }}
-                                    />
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>QUANTIDADE ({batchProduct.unit}) *</label>
+                                        <input 
+                                            type="number"
+                                            step="any"
+                                            placeholder="Ex: 50"
+                                            value={batchQty}
+                                            onChange={(e) => setBatchQty(e.target.value)}
+                                            required
+                                            style={{
+                                                padding: '0.6rem',
+                                                borderRadius: '6px',
+                                                border: '1px solid var(--border-color)',
+                                                background: 'var(--bg-input)',
+                                                color: 'var(--text-primary)',
+                                                outline: 'none',
+                                                width: '100%',
+                                                boxSizing: 'border-box'
+                                            }}
+                                        />
+                                    </div>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                        <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>PREÇO UNIT. (R$) *</label>
+                                        <input 
+                                            type="text"
+                                            placeholder="Ex: 34,90"
+                                            value={batchPricePerUnit}
+                                            onChange={(e) => handleCurrencyInputChange(e.target.value, setBatchPricePerUnit)}
+                                            required
+                                            style={{
+                                                padding: '0.6rem',
+                                                borderRadius: '6px',
+                                                border: '1px solid var(--border-color)',
+                                                background: 'var(--bg-input)',
+                                                color: 'var(--text-primary)',
+                                                outline: 'none',
+                                                width: '100%',
+                                                boxSizing: 'border-box'
+                                            }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                    <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>ENDEREÇO WMS</label>
-                                    <input 
-                                        type="text"
-                                        placeholder="Ex: A-12-3"
-                                        value={batchAddress}
-                                        onChange={(e) => setBatchAddress(e.target.value.toUpperCase())}
-                                        maxLength="15"
-                                        style={{
-                                            padding: '0.6rem',
-                                            borderRadius: '6px',
-                                            border: '1px solid var(--border-color)',
-                                            background: 'var(--bg-input)',
-                                            color: 'var(--text-primary)',
-                                            outline: 'none'
-                                        }}
-                                    />
-                                </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                    <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>MARCA</label>
-                                    <input 
-                                        type="text"
-                                        placeholder="Ex: Nestlé"
-                                        value={batchBrand}
-                                        onChange={(e) => setBatchBrand(e.target.value)}
-                                        maxLength="15"
-                                        style={{
-                                            padding: '0.6rem',
-                                            borderRadius: '6px',
-                                            border: '1px solid var(--border-color)',
-                                            background: 'var(--bg-input)',
-                                            color: 'var(--text-primary)',
-                                            outline: 'none'
-                                        }}
-                                    />
-                                </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>ENDEREÇO WMS</label>
+                                {renderAddressSelector(batchAddress, setBatchAddress, "Selecione o endereço...")}
+                                {(() => {
+                                    const suggestion = suggestWmsLocation(batchProduct, batchQty);
+                                    if (suggestion) {
+                                        return (
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--accent-green)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '0.1rem' }}>
+                                                💡 Sugestão WMS: <strong>{suggestion}</strong> (Posição recomendada)
+                                            </span>
+                                        );
+                                    }
+                                    return null;
+                                })()}
                             </div>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>

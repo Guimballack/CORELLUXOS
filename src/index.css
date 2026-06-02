@@ -787,6 +787,10 @@ main {
     background-color: var(--accent-orange);
 }
 
+.menu-card.pink::before {
+    background-color: var(--accent-pink);
+}
+
 .menu-card.blue::before {
     background-color: var(--accent-blue);
 }
@@ -855,6 +859,11 @@ main {
 .menu-card.gray .card-icon {
     color: var(--text-secondary);
     background-color: rgba(148, 163, 184, 0.1);
+}
+
+.menu-card.pink .card-icon {
+    color: var(--accent-pink);
+    background-color: rgba(236, 72, 153, 0.1);
 }
 
 .icon-badge {
