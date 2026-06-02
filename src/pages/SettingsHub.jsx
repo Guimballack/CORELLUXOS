@@ -1164,6 +1164,7 @@ export default function SettingsHub() {
     // CRUD 2: PRODUTOS (PRODUCTS)
     // =============================================
 
+    const [showContentTooltip, setShowContentTooltip] = useState(false);
     const [prodForm, setProdForm] = useState({
         sku: '', name: '', brand: '', category: '', 
         unit: 'KG', stock: 0, minStock: 0, avgStock: 0, maxStock: 0,
@@ -5173,8 +5174,40 @@ export default function SettingsHub() {
                                                 }}
                                                 style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--accent-orange)' }}
                                             />
-                                            <label htmlFor="chkHasContentEquiv" style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>
-                                                Este item é uma embalagem fechada com conteúdo mensurável? (Ex: Coca Lata de 350ML)
+                                            <label htmlFor="chkHasContentEquiv" style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                <span>Embalagem com conteúdo mensurável (Ex: Lata de 350ML)</span>
+                                                <div 
+                                                    onMouseEnter={() => setShowContentTooltip(true)}
+                                                    onMouseLeave={() => setShowContentTooltip(false)}
+                                                    style={{ position: 'relative', display: 'inline-flex', cursor: 'help', alignItems: 'center' }}
+                                                >
+                                                    <Info size={14} style={{ color: 'var(--accent-orange)' }} />
+                                                    {showContentTooltip && (
+                                                        <div style={{
+                                                            position: 'absolute',
+                                                            bottom: '125%',
+                                                            left: '50%',
+                                                            transform: 'translateX(-50%)',
+                                                            width: '320px',
+                                                            backgroundColor: '#0f172a',
+                                                            color: '#e2e8f0',
+                                                            textAlign: 'left',
+                                                            padding: '1rem',
+                                                            borderRadius: '8px',
+                                                            border: '1px solid #334155',
+                                                            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.8)',
+                                                            fontSize: '0.78rem',
+                                                            fontWeight: 'normal',
+                                                            lineHeight: '1.5',
+                                                            zIndex: 9999,
+                                                            pointerEvents: 'none'
+                                                        }}>
+                                                            <strong style={{ color: '#fff', display: 'block', marginBottom: '0.4rem', fontSize: '0.82rem' }}>Equivalência de Conteúdo:</strong>
+                                                            Ative para insumos comprados em embalagens fechadas (ex: latas, caixas, pacotes) mas consumidos em unidades de volume/peso (ex: ML, Gramas) em suas receitas.<br/><br/>
+                                                            <strong>Exemplo:</strong> Coca Lata (estocada em UN) contendo 350 ML. Se uma receita de drink usar 150 ML, o sistema deduzirá automaticamente 0,43 latas do estoque.
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </label>
                                         </div>
 
