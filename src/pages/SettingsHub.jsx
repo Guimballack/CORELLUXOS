@@ -848,15 +848,55 @@ export default function SettingsHub() {
     };
 
     // Single Location Handlers
-    const handleDeleteLocation = async (locId) => {
-        if (window.confirm('Excluir este endereço?')) {
-            const result = await DbService.deleteWmsLocation(locId);
-            if (result.success) {
-                showToast('Endereço excluído.', 'success');
-                await loadZoneLocations(selectedZone.id);
-            } else {
-                showToast('Erro ao excluir endereço.', 'error');
+    const handleDeleteLocation = async (loc) => {
+        setLoading(true);
+        try {
+            // Build the formatted address of this location
+            const whAcronym = (selectedWarehouse?.acronym || 'AC').substring(0, 2).toUpperCase();
+            const zoneName = (selectedZone?.name || 'ESA').substring(0, 3).toUpperCase();
+            const parts = [`${whAcronym}-${zoneName}`];
+            if (loc.aisle || loc.row) {
+                parts.push(`${loc.aisle || ''}${loc.row || ''}`);
             }
+            if (loc.shelf) parts.push(loc.shelf);
+            if (loc.position) parts.push(loc.position);
+            const formattedAddress = parts.join('-');
+
+            // Fetch all stock batches to check allocation
+            const allBatches = await DbService.getStockBatches();
+            const allocatedBatches = allBatches.filter(
+                b => b.address === formattedAddress && (parseFloat(b.quantity) || 0) > 0
+            );
+
+            let confirmMsg = `Excluir o endereço ${formattedAddress}?`;
+            if (allocatedBatches.length > 0) {
+                const itemsText = allocatedBatches
+                    .map(b => `- Lote: ${b.lot} | SKU: ${b.itemSku} | Qtd: ${b.quantity} ${b.unit || ''}`)
+                    .join('\n');
+                confirmMsg = `ATENÇÃO: Este endereço (${formattedAddress}) contém insumos alocados!\n\n` +
+                    `${itemsText}\n\n` +
+                    `Se você excluir este endereço, os itens acima ficarão com o endereço definido como 'Órfão'. Deseja prosseguir com a exclusão?`;
+            }
+
+            if (window.confirm(confirmMsg)) {
+                const result = await DbService.deleteWmsLocation(loc.id);
+                if (result.success) {
+                    if (allocatedBatches.length > 0) {
+                        for (const batch of allocatedBatches) {
+                            await DbService.updateStockBatch(batch.id, { address: 'Órfão' });
+                        }
+                    }
+                    showToast('Endereço excluído com sucesso.', 'success');
+                    await loadZoneLocations(selectedZone.id);
+                } else {
+                    showToast('Erro ao excluir endereço.', 'error');
+                }
+            }
+        } catch (e) {
+            console.error('Error during location deletion:', e);
+            showToast('Erro ao processar exclusão de endereço.', 'error');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -4026,7 +4066,7 @@ export default function SettingsHub() {
                                                                                                                     <div className="switch-toggle-handle"></div>
                                                                                                                 </div>
                                                                                                             </button>
-                                                                                                            <button className="action-btn-sm delete" onClick={() => handleDeleteLocation(loc.id)} title="Excluir">
+                                                                                                            <button className="action-btn-sm delete" onClick={() => handleDeleteLocation(loc)} title="Excluir">
                                                                                                                 <Trash2 size={14} />
                                                                                                             </button>
                                                                                                         </div>
