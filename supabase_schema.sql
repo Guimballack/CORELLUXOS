@@ -40,6 +40,17 @@ CREATE TABLE categories (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
+-- 3.5 CRIAR TABELA DE CATEGORIAS DE PRODUTOS DE VENDA
+CREATE TABLE sale_product_categories (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    icon VARCHAR(100) DEFAULT 'fa-tag',
+    color VARCHAR(100) DEFAULT 'color-pink',
+    description TEXT,
+    status VARCHAR(50) DEFAULT 'Ativo',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
 -- 4. CRIAR TABELA DE FORNECEDORES
 CREATE TABLE suppliers (
     id SERIAL PRIMARY KEY,
@@ -86,6 +97,15 @@ CREATE TABLE products (
     secondary_supplier_id INTEGER REFERENCES suppliers(id),
     other_supplier_ids INTEGER[] DEFAULT '{}',
     recipe JSONB DEFAULT '[]'::jsonb,
+    content_qty NUMERIC(10,2) DEFAULT 1.00,
+    content_unit VARCHAR(50),
+    gtin_unidade VARCHAR(50),
+    gtin_fardo VARCHAR(50),
+    itens_fardo NUMERIC(10,2) DEFAULT 1.00,
+    gtin_caixa VARCHAR(50),
+    itens_caixa NUMERIC(10,2) DEFAULT 1.00,
+    gtin_pallet VARCHAR(50),
+    itens_pallet NUMERIC(10,2) DEFAULT 1.00,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -153,13 +173,13 @@ INSERT INTO categories (name, icon, color, description, status) VALUES
 ('PRODUTOS DE LIMPEZA', 'fa-spray-can', 'color-indigo', 'Detergentes, desinfetantes e similar.', 'Ativo');
 
 -- Inserir produtos padrão
-INSERT INTO products (sku, name, brand, description, unit, stock, category, status, min_stock, avg_stock, max_stock) VALUES
-('PRT-001', 'Filé de Peito de Frango (Sassami)', 'Sadia', 'Peito de Frango (sassami) congelado.', 'KG', 120, 'PROTEÍNAS', 'Ativo', 20, 80, 150),
-('PRT-002', 'Filé de Peito de Frango', 'Perdigão', 'Peito de frango resfriado.', 'KG', 100, 'PROTEÍNAS', 'Ativo', 15, 60, 120),
-('LAC-001', 'Leite Integral 1L', 'Itambé', 'Leite tipo A integral.', 'Unidade', 50, 'LACTÍCIOS', 'Ativo', 10, 30, 60),
-('HRT-001', 'Alface Crespa', 'Horta Viva', 'Alface crespa higienizada.', 'Bandeja', 30, 'HORTIFRUTTI', 'Ativo', 5, 20, 40),
-('BEB-001', 'Coca-Cola 2L', 'Coca-Cola', 'Refrigerante de cola 2 litros.', 'Unidade', 80, 'BEBIDAS', 'Ativo', 12, 50, 100),
-('MAS-001', 'Arroz Agulhinha T1 5kg', 'Prato Fino', 'Arroz branco tipo 1.', 'Pacote', 200, 'MASSAS E FARINÁCEOS', 'Ativo', 50, 150, 300);
+INSERT INTO products (sku, name, brand, description, unit, stock, category, status, min_stock, avg_stock, max_stock, gtin_unidade, gtin_fardo, itens_fardo, gtin_caixa, itens_caixa, gtin_pallet, itens_pallet) VALUES
+('PRT-001', 'Filé de Peito de Frango (Sassami)', 'Sadia', 'Peito de Frango (sassami) congelado.', 'KG', 120, 'PROTEÍNAS', 'Ativo', 20, 80, 150, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00),
+('PRT-002', 'Filé de Peito de Frango', 'Perdigão', 'Peito de frango resfriado.', 'KG', 100, 'PROTEÍNAS', 'Ativo', 15, 60, 120, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00),
+('LAC-001', 'Leite Integral 1L', 'Itambé', 'Leite tipo A integral.', 'UN', 50, 'LACTÍCIOS', 'Ativo', 10, 30, 60, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00),
+('HRT-001', 'Alface Crespa', 'Horta Viva', 'Alface crespa higienizada.', 'BDJ', 30, 'HORTIFRUTTI', 'Ativo', 5, 20, 40, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00),
+('BEB-001', 'Coca-Cola 2L', 'Coca-Cola', 'Refrigerante de cola 2 litros.', 'UN', 80, 'BEBIDAS', 'Ativo', 12, 50, 100, '7891234567890', '7891234567891', 6.00, '7891234567892', 12.00, '7891234567893', 240.00),
+('MAS-001', 'Arroz Agulhinha T1 5kg', 'Prato Fino', 'Arroz branco tipo 1.', 'PCT', 200, 'MASSAS E FARINÁCEOS', 'Ativo', 50, 150, 300, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00);
 
 -- Inserir setores operacionais
 INSERT INTO sectors (id, name, icon, color, description, status) VALUES
@@ -198,9 +218,9 @@ INSERT INTO areas (id, name, description, sector_id, status) VALUES
 INSERT INTO stock_batches (item_sku, lot, brand, supplier, manufacturing_date, expiration_date, address, quantity, unit) VALUES
 ('PRT-001', 'LT-5243', 'Sadia', 'VALE VERDE', '2026-04-27', '2026-06-24', 'B-04-07', 33, 'KG'),
 ('PRT-001', 'LT-8491', 'Sadia', 'VALE VERDE', '2026-03-05', '2026-07-14', 'A-08-07', 35, 'KG'),
-('LAC-001', 'LT-9485', 'Itambé', 'MASTER ALIMENTOS', '2026-03-05', '2026-11-15', 'B-02-06', 8, 'Unidade'),
-('BEB-001', 'LT-5757', 'Coca-Cola', 'VALE VERDE', '2026-04-13', '2026-08-21', 'A-06-01', 28, 'Unidade'),
-('MAS-001', 'LT-2918', 'Prato Fino', 'MASTER ALIMENTOS', '2026-03-05', '2026-11-26', 'B-05-01', 16, 'Pacote');
+('LAC-001', 'LT-9485', 'Itambé', 'MASTER ALIMENTOS', '2026-03-05', '2026-11-15', 'B-02-06', 8, 'UN'),
+('BEB-001', 'LT-5757', 'Coca-Cola', 'VALE VERDE', '2026-04-13', '2026-08-21', 'A-06-01', 28, 'UN'),
+('MAS-001', 'LT-2918', 'Prato Fino', 'MASTER ALIMENTOS', '2026-03-05', '2026-11-26', 'B-05-01', 16, 'PCT');
 
 -- 8. CRIAR TABELA DE PRODUTOS PARA VENDA (Produtos Finais)
 CREATE TABLE sale_products (

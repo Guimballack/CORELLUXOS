@@ -86,6 +86,8 @@ export default function SettingsHub() {
     const [colaboradores, setColaboradores] = useState([]);
     const [produtos, setProdutos] = useState([]);
     const [categorias, setCategorias] = useState([]);
+    const [categoriasVenda, setCategoriasVenda] = useState([]);
+    const [activeCatScope, setActiveCatScope] = useState('insumos'); // 'insumos' or 'produtos'
     const [fornecedores, setFornecedores] = useState([]);
     const [setores, setSetores] = useState([]);
     const [cargos, setCargos] = useState([]);
@@ -236,18 +238,20 @@ export default function SettingsHub() {
     const loadData = async () => {
         setLoading(true);
         try {
-            const [usersData, prodsData, catsData, supsData, sectorsData, zonesData, saleProdsData] = await Promise.all([
+            const [usersData, prodsData, catsData, supsData, sectorsData, zonesData, saleProdsData, saleCatsData] = await Promise.all([
                 loadUsers(),
                 DbService.getProducts(),
                 DbService.getCategories(),
                 DbService.getSuppliers(),
                 DbService.getSectors(),
                 DbService.getWmsZones(),
-                DbService.getSaleProducts()
+                DbService.getSaleProducts(),
+                DbService.getSaleProductCategories()
             ]);
             setColaboradores(usersData);
             setProdutos(prodsData);
             setCategorias(catsData);
+            setCategoriasVenda(saleCatsData || []);
             setFornecedores(supsData);
             setSetores(sectorsData);
             setAllZonesList(zonesData || []);
@@ -1170,7 +1174,16 @@ export default function SettingsHub() {
         podeEmpilhar: false,
         maxEmpilhamento: 1,
         allowedCells: [],
-        otherSupplierIds: []
+        otherSupplierIds: [],
+        contentQty: 1.00,
+        contentUnit: '',
+        gtinUnidade: '',
+        gtinFardo: '',
+        itensFardo: 1,
+        gtinCaixa: '',
+        itensCaixa: 1,
+        gtinPallet: '',
+        itensPallet: 1
     });
 
     const [limitToSpecificCells, setLimitToSpecificCells] = useState(false);
@@ -1300,7 +1313,16 @@ export default function SettingsHub() {
             podeEmpilhar: !!prod.podeEmpilhar,
             maxEmpilhamento: prod.maxEmpilhamento || 1,
             allowedCells: prod.allowedCells || [],
-            otherSupplierIds: prod.otherSupplierIds || []
+            otherSupplierIds: prod.otherSupplierIds || [],
+            contentQty: prod.contentQty !== undefined ? prod.contentQty : (prod.content_qty || 1),
+            contentUnit: prod.contentUnit || prod.content_unit || '',
+            gtinUnidade: prod.gtinUnidade || prod.gtin_unidade || '',
+            gtinFardo: prod.gtinFardo || prod.gtin_fardo || '',
+            itensFardo: prod.itensFardo !== undefined ? prod.itensFardo : (prod.itens_fardo || 1),
+            gtinCaixa: prod.gtinCaixa || prod.gtin_caixa || '',
+            itensCaixa: prod.itensCaixa !== undefined ? prod.itensCaixa : (prod.itens_caixa || 1),
+            gtinPallet: prod.gtinPallet || prod.gtin_pallet || '',
+            itensPallet: prod.itensPallet !== undefined ? prod.itensPallet : (prod.itens_pallet || 1)
         });
         setLimitToSpecificCells(prod.allowedCells && prod.allowedCells.length > 0);
         
@@ -1333,7 +1355,16 @@ export default function SettingsHub() {
             podeEmpilhar: false,
             maxEmpilhamento: 1,
             allowedCells: [],
-            otherSupplierIds: []
+            otherSupplierIds: [],
+            contentQty: 1,
+            contentUnit: '',
+            gtinUnidade: '',
+            gtinFardo: '',
+            itensFardo: 1,
+            gtinCaixa: '',
+            itensCaixa: 1,
+            gtinPallet: '',
+            itensPallet: 1
         });
         setLimitToSpecificCells(false);
         setRecipeItems([]);
@@ -1351,16 +1382,14 @@ export default function SettingsHub() {
             return;
         }
 
-        const recipePayload = prodForm.controlaProducao
-            ? recipeItems
-                .filter(r => r.ingredientSku && parseFloat(r.quantity) > 0)
-                .map(r => ({
-                    ingredientSku: r.ingredientSku,
-                    name: r.name || '',
-                    quantity: parseFloat(r.quantity),
-                    unit: r.unit
-                }))
-            : [];
+        const recipePayload = recipeItems
+            .filter(r => r.ingredientSku && parseFloat(r.quantity) > 0)
+            .map(r => ({
+                ingredientSku: r.ingredientSku,
+                name: r.name || '',
+                quantity: parseFloat(r.quantity),
+                unit: r.unit
+            }));
 
         const payload = {
             ...prodForm,
@@ -1372,7 +1401,10 @@ export default function SettingsHub() {
             maxEmpilhamento: parseInt(prodForm.maxEmpilhamento, 10) || 1,
             allowedCells: prodForm.allowedCells || [],
             otherSupplierIds: (prodForm.otherSupplierIds || []).map(Number),
-            recipe: recipePayload
+            recipe: recipePayload,
+            itensFardo: parseFloat(prodForm.itensFardo) || 1,
+            itensCaixa: parseFloat(prodForm.itensCaixa) || 1,
+            itensPallet: parseFloat(prodForm.itensPallet) || 1
         };
 
         const result = await DbService.saveProduct(payload, editingProd ? editingProd.sku : null);
@@ -1572,7 +1604,7 @@ export default function SettingsHub() {
     const openCatModalForCreate = () => {
         setEditingCat(null);
         setCatForm({
-            name: '', icon: 'fa-cheese', color: 'color-blue', desc: '', status: 'Ativo'
+            name: '', icon: activeCatScope === 'produtos' ? 'fa-pizza-slice' : 'fa-cheese', color: activeCatScope === 'produtos' ? 'color-pink' : 'color-blue', desc: '', status: 'Ativo'
         });
         setShowCatModal(true);
     };
@@ -1585,7 +1617,13 @@ export default function SettingsHub() {
             name: catForm.name.toUpperCase().trim()
         };
 
-        const result = await DbService.saveCategory(payload);
+        let result;
+        if (activeCatScope === 'produtos') {
+            result = await DbService.saveSaleProductCategory(payload);
+        } else {
+            result = await DbService.saveCategory(payload);
+        }
+
         if (result.success) {
             showToast('Categoria gravada com sucesso!', 'success');
         } else {
@@ -1605,7 +1643,13 @@ export default function SettingsHub() {
         const cat = catToDelete;
         setCatToDelete(null);
 
-        const result = await DbService.deleteCategory(cat.id);
+        let result;
+        if (activeCatScope === 'produtos') {
+            result = await DbService.deleteSaleProductCategory(cat.id);
+        } else {
+            result = await DbService.deleteCategory(cat.id);
+        }
+
         if (result.success) {
             showToast('Categoria excluída com sucesso.', 'success');
         } else {
@@ -1618,10 +1662,13 @@ export default function SettingsHub() {
         const newStatus = cat.status === 'Ativo' ? 'Inativo' : 'Ativo';
         const updated = { ...cat, status: newStatus };
         
-        // Optimistic local update
-        setCategorias(prev => prev.map(c => String(c.id) === String(cat.id) ? updated : c));
-        
-        await DbService.saveCategory(updated);
+        if (activeCatScope === 'produtos') {
+            setCategoriasVenda(prev => prev.map(c => String(c.id) === String(cat.id) ? updated : c));
+            await DbService.saveSaleProductCategory(updated);
+        } else {
+            setCategorias(prev => prev.map(c => String(c.id) === String(cat.id) ? updated : c));
+            await DbService.saveCategory(updated);
+        }
         loadData();
     };
 
@@ -2354,10 +2401,14 @@ export default function SettingsHub() {
         p.sku.toLowerCase().includes(searchProd.toLowerCase()) ||
         p.name.toLowerCase().includes(searchProd.toLowerCase()) ||
         (p.brand && p.brand.toLowerCase().includes(searchProd.toLowerCase())) ||
-        p.category.toLowerCase().includes(searchProd.toLowerCase())
+        p.category.toLowerCase().includes(searchProd.toLowerCase()) ||
+        (p.gtinUnidade && p.gtinUnidade.includes(searchProd)) ||
+        (p.gtinFardo && p.gtinFardo.includes(searchProd)) ||
+        (p.gtinCaixa && p.gtinCaixa.includes(searchProd)) ||
+        (p.gtinPallet && p.gtinPallet.includes(searchProd))
     );
 
-    const filteredCats = categorias.filter(c => 
+    const filteredCats = (activeCatScope === 'produtos' ? categoriasVenda : categorias).filter(c => 
         c.name.toLowerCase().includes(searchCat.toLowerCase()) ||
         (c.desc && c.desc.toLowerCase().includes(searchCat.toLowerCase()))
     );
@@ -2662,7 +2713,7 @@ export default function SettingsHub() {
                                                         <div className="product-desc">
                                                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                                                                 <span style={{ fontWeight: '700' }}>{prod.name}</span>
-                                                                {prod.controlaProducao && (
+                                                                {prod.recipe && prod.recipe.length > 0 && (
                                                                     <span style={{ 
                                                                         background: 'rgba(243, 107, 29, 0.15)', 
                                                                         color: 'var(--accent-orange)', 
@@ -2772,14 +2823,143 @@ export default function SettingsHub() {
                             </div>
                         )}
 
-                        {/* =============================================
-                            TAB 3: CATEGORIAS
-                        ============================================= */}
-                        {activeTab === 'categorias' && (
+                                           {activeTab === 'categorias' && (
                             <div className="products-container">
+                                {/* Menu Cards de Escopo */}
+                                <div style={{ 
+                                    display: 'grid', 
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
+                                    gap: '1.25rem', 
+                                    marginBottom: '2rem' 
+                                }}>
+                                    {/* Card 1: Categorias de Insumos */}
+                                    <div 
+                                        onClick={() => setActiveCatScope('insumos')}
+                                        style={{
+                                            cursor: 'pointer',
+                                            padding: '1.5rem',
+                                            borderRadius: '12px',
+                                            border: activeCatScope === 'insumos' 
+                                                ? '1px solid var(--accent-orange)' 
+                                                : '1px solid rgba(255, 255, 255, 0.08)',
+                                            background: activeCatScope === 'insumos'
+                                                ? 'linear-gradient(135deg, rgba(243, 107, 29, 0.15) 0%, rgba(243, 107, 29, 0.03) 100%)'
+                                                : 'rgba(255, 255, 255, 0.02)',
+                                            boxShadow: activeCatScope === 'insumos'
+                                                ? '0 8px 32px rgba(243, 107, 29, 0.1)'
+                                                : 'none',
+                                            transition: 'all 0.3s ease',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '1.25rem'
+                                        }}
+                                        className="category-menu-card"
+                                    >
+                                        <div style={{
+                                            width: '50px',
+                                            height: '50px',
+                                            borderRadius: '10px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            background: activeCatScope === 'insumos' ? 'var(--accent-orange)' : 'rgba(255, 255, 255, 0.06)',
+                                            color: activeCatScope === 'insumos' ? '#fff' : 'var(--text-secondary)',
+                                            transition: 'all 0.3s ease'
+                                        }}>
+                                            <Layers size={24} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: activeCatScope === 'insumos' ? 'var(--accent-orange)' : 'var(--text-primary)' }}>
+                                                Categorias de Insumos
+                                            </h3>
+                                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.25' }}>
+                                                Ingredientes, embalagens e estoque
+                                            </p>
+                                            <span style={{ 
+                                                display: 'inline-block',
+                                                marginTop: '0.5rem',
+                                                fontSize: '0.75rem',
+                                                fontWeight: '800',
+                                                padding: '2px 8px',
+                                                borderRadius: '20px',
+                                                background: activeCatScope === 'insumos' ? 'rgba(243, 107, 29, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                                color: activeCatScope === 'insumos' ? 'var(--accent-orange)' : 'var(--text-secondary)'
+                                            }}>
+                                                {categorias.length} {categorias.length === 1 ? 'Categoria' : 'Categorias'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Card 2: Categorias de Produtos */}
+                                    <div 
+                                        onClick={() => setActiveCatScope('produtos')}
+                                        style={{
+                                            cursor: 'pointer',
+                                            padding: '1.5rem',
+                                            borderRadius: '12px',
+                                            border: activeCatScope === 'produtos' 
+                                                ? '1px solid var(--accent-pink)' 
+                                                : '1px solid rgba(255, 255, 255, 0.08)',
+                                            background: activeCatScope === 'produtos'
+                                                ? 'linear-gradient(135deg, rgba(236, 72, 153, 0.15) 0%, rgba(236, 72, 153, 0.03) 100%)'
+                                                : 'rgba(255, 255, 255, 0.02)',
+                                            boxShadow: activeCatScope === 'produtos'
+                                                ? '0 8px 32px rgba(236, 72, 153, 0.1)'
+                                                : 'none',
+                                            transition: 'all 0.3s ease',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '1.25rem'
+                                        }}
+                                        className="category-menu-card"
+                                    >
+                                        <div style={{
+                                            width: '50px',
+                                            height: '50px',
+                                            borderRadius: '10px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            background: activeCatScope === 'produtos' ? 'var(--accent-pink)' : 'rgba(255, 255, 255, 0.06)',
+                                            color: activeCatScope === 'produtos' ? '#fff' : 'var(--text-secondary)',
+                                            transition: 'all 0.3s ease'
+                                        }}>
+                                            <ShoppingBag size={24} />
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: '700', color: activeCatScope === 'produtos' ? 'var(--accent-pink)' : 'var(--text-primary)' }}>
+                                                Categorias de Produtos
+                                            </h3>
+                                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.25' }}>
+                                                Produtos finais de cardápio e venda
+                                            </p>
+                                            <span style={{ 
+                                                display: 'inline-block',
+                                                marginTop: '0.5rem',
+                                                fontSize: '0.75rem',
+                                                fontWeight: '800',
+                                                padding: '2px 8px',
+                                                borderRadius: '20px',
+                                                background: activeCatScope === 'produtos' ? 'rgba(236, 72, 153, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                                                color: activeCatScope === 'produtos' ? 'var(--accent-pink)' : 'var(--text-secondary)'
+                                            }}>
+                                                {categoriasVenda.length} {categoriasVenda.length === 1 ? 'Categoria' : 'Categorias'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div className="products-header" style={{ marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                     <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <Tag style={{ color: 'var(--accent-orange)' }} /> Cadastro de Categorias
+                                        {activeCatScope === 'produtos' ? (
+                                            <>
+                                                <ShoppingBag style={{ color: 'var(--accent-pink)' }} /> Cadastro de Categorias de Produtos
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Tag style={{ color: 'var(--accent-orange)' }} /> Cadastro de Categorias de Insumos
+                                            </>
+                                        )}
                                     </h2>
                                     
                                     <div style={{ display: 'flex', gap: '1rem', marginLeft: 'auto', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -2793,7 +2973,7 @@ export default function SettingsHub() {
                                             />
                                         </div>
                                         {isAdminUser && (
-                                            <button className="btn-header-action" onClick={openCatModalForCreate}>
+                                            <button className={`btn-header-action ${activeCatScope === 'produtos' ? 'pink' : ''}`} onClick={openCatModalForCreate}>
                                                 <PlusCircle size={16} /> NOVA CATEGORIA
                                             </button>
                                         )}
@@ -2815,13 +2995,13 @@ export default function SettingsHub() {
                                                 <tr key={cat.id}>
                                                     <td>
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                                            <div className={`cat-icon-area ${cat.color || 'color-blue'}`} style={{ width: '35px', height: '35px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                                <Tag size={16} />
+                                                            <div className={`cat-icon-area ${cat.color || (activeCatScope === 'produtos' ? 'color-pink' : 'color-blue')}`} style={{ width: '35px', height: '35px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                {activeCatScope === 'produtos' ? <ShoppingBag size={16} /> : <Tag size={16} />}
                                                             </div>
                                                             <strong style={{ fontSize: '1rem' }}>{cat.name}</strong>
                                                         </div>
                                                     </td>
-                                                    <td style={{ color: 'var(--text-secondary)' }}>{cat.desc || '-'}</td>
+                                                    <td style={{ color: 'var(--text-secondary)' }}>{cat.desc || cat.description || '-'}</td>
                                                     <td style={{ width: '120px' }}>
                                                         <span className={`status-badge ${cat.status === 'Ativo' ? 'badge-ativo' : 'badge-desligado'}`} style={{
                                                             background: cat.status === 'Ativo' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
@@ -3199,7 +3379,7 @@ export default function SettingsHub() {
                                                 <th>Descrição</th>
                                                 <th style={{ textAlign: 'right', width: '120px' }}>Preço Venda</th>
                                                 <th style={{ width: '80px', textAlign: 'center' }}>Unidade</th>
-                                                <th style={{ width: '100px', textAlign: 'center' }}>Contr. Prod.</th>
+                                                <th style={{ width: '100px', textAlign: 'center' }}>Tem Receita?</th>
                                                 <th style={{ width: '110px', textAlign: 'center' }}>Status</th>
                                                 <th style={{ textAlign: 'center', width: '130px' }}>Ações</th>
                                             </tr>
@@ -3242,11 +3422,11 @@ export default function SettingsHub() {
                                                         </td>
                                                         <td style={{ textAlign: 'center' }}>
                                                             <span style={{
-                                                                color: prod.controlaProducao ? 'var(--accent-green)' : 'var(--text-secondary)',
+                                                                color: (prod.recipe && prod.recipe.length > 0) ? 'var(--accent-green)' : 'var(--text-secondary)',
                                                                 fontWeight: '700',
                                                                 fontSize: '0.85rem'
                                                             }}>
-                                                                {prod.controlaProducao ? 'Sim' : 'Não'}
+                                                                {(prod.recipe && prod.recipe.length > 0) ? 'Sim' : 'Não'}
                                                             </span>
                                                         </td>
                                                         <td style={{ textAlign: 'center' }}>
@@ -4859,7 +5039,7 @@ export default function SettingsHub() {
 
                             {/* Tab Navigation */}
                             <div style={{ display: 'flex', gap: '0', borderBottom: '2px solid var(--border-color)', marginBottom: '0' }}>
-                                {[{ id: 'geral', label: 'Dados Gerais' }, ...(prodForm.controlaProducao ? [{ id: 'receita', label: `Receita (${recipeItems.length})` }] : [])].map(tab => (
+                                {[{ id: 'geral', label: 'Dados Gerais' }, { id: 'receita', label: `Receita (${recipeItems.length})` }].map(tab => (
                                     <button
                                         key={tab.id}
                                         type="button"
@@ -4944,13 +5124,16 @@ export default function SettingsHub() {
                                                 onChange={(e) => setProdForm(prev => ({ ...prev, unit: e.target.value }))}
                                                 style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none', cursor: 'pointer' }}
                                             >
-                                                <option value="KG">Kilograma (KG)</option>
-                                                <option value="Unidade">Unidade (UN)</option>
-                                                <option value="Litro">Litro (L)</option>
-                                                <option value="Pacote">Pacote (PCT)</option>
-                                                <option value="Bandeja">Bandeja (BDJ)</option>
-                                                <option value="Fardo">Fardo (FRD)</option>
-                                                <option value="Galão">Galão (GL)</option>
+                                                <option value="UN">UN (Unidade)</option>
+                                                <option value="KG">KG (Quilograma)</option>
+                                                <option value="G">G (Grama)</option>
+                                                <option value="L">L (Litro)</option>
+                                                <option value="ML">ML (Mililitro)</option>
+                                                <option value="PCT">PCT (Pacote)</option>
+                                                <option value="BDJ">BDJ (Bandeja)</option>
+                                                <option value="FRD">FRD (Fardo)</option>
+                                                <option value="GL">GL (Galão)</option>
+                                                <option value="CX">CX (Caixa)</option>
                                             </select>
                                         </div>
                                         <div>
@@ -4964,6 +5147,169 @@ export default function SettingsHub() {
                                                 onChange={(e) => setProdForm(prev => ({ ...prev, volumeOcupado: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
                                                 style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
                                             />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Equivalência de Conteúdo (Estoque vs Consumo) */}
+                                    <div style={{ 
+                                        background: 'rgba(255, 255, 255, 0.02)', 
+                                        border: '1px solid var(--border-color)', 
+                                        borderRadius: '8px', 
+                                        padding: '1rem', 
+                                        marginBottom: '1rem' 
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.8rem' }}>
+                                            <input 
+                                                type="checkbox"
+                                                id="chkHasContentEquiv"
+                                                checked={!!(prodForm.contentUnit && prodForm.contentUnit !== prodForm.unit)}
+                                                onChange={(e) => {
+                                                    const checked = e.target.checked;
+                                                    setProdForm(prev => ({
+                                                        ...prev,
+                                                        contentUnit: checked ? (prev.unit === 'UN' ? 'ML' : 'G') : '',
+                                                        contentQty: checked ? 350 : 1
+                                                    }));
+                                                }}
+                                                style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: 'var(--accent-orange)' }}
+                                            />
+                                            <label htmlFor="chkHasContentEquiv" style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-primary)', cursor: 'pointer', userSelect: 'none' }}>
+                                                Este item é uma embalagem fechada com conteúdo mensurável? (Ex: Coca Lata de 350ML)
+                                            </label>
+                                        </div>
+
+                                        {!!(prodForm.contentUnit && prodForm.contentUnit !== prodForm.unit) && (
+                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                                <div>
+                                                    <label style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Quantidade de Conteúdo por Embalagem</label>
+                                                    <input 
+                                                        type="number"
+                                                        step="any"
+                                                        min="0.01"
+                                                        value={prodForm.contentQty || 1}
+                                                        onChange={(e) => setProdForm(prev => ({ ...prev, contentQty: parseFloat(e.target.value) || 1 }))}
+                                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.75rem', borderRadius: '7px', outline: 'none', fontSize: '0.85rem' }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Unidade do Conteúdo (Consumo/Receita)</label>
+                                                    <select
+                                                        value={prodForm.contentUnit || 'ML'}
+                                                        onChange={(e) => setProdForm(prev => ({ ...prev, contentUnit: e.target.value }))}
+                                                        style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.5rem', borderRadius: '7px', outline: 'none', fontSize: '0.82rem', cursor: 'pointer' }}
+                                                    >
+                                                        <option value="UN">UN (Unidade)</option>
+                                                        <option value="KG">KG (Quilograma)</option>
+                                                        <option value="G">G (Grama)</option>
+                                                        <option value="L">L (Litro)</option>
+                                                        <option value="ML">ML (Mililitro)</option>
+                                                        <option value="PCT">PCT (Pacote)</option>
+                                                        <option value="BDJ">BDJ (Bandeja)</option>
+                                                        <option value="FRD">FRD (Fardo)</option>
+                                                        <option value="GL">GL (Galão)</option>
+                                                        <option value="CX">CX (Caixa)</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Códigos de Barras (GTIN/EAN) e Conversão de Entrada */}
+                                    <div style={{ 
+                                        background: 'rgba(255, 255, 255, 0.02)', 
+                                        border: '1px solid var(--border-color)', 
+                                        borderRadius: '8px', 
+                                        padding: '1rem', 
+                                        marginBottom: '1rem' 
+                                    }}>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--accent-orange)', fontWeight: '700', marginBottom: '0.8rem', textTransform: 'uppercase' }}>
+                                            Códigos de Barras (GTIN/EAN) e Conversões
+                                        </div>
+                                        
+                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>GTIN/EAN Unidade</label>
+                                                <input 
+                                                    type="text" 
+                                                    maxLength="14"
+                                                    placeholder="Ex: 7891234567890"
+                                                    value={prodForm.gtinUnidade || ''} 
+                                                    onChange={(e) => setProdForm(prev => ({ ...prev, gtinUnidade: e.target.value.replace(/\D/g, '') }))}
+                                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.75rem', borderRadius: '7px', outline: 'none', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.8rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>GTIN/EAN Fardo (Pack)</label>
+                                                <input 
+                                                    type="text" 
+                                                    maxLength="14"
+                                                    placeholder="Ex: 7891234567891"
+                                                    value={prodForm.gtinFardo || ''} 
+                                                    onChange={(e) => setProdForm(prev => ({ ...prev, gtinFardo: e.target.value.replace(/\D/g, '') }))}
+                                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.75rem', borderRadius: '7px', outline: 'none', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Qtd. de Unidades no Fardo</label>
+                                                <input 
+                                                    type="number" 
+                                                    min="1"
+                                                    value={prodForm.itensFardo || 1} 
+                                                    onChange={(e) => setProdForm(prev => ({ ...prev, itensFardo: parseFloat(e.target.value) || 1 }))}
+                                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.75rem', borderRadius: '7px', outline: 'none', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.8rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>GTIN/EAN Caixa (Box)</label>
+                                                <input 
+                                                    type="text" 
+                                                    maxLength="14"
+                                                    placeholder="Ex: 7891234567892"
+                                                    value={prodForm.gtinCaixa || ''} 
+                                                    onChange={(e) => setProdForm(prev => ({ ...prev, gtinCaixa: e.target.value.replace(/\D/g, '') }))}
+                                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.75rem', borderRadius: '7px', outline: 'none', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Qtd. de Unidades na Caixa</label>
+                                                <input 
+                                                    type="number" 
+                                                    min="1"
+                                                    value={prodForm.itensCaixa || 1} 
+                                                    onChange={(e) => setProdForm(prev => ({ ...prev, itensCaixa: parseFloat(e.target.value) || 1 }))}
+                                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.75rem', borderRadius: '7px', outline: 'none', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.8rem' }}>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>GTIN/EAN Pallet</label>
+                                                <input 
+                                                    type="text" 
+                                                    maxLength="14"
+                                                    placeholder="Ex: 7891234567893"
+                                                    value={prodForm.gtinPallet || ''} 
+                                                    onChange={(e) => setProdForm(prev => ({ ...prev, gtinPallet: e.target.value.replace(/\D/g, '') }))}
+                                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.75rem', borderRadius: '7px', outline: 'none', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.3rem' }}>Qtd. de Unidades no Pallet</label>
+                                                <input 
+                                                    type="number" 
+                                                    min="1"
+                                                    value={prodForm.itensPallet || 1} 
+                                                    onChange={(e) => setProdForm(prev => ({ ...prev, itensPallet: parseFloat(e.target.value) || 1 }))}
+                                                    style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.75rem', borderRadius: '7px', outline: 'none', fontSize: '0.85rem' }}
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 
@@ -5092,31 +5438,7 @@ export default function SettingsHub() {
                                         </div>
                                     </div>
 
-                                    <div style={{ marginBottom: '1rem' }}>
-                                        <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem' }}>Controla produção?</label>
-                                        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', marginBottom: '0.5rem' }}>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: !prodForm.controlaProducao ? 'var(--accent-orange)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: '700' }}>
-                                                <input 
-                                                    type="radio"
-                                                    name="controlaProducao"
-                                                    checked={!prodForm.controlaProducao}
-                                                    onChange={() => { setProdForm(prev => ({ ...prev, controlaProducao: false })); setProdActiveSection('geral'); }}
-                                                    style={{ accentColor: 'var(--accent-orange)', cursor: 'pointer', width: '16px', height: '16px' }}
-                                                />
-                                                Não
-                                            </label>
-                                            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', color: prodForm.controlaProducao ? 'var(--accent-orange)' : 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none', fontWeight: '700' }}>
-                                                <input 
-                                                    type="radio"
-                                                    name="controlaProducao"
-                                                    checked={prodForm.controlaProducao}
-                                                    onChange={() => setProdForm(prev => ({ ...prev, controlaProducao: true }))}
-                                                    style={{ accentColor: 'var(--accent-orange)', cursor: 'pointer', width: '16px', height: '16px' }}
-                                                />
-                                                Sim
-                                            </label>
-                                        </div>
-                                    </div>
+                                    {/* Controla produção flag removed - recipes are always editable */}
 
                                     <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', padding: '1.2rem', borderRadius: '10px', marginBottom: '1rem' }}>
                                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '700', marginBottom: '0.8rem', textTransform: 'uppercase' }}>
@@ -5264,7 +5586,7 @@ export default function SettingsHub() {
                                 </>
                             )}
 
-                            {prodActiveSection === 'receita' && prodForm.controlaProducao && (
+                            {prodActiveSection === 'receita' && (
                                 <>
                                     <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: '1.5' }}>
                                         Defina os insumos que compõem <strong style={{ color: 'var(--text-primary)' }}>{prodForm.name || 'este insumo'}</strong>. Selecione apenas insumos cadastrados no estoque.
@@ -5353,12 +5675,15 @@ export default function SettingsHub() {
                                                     onChange={e => setRecipeNewItem(prev => ({ ...prev, unit: e.target.value }))}
                                                     style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.5rem', borderRadius: '7px', outline: 'none', fontSize: '0.82rem', cursor: 'pointer' }}
                                                 >
-                                                    <option value="G">G</option>
-                                                    <option value="KG">KG</option>
-                                                    <option value="ML">ML</option>
-                                                    <option value="L">L</option>
                                                     <option value="UN">UN</option>
+                                                    <option value="KG">KG</option>
+                                                    <option value="G">G</option>
+                                                    <option value="L">L</option>
+                                                    <option value="ML">ML</option>
                                                     <option value="PCT">PCT</option>
+                                                    <option value="BDJ">BDJ</option>
+                                                    <option value="FRD">FRD</option>
+                                                    <option value="GL">GL</option>
                                                     <option value="CX">CX</option>
                                                 </select>
                                             </div>
@@ -5431,12 +5756,15 @@ export default function SettingsHub() {
                                                             onChange={e => setRecipeItems(prev => prev.map((r, i) => i === idx ? { ...r, unit: e.target.value } : r))}
                                                             style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.3rem 0.4rem', borderRadius: '6px', outline: 'none', fontSize: '0.78rem', cursor: 'pointer' }}
                                                         >
-                                                            <option value="G">G</option>
-                                                            <option value="KG">KG</option>
-                                                            <option value="ML">ML</option>
-                                                            <option value="L">L</option>
                                                             <option value="UN">UN</option>
+                                                            <option value="KG">KG</option>
+                                                            <option value="G">G</option>
+                                                            <option value="L">L</option>
+                                                            <option value="ML">ML</option>
                                                             <option value="PCT">PCT</option>
+                                                            <option value="BDJ">BDJ</option>
+                                                            <option value="FRD">FRD</option>
+                                                            <option value="GL">GL</option>
                                                             <option value="CX">CX</option>
                                                         </select>
                                                         <button
@@ -5831,7 +6159,7 @@ export default function SettingsHub() {
 
                             {/* Tab Navigation */}
                             <div style={{ display: 'flex', gap: '0', borderBottom: '2px solid var(--border-color)', marginBottom: '0' }}>
-                                {[{ id: 'geral', label: 'Dados Gerais' }, ...(saleProdForm.controlaProducao ? [{ id: 'receita', label: `Receita (${recipeItems.length})` }] : [])].map(tab => (
+                                {[{ id: 'geral', label: 'Dados Gerais' }, { id: 'receita', label: `Receita (${recipeItems.length})` }].map(tab => (
                                     <button
                                         key={tab.id}
                                         type="button"
@@ -5924,6 +6252,9 @@ export default function SettingsHub() {
                                                 <option value="L">L (Litro)</option>
                                                 <option value="ML">ML (Mililitro)</option>
                                                 <option value="PCT">PCT (Pacote)</option>
+                                                <option value="BDJ">BDJ (Bandeja)</option>
+                                                <option value="FRD">FRD (Fardo)</option>
+                                                <option value="GL">GL (Galão)</option>
                                                 <option value="CX">CX (Caixa)</option>
                                             </select>
                                         </div>
@@ -5970,62 +6301,12 @@ export default function SettingsHub() {
                                         />
                                     </div>
 
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '1rem',
-                                        background: 'rgba(255, 255, 255, 0.02)',
-                                        border: '1px solid var(--border-color)',
-                                        borderRadius: '8px',
-                                        padding: '1rem',
-                                        marginBottom: '1.5rem'
-                                    }}>
-                                        <div style={{ flex: 1 }}>
-                                            <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-primary)', display: 'block' }}>Controla Produção</span>
-                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                                Quando ativo, a aba <strong>Receita</strong> estará disponível para definir os insumos deste produto.
-                                            </span>
-                                        </div>
-                                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                            <button
-                                                type="button"
-                                                onClick={() => { setSaleProdForm(prev => ({ ...prev, controlaProducao: false })); setSaleProdActiveSection('geral'); }}
-                                                style={{
-                                                    padding: '0.4rem 1rem',
-                                                    borderRadius: '6px',
-                                                    border: '1px solid var(--border-color)',
-                                                    background: !saleProdForm.controlaProducao ? 'rgba(239, 68, 68, 0.15)' : 'transparent',
-                                                    color: !saleProdForm.controlaProducao ? 'var(--accent-red)' : 'var(--text-secondary)',
-                                                    fontWeight: '700',
-                                                    fontSize: '0.8rem',
-                                                    cursor: 'pointer'
-                                                }}
-                                            >
-                                                NÃO
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setSaleProdForm(prev => ({ ...prev, controlaProducao: true }))}
-                                                style={{
-                                                    padding: '0.4rem 1rem',
-                                                    borderRadius: '6px',
-                                                    border: '1px solid var(--border-color)',
-                                                    background: saleProdForm.controlaProducao ? 'rgba(34, 197, 94, 0.15)' : 'transparent',
-                                                    color: saleProdForm.controlaProducao ? 'var(--accent-green)' : 'var(--text-secondary)',
-                                                    fontWeight: '700',
-                                                    fontSize: '0.8rem',
-                                                    cursor: 'pointer'
-                                                }}
-                                            >
-                                                SIM
-                                            </button>
-                                        </div>
-                                    </div>
+                                    {/* Controla Produção toggle removed - recipes are always editable */}
                                 </>
                             )}
 
                             {/* ========== TAB: RECEITA ========== */}
-                            {saleProdActiveSection === 'receita' && saleProdForm.controlaProducao && (
+                            {saleProdActiveSection === 'receita' && (
                                 <>
                                     <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: '1.5' }}>
                                         Defina os insumos que compõem <strong style={{ color: 'var(--text-primary)' }}>{saleProdForm.name || 'este produto'}</strong>. Selecione apenas insumos cadastrados no estoque.
@@ -6112,12 +6393,15 @@ export default function SettingsHub() {
                                                     onChange={e => setRecipeNewItem(prev => ({ ...prev, unit: e.target.value }))}
                                                     style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.45rem 0.5rem', borderRadius: '7px', outline: 'none', fontSize: '0.82rem', cursor: 'pointer' }}
                                                 >
-                                                    <option value="G">G</option>
-                                                    <option value="KG">KG</option>
-                                                    <option value="ML">ML</option>
-                                                    <option value="L">L</option>
                                                     <option value="UN">UN</option>
+                                                    <option value="KG">KG</option>
+                                                    <option value="G">G</option>
+                                                    <option value="L">L</option>
+                                                    <option value="ML">ML</option>
                                                     <option value="PCT">PCT</option>
+                                                    <option value="BDJ">BDJ</option>
+                                                    <option value="FRD">FRD</option>
+                                                    <option value="GL">GL</option>
                                                     <option value="CX">CX</option>
                                                 </select>
                                             </div>
@@ -6190,12 +6474,15 @@ export default function SettingsHub() {
                                                             onChange={e => setRecipeItems(prev => prev.map((r, i) => i === idx ? { ...r, unit: e.target.value } : r))}
                                                             style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.3rem 0.4rem', borderRadius: '6px', outline: 'none', fontSize: '0.78rem', cursor: 'pointer' }}
                                                         >
-                                                            <option value="G">G</option>
-                                                            <option value="KG">KG</option>
-                                                            <option value="ML">ML</option>
-                                                            <option value="L">L</option>
                                                             <option value="UN">UN</option>
+                                                            <option value="KG">KG</option>
+                                                            <option value="G">G</option>
+                                                            <option value="L">L</option>
+                                                            <option value="ML">ML</option>
                                                             <option value="PCT">PCT</option>
+                                                            <option value="BDJ">BDJ</option>
+                                                            <option value="FRD">FRD</option>
+                                                            <option value="GL">GL</option>
                                                             <option value="CX">CX</option>
                                                         </select>
                                                         <button

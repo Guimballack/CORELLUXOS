@@ -15,6 +15,7 @@ ALTER TABLE sectors       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE areas         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_batches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sale_products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sale_product_categories ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- PASSO 2: Remover políticas antigas (evita conflitos)
@@ -27,6 +28,7 @@ DROP POLICY IF EXISTS "anon_all_sectors"       ON sectors;
 DROP POLICY IF EXISTS "anon_all_areas"         ON areas;
 DROP POLICY IF EXISTS "anon_all_stock_batches" ON stock_batches;
 DROP POLICY IF EXISTS "anon_all_sale_products" ON sale_products;
+DROP POLICY IF EXISTS "anon_all_sale_product_categories" ON sale_product_categories;
 
 -- ============================================================
 -- PASSO 3: Criar políticas permissivas para a role 'anon'
@@ -93,6 +95,14 @@ WITH CHECK (true);
 -- sale_products
 CREATE POLICY "anon_all_sale_products"
 ON sale_products
+FOR ALL
+TO anon
+USING (true)
+WITH CHECK (true);
+
+-- sale_product_categories
+CREATE POLICY "anon_all_sale_product_categories"
+ON sale_product_categories
 FOR ALL
 TO anon
 USING (true)

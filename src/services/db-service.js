@@ -191,6 +191,40 @@ export const DbService = {
         }
     },
 
+    // 2.5 CATEGORIAS DE PRODUTOS DE VENDA (SALE PRODUCT CATEGORIES)
+    async getSaleProductCategories() {
+        try {
+            console.log('[DbService] Carregando categorias de produtos de venda...');
+            const { data, error } = await supabase
+                .from('sale_product_categories')
+                .select('*')
+                .order('name', { ascending: true });
+
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_sale_categories');
+                if (local) return JSON.parse(local);
+                localStorage.setItem('corellux_sale_categories', JSON.stringify(mockData.saleProductCategories || []));
+                return mockData.saleProductCategories || [];
+            }
+            const camelCats = toCamelCase(data);
+            localStorage.setItem('corellux_sale_categories', JSON.stringify(camelCats));
+            return camelCats;
+        } catch (e) {
+            console.error('[DbService] Erro ao buscar categorias de venda. Usando fallback local:', e.message || e);
+            const local = localStorage.getItem('corellux_sale_categories');
+            if (local) {
+                try {
+                    return JSON.parse(local);
+                } catch (err) {
+                    console.error('[DbService] Erro ao analisar categorias de venda locais:', err);
+                }
+            }
+            localStorage.setItem('corellux_sale_categories', JSON.stringify(mockData.saleProductCategories || []));
+            return mockData.saleProductCategories || [];
+        }
+    },
+
     // 3. PRODUTOS (PRODUCTS)
     async getProducts() {
         try {
@@ -1175,6 +1209,108 @@ export const DbService = {
                     const list = JSON.parse(local);
                     const updated = list.filter(c => String(c.id) !== String(id));
                     localStorage.setItem('corellux_categories', JSON.stringify(updated));
+                    return { success: true };
+                } catch (err) {
+                    console.error('[DbService] Erro ao atualizar local:', err);
+                }
+            }
+            return { success: false, error: e };
+        }
+    },
+
+    async saveSaleProductCategory(category) {
+        try {
+            const snakeCategory = toSnakeCase(category);
+            let result;
+            if (category.id) {
+                result = await supabase
+                    .from('sale_product_categories')
+                    .update(snakeCategory)
+                    .eq('id', category.id)
+                    .select();
+            } else {
+                delete snakeCategory.id;
+                result = await supabase
+                    .from('sale_product_categories')
+                    .insert([snakeCategory])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            const saved = toCamelCase(result.data[0]);
+
+            // Sync local on success
+            const local = localStorage.getItem('corellux_sale_categories');
+            let list = [];
+            if (local) {
+                try {
+                    list = JSON.parse(local);
+                } catch (err) {
+                    list = [...(mockData.saleProductCategories || [])];
+                }
+            } else {
+                list = [...(mockData.saleProductCategories || [])];
+            }
+            const idx = list.findIndex(c => String(c.id) === String(saved.id));
+            if (idx !== -1) {
+                list[idx] = saved;
+            } else {
+                list.push(saved);
+            }
+            localStorage.setItem('corellux_sale_categories', JSON.stringify(list));
+
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar categoria de venda no Supabase. Gravando localmente:', e.message || e);
+            const local = localStorage.getItem('corellux_sale_categories');
+            let list = [];
+            if (local) {
+                try {
+                    list = JSON.parse(local);
+                } catch (err) {
+                    list = [...(mockData.saleProductCategories || [])];
+                }
+            } else {
+                list = [...(mockData.saleProductCategories || [])];
+            }
+            const newCat = {
+                ...category,
+                id: category.id || Date.now() + Math.floor(Math.random() * 1000)
+            };
+            const idx = list.findIndex(c => String(c.id) === String(newCat.id));
+            if (idx !== -1) {
+                list[idx] = newCat;
+            } else {
+                list.push(newCat);
+            }
+            localStorage.setItem('corellux_sale_categories', JSON.stringify(list));
+            return { success: true, data: newCat };
+        }
+    },
+
+    async deleteSaleProductCategory(id) {
+        try {
+            const { error } = await supabase
+                .from('sale_product_categories')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
+
+            // Sync local
+            const local = localStorage.getItem('corellux_sale_categories');
+            if (local) {
+                const list = JSON.parse(local);
+                const updated = list.filter(c => String(c.id) !== String(id));
+                localStorage.setItem('corellux_sale_categories', JSON.stringify(updated));
+            }
+            return { success: true };
+        } catch (e) {
+            console.warn(`[DbService] Erro ao deletar categoria de venda ${id} no Supabase. Removendo localmente:`, e.message || e);
+            const local = localStorage.getItem('corellux_sale_categories');
+            if (local) {
+                try {
+                    const list = JSON.parse(local);
+                    const updated = list.filter(c => String(c.id) !== String(id));
+                    localStorage.setItem('corellux_sale_categories', JSON.stringify(updated));
                     return { success: true };
                 } catch (err) {
                     console.error('[DbService] Erro ao atualizar local:', err);

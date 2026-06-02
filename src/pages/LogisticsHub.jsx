@@ -41,7 +41,8 @@ import {
     TrendingDown,
     Package,
     AlertCircle,
-    RefreshCw
+    RefreshCw,
+    Barcode
 } from 'lucide-react';
 
 
@@ -216,7 +217,6 @@ export default function LogisticsHub() {
     const [batchMfgDate, setBatchMfgDate] = useState('');
     const [batchExpDate, setBatchExpDate] = useState('');
 
-    // Form fields for Stock Entry (Entrada) Flow
     const [entryPricePerUnit, setEntryPricePerUnit] = useState('');
     const [entryLot, setEntryLot] = useState('');
     const [entryExpDate, setEntryExpDate] = useState('');
@@ -224,6 +224,13 @@ export default function LogisticsHub() {
     const [entryBrand, setEntryBrand] = useState('');
     const [entryAddress, setEntryAddress] = useState('');
     const [entryMfgDate, setEntryMfgDate] = useState('');
+
+    // Barcode & packaging conversion states
+    const [barcodeInput, setBarcodeInput] = useState('');
+    const [barcodeEntryMode, setBarcodeEntryMode] = useState(false);
+    const [barcodePackageType, setBarcodePackageType] = useState('unidade'); // 'unidade', 'fardo', 'caixa', 'pallet'
+    const [barcodePackageQty, setBarcodePackageQty] = useState(1);
+    const [barcodeConversionFactor, setBarcodeConversionFactor] = useState(1);
 
     const toggleExpandItem = (sku) => {
         setExpandedItems(prev => {
@@ -816,7 +823,11 @@ export default function LogisticsHub() {
         const matchesSearch = 
             p.sku.toLowerCase().includes(searchVal.toLowerCase()) ||
             p.name.toLowerCase().includes(searchVal.toLowerCase()) ||
-            (p.brand && p.brand.toLowerCase().includes(searchVal.toLowerCase()));
+            (p.brand && p.brand.toLowerCase().includes(searchVal.toLowerCase())) ||
+            (p.gtinUnidade && p.gtinUnidade.includes(searchVal)) ||
+            (p.gtinFardo && p.gtinFardo.includes(searchVal)) ||
+            (p.gtinCaixa && p.gtinCaixa.includes(searchVal)) ||
+            (p.gtinPallet && p.gtinPallet.includes(searchVal));
         
         const matchesCat = inventoryCategory === 'ALL' || p.category === inventoryCategory;
         return matchesSearch && matchesCat;
@@ -938,6 +949,91 @@ export default function LogisticsHub() {
     // =============================================
     // STOCK TRANSACTION LOGIC
     // =============================================
+
+    const closeConfirmModal = () => {
+        setShowConfirm(false);
+        setPendingProduct(null);
+        setPendingQty(0);
+        setBarcodeEntryMode(false);
+        setBarcodePackageType('unidade');
+        setBarcodePackageQty(1);
+        setBarcodeConversionFactor(1);
+    };
+
+    const handleBarcodeSearch = (e) => {
+        if (e) e.preventDefault();
+        const code = barcodeInput.trim();
+        if (!code) return;
+
+        // Find product matching any EAN code
+        const matched = products.find(p => 
+            p.gtinUnidade === code || 
+            (p.gtin_unidade && p.gtin_unidade === code) ||
+            p.gtinFardo === code || 
+            (p.gtin_fardo && p.gtin_fardo === code) ||
+            p.gtinCaixa === code || 
+            (p.gtin_caixa && p.gtin_caixa === code) ||
+            p.gtinPallet === code || 
+            (p.gtin_pallet && p.gtin_pallet === code)
+        );
+
+        if (!matched) {
+            showSystemAlert(`Nenhum produto correspondente ao código EAN/GTIN "${code}" foi encontrado.`, 'Código Não Encontrado');
+            setBarcodeInput('');
+            return;
+        }
+
+        // Determine packaging type and conversion factor
+        let pkgType = 'unidade';
+        let factor = 1;
+        if (matched.gtinFardo === code || matched.gtin_fardo === code) {
+            pkgType = 'fardo';
+            factor = Number(matched.itensFardo !== undefined ? matched.itensFardo : (matched.itens_fardo || 1));
+        } else if (matched.gtinCaixa === code || matched.gtin_caixa === code) {
+            pkgType = 'caixa';
+            factor = Number(matched.itensCaixa !== undefined ? matched.itensCaixa : (matched.itens_caixa || 1));
+        } else if (matched.gtinPallet === code || matched.gtin_pallet === code) {
+            pkgType = 'pallet';
+            factor = Number(matched.itensPallet !== undefined ? matched.itensPallet : (matched.itens_pallet || 1));
+        }
+
+        // Set pending product details
+        setPendingProduct(matched);
+        setPendingQty(factor);
+        
+        // Setup barcode packaging states
+        setBarcodeEntryMode(true);
+        setBarcodePackageType(pkgType);
+        setBarcodePackageQty(1);
+        setBarcodeConversionFactor(factor);
+
+        if (flowType === 'entrada') {
+            // Setup fields for stock batch entry modal
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            setEntryLot(`LT-${year}${month}${day}`);
+            setEntryPricePerUnit('');
+            setEntryExpDate('');
+            setEntrySupplier('');
+            setEntryBrand(matched.brand || '');
+            setEntryAddress('');
+            setEntryMfgDate('');
+        } else if (flowType === 'perdas') {
+            // Reset loss values
+            setSelectedReason('');
+            setCustomReasonText('');
+            setSelectedLossSector('');
+            setLossMaterialType('estoque');
+        }
+
+        // Open confirm modal directly
+        setShowConfirm(true);
+
+        // Clear search input
+        setBarcodeInput('');
+    };
 
     const handleConfirmAction = async () => {
         setShowConfirm(false);
@@ -1095,6 +1191,12 @@ export default function LogisticsHub() {
         setEntryBrand('');
         setEntryAddress('');
         setEntryMfgDate('');
+
+        // Reset barcode states
+        setBarcodeEntryMode(false);
+        setBarcodePackageType('unidade');
+        setBarcodePackageQty(1);
+        setBarcodeConversionFactor(1);
     };
 
     const handleConfirmReason = () => {
@@ -1824,6 +1926,67 @@ export default function LogisticsHub() {
                         {((activeTab === 'movimentar' && flowType) || activeTab === 'solicitacao') && (
                             <div className="flow-container" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                 
+                                {activeTab === 'movimentar' && flowType && (
+                                    <div style={{
+                                        background: 'var(--bg-card)',
+                                        padding: '1.2rem 1.5rem',
+                                        borderRadius: '12px',
+                                        border: '1px solid var(--border-color)',
+                                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.05)',
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        gap: '0.8rem'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                            <Barcode size={20} style={{ color: flowType === 'entrada' ? 'var(--accent-green)' : flowType === 'saida' ? 'var(--accent-red)' : 'var(--accent-yellow)' }} />
+                                            <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                Leitor de Código de Barras (GTIN/EAN) - {flowType === 'entrada' ? 'Entrada' : flowType === 'saida' ? 'Saída' : 'Perdas'}
+                                            </h4>
+                                        </div>
+                                        <form onSubmit={handleBarcodeSearch} style={{ display: 'flex', gap: '0.8rem', width: '100%' }}>
+                                            <input 
+                                                type="text"
+                                                placeholder={`Escaneie ou digite o GTIN/EAN da embalagem (unidade, fardo, caixa ou pallet) para registrar ${flowType === 'entrada' ? 'entrada' : flowType === 'saida' ? 'saída' : 'perda'}...`}
+                                                value={barcodeInput}
+                                                onChange={(e) => setBarcodeInput(e.target.value)}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '0.75rem 1rem',
+                                                    borderRadius: '8px',
+                                                    border: '1px solid var(--border-color)',
+                                                    background: 'var(--bg-input)',
+                                                    color: 'var(--text-primary)',
+                                                    outline: 'none',
+                                                    fontSize: '0.9rem',
+                                                    fontWeight: '600'
+                                                }}
+                                                autoFocus
+                                            />
+                                            <button 
+                                                type="submit"
+                                                style={{
+                                                    padding: '0.75rem 1.5rem',
+                                                    borderRadius: '8px',
+                                                    background: flowType === 'entrada' ? 'var(--accent-green)' : flowType === 'saida' ? 'var(--accent-red)' : 'var(--accent-yellow)',
+                                                    color: flowType === 'perdas' ? '#422006' : '#ffffff',
+                                                    border: 'none',
+                                                    fontWeight: '800',
+                                                    fontSize: '0.85rem',
+                                                    cursor: 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.5rem',
+                                                    transition: 'opacity 0.2s'
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+                                                onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                                            >
+                                                BUSCAR
+                                            </button>
+                                        </form>
+                                    </div>
+                                )}
+
                                 {/* FLOW STEP 1: CATEGORY SELECTION */}
                                 {flowStep === 'category' && (
                                     <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
@@ -3220,14 +3383,69 @@ export default function LogisticsHub() {
                                     </h3>
                                 </div>
 
-                                <div style={{ background: 'rgba(34, 197, 94, 0.08)', padding: '0.85rem 1.1rem', borderRadius: '10px', border: '1px solid rgba(34, 197, 94, 0.25)', marginBottom: '0.5rem' }}>
-                                    <div style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-secondary)', letterSpacing: '0.5px' }}>PRODUTO</div>
-                                    <div style={{ fontWeight: '800', fontSize: '1.05rem', color: '#fff', margin: '0.15rem 0' }}>{pendingProduct.name}</div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.3rem', fontWeight: '500' }}>
-                                        <span>SKU: {pendingProduct.sku}</span>
-                                        <span style={{ fontWeight: '800', color: 'var(--accent-green)' }}>Entrada: {pendingQty} {pendingProduct.unit}</span>
+                                {barcodeEntryMode ? (
+                                    <div style={{ background: 'rgba(34, 197, 94, 0.08)', padding: '0.85rem 1.1rem', borderRadius: '10px', border: '1px solid rgba(34, 197, 94, 0.25)', marginBottom: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                        <div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'rgba(34, 197, 94, 0.8)' }}>PRODUTO</span>
+                                                <span style={{ fontSize: '0.7rem', fontWeight: '700', padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'rgba(34, 197, 94, 0.2)', color: 'var(--accent-green)', textTransform: 'uppercase' }}>
+                                                    {barcodePackageType}
+                                                </span>
+                                            </div>
+                                            <div style={{ fontWeight: '800', fontSize: '1.05rem', color: '#fff', margin: '0.15rem 0' }}>{pendingProduct.name}</div>
+                                            <div style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)' }}>SKU: {pendingProduct.sku}</div>
+                                        </div>
+                                        
+                                        <div style={{ borderTop: '1px dashed rgba(34, 197, 94, 0.2)', paddingTop: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                                <label style={{ fontSize: '0.72rem', fontWeight: '800', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase' }}>
+                                                    Quantidade de {barcodePackageType}(s) a receber *
+                                                </label>
+                                                <input 
+                                                    type="number"
+                                                    min="1"
+                                                    step="1"
+                                                    value={barcodePackageQty}
+                                                    onChange={(e) => {
+                                                        const val = Math.max(1, parseInt(e.target.value) || 1);
+                                                        setBarcodePackageQty(val);
+                                                        setPendingQty(val * barcodeConversionFactor);
+                                                    }}
+                                                    required
+                                                    style={{
+                                                        padding: '0.5rem',
+                                                        borderRadius: '8px',
+                                                        border: '1px solid rgba(34, 197, 94, 0.4)',
+                                                        background: 'rgba(0,0,0,0.3)',
+                                                        color: 'var(--text-primary)',
+                                                        outline: 'none',
+                                                        fontSize: '0.9rem',
+                                                        fontWeight: '700',
+                                                        width: '100%'
+                                                    }}
+                                                />
+                                            </div>
+                                            
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+                                                <span style={{ color: 'rgba(255,255,255,0.6)' }}>
+                                                    1 {barcodePackageType} = {barcodeConversionFactor} {pendingProduct.unit}
+                                                </span>
+                                                <span style={{ fontWeight: '800', color: 'var(--accent-green)' }}>
+                                                    Total Entrada: {pendingQty} {pendingProduct.unit}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div style={{ background: 'rgba(34, 197, 94, 0.08)', padding: '0.85rem 1.1rem', borderRadius: '10px', border: '1px solid rgba(34, 197, 94, 0.25)', marginBottom: '0.5rem' }}>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-secondary)', letterSpacing: '0.5px' }}>PRODUTO</div>
+                                        <div style={{ fontWeight: '800', fontSize: '1.05rem', color: '#fff', margin: '0.15rem 0' }}>{pendingProduct.name}</div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.3rem', fontWeight: '500' }}>
+                                            <span>SKU: {pendingProduct.sku}</span>
+                                            <span style={{ fontWeight: '800', color: 'var(--accent-green)' }}>Entrada: {pendingQty} {pendingProduct.unit}</span>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <form onSubmit={(e) => { e.preventDefault(); processStockUpdate(); }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', textAlign: 'left' }}>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
@@ -3372,7 +3590,7 @@ export default function LogisticsHub() {
                                     </div>
 
                                     <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '1.2rem' }}>
-                                        <button type="button" className="btn-clear-modal" style={{ flex: 1, padding: '0.75rem', borderRadius: '8px' }} onClick={() => { setShowConfirm(false); setPendingProduct(null); }}>
+                                        <button type="button" className="btn-clear-modal" style={{ flex: 1, padding: '0.75rem', borderRadius: '8px' }} onClick={closeConfirmModal}>
                                             CANCELAR
                                         </button>
                                         <button 
@@ -3393,19 +3611,75 @@ export default function LogisticsHub() {
                                 </form>
                             </div>
                         ) : (
-                            <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', width: '100%' }}>
                                 <AlertTriangle size={48} style={{ color: flowType === 'saida' ? 'var(--accent-red)' : 'var(--accent-yellow)' }} />
                                 
-                                <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: '800' }}>
                                     Confirmar Movimentação de Estoque
                                 </h3>
 
-                                <p style={{ color: 'var(--text-secondary)', lineHeight: '1.5', margin: '0.5rem 0' }}>
-                                    Deseja registrar a {flowType === 'saida' ? 'retirada' : 'perda/descarte'} de{' '}
-                                    <strong style={{ color: 'var(--text-primary)' }}>{pendingQty} {pendingProduct.unit}</strong> de{' '}
-                                    <strong style={{ color: 'var(--text-primary)' }}>{pendingProduct.name}</strong>?
-                                </p>
-
+                                {barcodeEntryMode ? (
+                                    <div style={{ background: 'rgba(255, 255, 255, 0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border-color)', width: '100%', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0.8rem', marginBottom: '0.5rem' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.75rem', fontWeight: '800', color: 'var(--text-secondary)' }}>PRODUTO</span>
+                                            <span style={{ fontSize: '0.7rem', fontWeight: '700', padding: '0.2rem 0.5rem', borderRadius: '4px', background: 'var(--border-color)', color: 'var(--text-primary)', textTransform: 'uppercase' }}>
+                                                {barcodePackageType}
+                                            </span>
+                                        </div>
+                                        <div style={{ fontWeight: '800', fontSize: '1rem', color: '#fff' }}>{pendingProduct.name}</div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
+                                            <span>SKU: {pendingProduct.sku}</span>
+                                            <span>Estoque atual: {pendingProduct.stock} {pendingProduct.unit}</span>
+                                        </div>
+                                        
+                                        <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '0.8rem', display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                                                <label style={{ fontSize: '0.72rem', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                                                    Quantidade de {barcodePackageType}(s) a {flowType === 'saida' ? 'retirar' : 'descartar'} *
+                                                </label>
+                                                <input 
+                                                    type="number"
+                                                    min="1"
+                                                    step="1"
+                                                    value={barcodePackageQty}
+                                                    onChange={(e) => {
+                                                        const val = Math.max(1, parseInt(e.target.value) || 1);
+                                                        setBarcodePackageQty(val);
+                                                        setPendingQty(val * barcodeConversionFactor);
+                                                    }}
+                                                    required
+                                                    style={{
+                                                        padding: '0.6rem',
+                                                        borderRadius: '8px',
+                                                        border: '1px solid var(--border-color)',
+                                                        background: 'var(--bg-input)',
+                                                        color: 'var(--text-primary)',
+                                                        outline: 'none',
+                                                        fontSize: '0.9rem',
+                                                        fontWeight: '700',
+                                                        width: '100%'
+                                                    }}
+                                                />
+                                            </div>
+                                            
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255, 255, 255, 0.02)', padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
+                                                    Fator: 1 {barcodePackageType} = {barcodeConversionFactor} {pendingProduct.unit}
+                                                </span>
+                                                <span style={{ fontSize: '0.8rem', fontWeight: '800', color: flowType === 'saida' ? 'var(--accent-red)' : 'var(--accent-yellow)' }}>
+                                                    Total: {pendingQty} {pendingProduct.unit}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <p style={{ color: 'var(--text-secondary)', lineHeight: '1.5', margin: '0.5rem 0' }}>
+                                        Deseja registrar a {flowType === 'saida' ? 'retirada' : 'perda/descarte'} de{' '}
+                                        <strong style={{ color: 'var(--text-primary)' }}>{pendingQty} {pendingProduct.unit}</strong> de{' '}
+                                        <strong style={{ color: 'var(--text-primary)' }}>{pendingProduct.name}</strong>?
+                                    </p>
+                                )}
+ 
                                 {/* FEFO Allocation Preview */}
                                 {flowType === 'saida' && (() => {
                                     const productBatches = stockBatches.filter(b => b.itemSku === pendingProduct.sku);
@@ -3443,9 +3717,9 @@ export default function LogisticsHub() {
                                     }
                                     return null;
                                 })()}
-
+ 
                                 <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '1.5rem' }}>
-                                    <button type="button" className="btn-clear-modal" style={{ flex: 1 }} onClick={() => { setShowConfirm(false); setPendingProduct(null); }}>
+                                    <button type="button" className="btn-clear-modal" style={{ flex: 1 }} onClick={closeConfirmModal}>
                                         CANCELAR
                                     </button>
                                     <button 
