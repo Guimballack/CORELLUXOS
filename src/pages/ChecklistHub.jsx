@@ -102,6 +102,32 @@ export default function ChecklistHub() {
     const [drawingImageModalOpen, setDrawingImageModalOpen] = useState(false);
     const [activeDrawItemInfo, setActiveDrawItemInfo] = useState(null); // { itemId, type: 'antes' | 'depois' }
     const [activeBrushColor, setActiveBrushColor] = useState('#ef4444'); // Vermelho padrão para 'antes'
+    const [builderStartTime, setBuilderStartTime] = useState('08:00');
+    const [builderEndTime, setBuilderEndTime] = useState('18:00');
+    
+    // Custom System Alert / Confirm States
+    const [systemAlert, setSystemAlert] = useState(null);
+
+    const showSystemAlert = (message, title = 'Notificação', type = 'info', onConfirm = null) => {
+        setSystemAlert({
+            title,
+            message,
+            isConfirm: false,
+            type,
+            onConfirm
+        });
+    };
+
+    const showSystemConfirm = (message, onConfirm, onCancel = null, title = 'Confirmação', type = 'warning') => {
+        setSystemAlert({
+            title,
+            message,
+            isConfirm: true,
+            type,
+            onConfirm,
+            onCancel
+        });
+    };
     
     // Barcode Scanner Simulator State
     const [isScanning, setIsScanning] = useState(false);
@@ -214,7 +240,7 @@ export default function ChecklistHub() {
         }
         setKey('checklistOfflineQueue', []);
         localStorage.removeItem('corellux_offline_queue');
-        alert(`${count} checklist(s) sincronizados com sucesso na nuvem!`);
+        showSystemAlert(`${count} checklist(s) sincronizados com sucesso na nuvem!`, 'Sincronização', 'success');
         refreshDbData();
     };
 
@@ -258,7 +284,7 @@ export default function ChecklistHub() {
 
     const handleOpenBuilder = (model = null) => {
         if (!hasTabPermission('editar')) {
-            alert('Acesso negado: Seu cargo não possui permissão para editar templates.');
+            showSystemAlert('Acesso negado: Seu cargo não possui permissão para editar templates.', 'Acesso Negado', 'error');
             return;
         }
 
@@ -276,6 +302,8 @@ export default function ChecklistHub() {
             setBuilderQuestions(model.items || []);
             setBuilderFrequencyDay(model.frequencyDay || '');
             setBuilderDescImages(model.descriptionImages || []);
+            setBuilderStartTime(model.startTime || '08:00');
+            setBuilderEndTime(model.endTime || '18:00');
         } else {
             setBuilderId(null);
             setBuilderCode('CK-' + Math.floor(Math.random() * 900 + 100));
@@ -291,6 +319,8 @@ export default function ChecklistHub() {
             setBuilderQuestions([]);
             setBuilderFrequencyDay('');
             setBuilderDescImages([]);
+            setBuilderStartTime('08:00');
+            setBuilderEndTime('18:00');
         }
         setTab('builder');
     };
@@ -323,7 +353,7 @@ export default function ChecklistHub() {
 
     const handleSaveTemplate = async () => {
         if (!builderName || !builderCode) {
-            alert('Por favor, preencha o código e o nome do checklist.');
+            showSystemAlert('Por favor, preencha o código e o nome do checklist.', 'Campos Obrigatórios', 'warning');
             return;
         }
 
@@ -340,36 +370,44 @@ export default function ChecklistHub() {
             version: builderVersion,
             effectiveDate: builderEffectiveDate,
             status: builderStatus,
+            startTime: builderStartTime,
+            endTime: builderEndTime,
             items: builderQuestions
         };
 
         const res = await DbService.saveChecklistModel(modelObj);
         if (res.success) {
             logEvent(builderId ? 'Template editado' : 'Template criado', { code: builderCode, name: builderName });
-            alert('Template de checklist salvo com sucesso!');
+            showSystemAlert('Template de checklist salvo com sucesso!', 'Sucesso', 'success');
             refreshDbData();
             setTab('templates');
         } else {
-            alert('Falha ao salvar template de checklist.');
+            showSystemAlert('Falha ao salvar template de checklist.', 'Erro', 'error');
         }
     };
 
     const handleDeleteTemplate = async (id, name) => {
         if (!hasTabPermission('excluir')) {
-            alert('Acesso negado: Seu cargo não possui permissão para excluir templates.');
+            showSystemAlert('Acesso negado: Seu cargo não possui permissão para excluir templates.', 'Acesso Negado', 'error');
             return;
         }
 
-        if (confirm(`Tem certeza que deseja excluir o template "${name}"?`)) {
-            const res = await DbService.deleteChecklistModel(id);
-            if (res.success) {
-                logEvent('Template excluído', { id, name });
-                alert('Template excluído com sucesso.');
-                refreshDbData();
-            } else {
-                alert('Falha ao excluir template.');
-            }
-        }
+        showSystemConfirm(
+            `Tem certeza que deseja excluir o template "${name}"?`,
+            async () => {
+                const res = await DbService.deleteChecklistModel(id);
+                if (res.success) {
+                    logEvent('Template excluído', { id, name });
+                    showSystemAlert('Template excluído com sucesso.', 'Sucesso', 'success');
+                    refreshDbData();
+                } else {
+                    showSystemAlert('Falha ao excluir template.', 'Erro', 'error');
+                }
+            },
+            null,
+            'Excluir Template',
+            'warning'
+        );
     };
 
     // ----------------------------------------------------
@@ -378,13 +416,13 @@ export default function ChecklistHub() {
 
     const handleStartExecution = (model) => {
         if (!hasTabPermission('executar')) {
-            alert('Acesso negado: Seu cargo não possui permissão para executar checklists.');
+            showSystemAlert('Acesso negado: Seu cargo não possui permissão para executar checklists.', 'Acesso Negado', 'error');
             return;
         }
 
         // Check if Vigency is valid
         if (model.effectiveDate && new Date(model.effectiveDate) > new Date()) {
-            alert(`Atenção: Este checklist não está em vigência ainda. Vigência a partir de ${new Date(model.effectiveDate).toLocaleDateString()}`);
+            showSystemAlert(`Atenção: Este checklist não está em vigência ainda. Vigência a partir de ${new Date(model.effectiveDate).toLocaleDateString()}`, 'Alerta de Vigência', 'warning');
             return;
         }
 
@@ -824,13 +862,13 @@ export default function ChecklistHub() {
 
             // Check comments mandatory
             if (item.commentRequired && !ans.comment) {
-                alert(`O item "${item.label}" exige comentário descritivo.`);
+                showSystemAlert(`O item "${item.label}" exige comentário descritivo.`, 'Comentário Obrigatório', 'warning');
                 return;
             }
 
             // Check evidence mandatory (e.g. photo)
             if (item.evidenceRequired && !ans.photo && item.type !== 'antes_depois') {
-                alert(`O item "${item.label}" exige anexo de foto/evidência.`);
+                showSystemAlert(`O item "${item.label}" exige anexo de foto/evidência.`, 'Foto Obrigatória', 'warning');
                 return;
             }
 
@@ -839,13 +877,13 @@ export default function ChecklistHub() {
                 const num = parseFloat(ans.answer);
                 if (num < item.minVal || num > item.maxVal) {
                     const itemActions = getItemRuleActions(item);
-                    alert(`O item "${item.label}" tem valor fora da faixa permitida (${item.minVal} a ${item.maxVal}).`);
+                    showSystemAlert(`O item "${item.label}" tem valor fora da faixa permitida (${item.minVal} a ${item.maxVal}).`, 'Valor Fora dos Limites', 'warning');
                     if (itemActions.includes('block')) {
-                        alert(`Bloqueio de Etapa: Execução cancelada pelo limite de segurança do sensor.`);
+                        showSystemAlert(`Bloqueio de Etapa: Execução cancelada pelo limite de segurança do sensor.`, 'Bloqueio de Segurança', 'error');
                         return;
                     }
                     if (itemActions.includes('alert')) {
-                        alert(`Alerta de Segurança disparado para o item "${item.label}"!`);
+                        showSystemAlert(`Alerta de Segurança disparado para o item "${item.label}"!`, 'Alerta de Segurança', 'warning');
                     }
                 }
             }
@@ -877,7 +915,7 @@ export default function ChecklistHub() {
         }
 
         if (isMissing) {
-            alert('Por favor, preencha todas as perguntas obrigatórias do checklist.');
+            showSystemAlert('Por favor, preencha todas as perguntas obrigatórias do checklist.', 'Respostas Pendentes', 'warning');
             return;
         }
 
@@ -934,7 +972,7 @@ export default function ChecklistHub() {
             const updatedQueue = [...offlineQueue, newExecution];
             setKey('checklistOfflineQueue', updatedQueue);
             localStorage.setItem('corellux_offline_queue', JSON.stringify(updatedQueue));
-            alert('Checklist salvo localmente na fila offline! Será sincronizado ao reconectar.');
+            showSystemAlert('Checklist salvo localmente na fila offline! Será sincronizado ao reconectar.', 'Modo Offline', 'info');
         } else {
             const res = await DbService.saveChecklistExecution(newExecution);
             if (res.success) {
@@ -956,7 +994,7 @@ export default function ChecklistHub() {
 
                     if (failed) {
                         if (itemActions.includes('alert')) {
-                            alert(`Alerta de Desvio Operacional: O item "${item.label}" falhou na execução!`);
+                            showSystemAlert(`Alerta de Desvio Operacional: O item "${item.label}" falhou na execução!`, 'Desvio Operacional', 'warning');
                         }
                         if (itemActions.includes('create_nc') || item.type === 'sim_nao' || item.type === 'antes_depois') {
                             const ncObj = {
@@ -975,7 +1013,7 @@ export default function ChecklistHub() {
                 }
 
                 logEvent('Checklist executado', { name: activeExecution.name, conformity: conformityScore, status: newExecution.status });
-                alert(`Checklist enviado! Conformidade: ${conformityScore}% (${newExecution.status})`);
+                showSystemAlert(`Checklist enviado! Conformidade: ${conformityScore}% (${newExecution.status})`, 'Vistoria Concluída', 'success');
             }
         }
 
@@ -1012,7 +1050,7 @@ export default function ChecklistHub() {
             await DbService.saveChecklistNonConformity(nc);
 
             logEvent('Plano de Ação criado', { ncId: nc.id, due });
-            alert('Plano de ação corretiva gerado com sucesso!');
+            showSystemAlert('Plano de ação corretiva gerado com sucesso!', 'Plano de Ação', 'success');
             refreshDbData();
         }
     };
@@ -1035,7 +1073,7 @@ export default function ChecklistHub() {
         const res = await DbService.saveChecklistActionPlan(updatedPlan);
         if (res.success) {
             logEvent('Status do Plano alterado', { planId: plan.id, status: nextStatus });
-            alert(`Plano de ação alterado para ${nextStatus}!`);
+            showSystemAlert(`Plano de ação alterado para ${nextStatus}!`, 'Plano de Ação', 'info');
             refreshDbData();
         }
     };
@@ -1048,7 +1086,7 @@ export default function ChecklistHub() {
         // Encontra o modelo do checklist correspondente
         const model = checklistModels.find(m => m.code === modelCode || m.sector === sector);
         if (!model) {
-            alert(`Nenhum checklist ativo configurado para o setor "${sector}". Crie um template primeiro.`);
+            showSystemAlert(`Nenhum checklist ativo configurado para o setor "${sector}". Crie um template primeiro.`, 'Integração ERP', 'error');
             return;
         }
 
@@ -1062,7 +1100,7 @@ export default function ChecklistHub() {
 
         setNotifications([newNotification, ...notifications]);
         logEvent(`Trigger ERP: ${eventName}`, { sector, modelCode });
-        alert(`Sucesso! Evento ERP [${eventName}] interceptado pelo motor de contexto. Notificação criada!`);
+        showSystemAlert(`Sucesso! Evento ERP [${eventName}] interceptado pelo motor de contexto. Notificação criada!`, 'Integração ERP', 'success');
     };
 
     // ----------------------------------------------------
@@ -1780,6 +1818,11 @@ export default function ChecklistHub() {
                                                     <span style={{ fontSize: '0.65rem', background: 'rgba(45, 212, 191, 0.1)', color: '#2dd4bf', padding: '2px 8px', borderRadius: '20px', fontWeight: '800', textTransform: 'uppercase' }}>
                                                         {m.frequency}{m.frequencyDay ? ` (${m.frequencyDay})` : ''}
                                                     </span>
+                                                    {m.startTime && m.endTime && (
+                                                        <span style={{ fontSize: '0.65rem', background: 'rgba(99, 102, 241, 0.15)', color: '#a5b4fc', padding: '2px 8px', borderRadius: '20px', fontWeight: '800' }}>
+                                                            {m.startTime} às {m.endTime}
+                                                        </span>
+                                                    )}
                                                     {isDueToday && (
                                                         <span style={{ fontSize: '0.65rem', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '2px 8px', borderRadius: '20px', fontWeight: '800' }}>
                                                             AGENDA DO DIA
@@ -1940,9 +1983,9 @@ export default function ChecklistHub() {
 
                                         {/* Values on top of bars */}
                                         <text x="50" y="42" fill="#fff" fontSize="10" textAnchor="middle" fontWeight="bold">12 NCs</text>
-                                        <text x="140" y="82" fill="#fff" fontSize="10" textAnchor="middle" fontWeight="bold">8 NCs</text>
-                                        <text x="230" y="112" fill="#fff" fontSize="10" textAnchor="middle" fontWeight="bold">5 NCs</text>
-                                        <text x="320" y="132" fill="#fff" fontSize="10" textAnchor="middle" fontWeight="bold">3 NCs</text>
+                                        <text x="140" y="82" fill="#fff" fontSize="10" textAnchor="middle">8 NCs</text>
+                                        <text x="230" y="112" fill="#fff" fontSize="10" textAnchor="middle">5 NCs</text>
+                                        <text x="320" y="132" fill="#fff" fontSize="10" textAnchor="middle">3 NCs</text>
                                     </svg>
                                 </div>
                             </div>
@@ -2023,7 +2066,7 @@ export default function ChecklistHub() {
                                             <td><strong>{m.name}</strong></td>
                                             <td><span className={`model-badge-sector ${m.sector.toLowerCase()}`}>{m.sector}</span></td>
                                             <td>{m.category || 'Qualidade'}</td>
-                                            <td>{m.frequency}</td>
+                                            <td>{m.frequency} {m.startTime && m.endTime ? `(${m.startTime} - ${m.endTime})` : ''}</td>
                                             <td><code>v{m.version || '1.0.0'}</code></td>
                                             <td>{m.effectiveDate ? new Date(m.effectiveDate).toLocaleDateString() : 'Imediata'}</td>
                                             <td>
@@ -2189,6 +2232,14 @@ export default function ChecklistHub() {
                                             <option value="Ativo">Ativo</option>
                                             <option value="Inativo">Inativo</option>
                                         </select>
+                                    </div>
+                                    <div className="composer-field-group">
+                                        <label>Hora de Início Recomendada</label>
+                                        <input type="time" className="input-title" value={builderStartTime} onChange={(e) => setBuilderStartTime(e.target.value)} style={{ padding: '0.5rem 0.8rem', fontSize: '0.9rem', cursor: 'pointer' }} />
+                                    </div>
+                                    <div className="composer-field-group">
+                                        <label>Hora Limite (Fim)</label>
+                                        <input type="time" className="input-title" value={builderEndTime} onChange={(e) => setBuilderEndTime(e.target.value)} style={{ padding: '0.5rem 0.8rem', fontSize: '0.9rem', cursor: 'pointer' }} />
                                     </div>
                                 </div>
                                 <div className="composer-field-group" style={{ marginTop: '1rem' }}>
@@ -2376,7 +2427,9 @@ export default function ChecklistHub() {
                                 <span style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 800, textTransform: 'uppercase' }}>Código Checklist: {activeExecution.code}</span>
                                 <h3 style={{ margin: '0.1rem 0 0 0', color: '#fff', fontSize: '1.25rem', fontWeight: 800 }}>{activeExecution.name}</h3>
                                 <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
-                                    Setor: <strong>{activeExecution.sector}</strong> | Executor: <strong>{currentUser.name}</strong>
+                                    Setor: <strong>{activeExecution.sector}</strong> | Executor: <strong>{currentUser.name}</strong> {activeExecution.startTime && activeExecution.endTime && (
+                                        <> | Horário Limite: <strong>{activeExecution.startTime} às {activeExecution.endTime}</strong></>
+                                    )}
                                 </p>
                             </div>
                             
@@ -2385,6 +2438,32 @@ export default function ChecklistHub() {
                                 <span style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 600 }}>{gpsCoordinates}</span>
                             </div>
                         </div>
+
+                        {/* Schedule Window Check & Alert Banner */}
+                        {(() => {
+                            if (!activeExecution.startTime || !activeExecution.endTime) return null;
+                            const now = new Date();
+                            const nowStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                            const isWithinWindow = nowStr >= activeExecution.startTime && nowStr <= activeExecution.endTime;
+                            if (isWithinWindow) return null;
+                            return (
+                                <div style={{ 
+                                    background: 'rgba(250, 204, 21, 0.1)', 
+                                    border: '1px solid #facc15', 
+                                    borderRadius: '8px', 
+                                    padding: '0.75rem 1rem', 
+                                    marginBottom: '1.5rem', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: '0.5rem',
+                                    color: '#facc15',
+                                    fontSize: '0.85rem'
+                                }}>
+                                    <AlertTriangle size={16} />
+                                    <span>Atenção: Vistoria executada fora do horário programado ({activeExecution.startTime} às {activeExecution.endTime}).</span>
+                                </div>
+                            );
+                        })()}
 
                         {/* General Description & Reference Images */}
                         {activeExecution.description && (
@@ -2691,10 +2770,16 @@ export default function ChecklistHub() {
                         {/* Submit Row */}
                         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem' }}>
                             <button className="btn-tool" style={{ padding: '0.7rem 1.5rem' }} onClick={() => {
-                                if (confirm('Tem certeza que deseja cancelar? Suas respostas serão apagadas.')) {
-                                    setActiveExecution(null);
-                                    setTab('dashboard');
-                                }
+                                showSystemConfirm(
+                                    'Tem certeza que deseja cancelar? Suas respostas serão apagadas.',
+                                    () => {
+                                        setActiveExecution(null);
+                                        setTab('dashboard');
+                                    },
+                                    null,
+                                    'Cancelar Execução',
+                                    'warning'
+                                );
                             }}>
                                 Cancelar Vistoria
                             </button>
@@ -2963,7 +3048,7 @@ export default function ChecklistHub() {
 
             {/* SCANNER OVERLAY SIMULATOR MODAL */}
             {isScanning && (
-                <div className="modal-overlay" style={{ zIndex: 11000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
+                <div className="modal-overlay" style={{ zIndex: 11000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto' }}>
                     <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '400px', width: '100%', textAlign: 'center' }}>
                         <h4 style={{ margin: '0 0 1rem 0', color: '#fff', fontSize: '1.1rem' }}>SIMULADOR LEITOR DE CÓDIGO</h4>
                         <div style={{ background: '#000', height: '140px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem', position: 'relative', overflow: 'hidden' }}>
@@ -3002,7 +3087,7 @@ export default function ChecklistHub() {
 
             {/* DETAIL MODAL: EXECUÇÃO DETALHADA */}
             {activeExecutionDetail && (
-                <div className="modal-overlay" style={{ zIndex: 11000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
+                <div className="modal-overlay" style={{ zIndex: 11000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto' }}>
                     <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '600px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.8rem', marginBottom: '1.25rem' }}>
                             <h3 style={{ margin: 0, color: '#fff', fontSize: '1.1rem' }}>Detalhes da Vistoria</h3>
@@ -3067,7 +3152,7 @@ export default function ChecklistHub() {
             )}
 
             {/* SIGNATURE POPUP MODAL */}
-            <div className="modal-overlay" style={{ display: isSignaturePopupOpen ? 'flex' : 'none', zIndex: 12000, alignItems: 'center', justifyContent: 'center', padding: '1.5rem', touchAction: 'none' }}>
+            <div className="modal-overlay" style={{ display: isSignaturePopupOpen ? 'flex' : 'none', zIndex: 12000, alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto', touchAction: 'none' }}>
                 <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '600px', width: '100%', textAlign: 'center', touchAction: 'none' }}>
                     <h3 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.2rem', fontWeight: 800 }}>ASSINATURA DIGITAL</h3>
                     <p style={{ margin: '0 0 1.25rem 0', fontSize: '0.82rem', color: '#94a3b8' }}>Use o dedo na tela touchscreen ou o mouse para assinar.</p>
@@ -3104,7 +3189,7 @@ export default function ChecklistHub() {
 
             {/* ANTES E DEPOIS DRAWING MODAL */}
             {drawingImageModalOpen && activeDrawItemInfo && (
-                <div className="modal-overlay" style={{ zIndex: 12000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', touchAction: 'none' }}>
+                <div className="modal-overlay" style={{ zIndex: 12000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto', touchAction: 'none' }}>
                     <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '600px', width: '100%', textAlign: 'center', touchAction: 'none' }}>
                         <h3 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.2rem', fontWeight: 800 }}>
                             {activeDrawItemInfo.type === 'antes' ? 'DESENHAR ANOMALIAS (ANTES)' : 'DESENHAR CORREÇÃO (DEPOIS)'}
@@ -3190,6 +3275,63 @@ export default function ChecklistHub() {
                             <button className="btn-send-aviso" style={{ flex: 1 }} onClick={saveDrawingFromModal} type="button">
                                 Confirmar
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* SYSTEM CUSTOM ALERT / CONFIRM MODAL */}
+            {systemAlert && (
+                <div className="modal-overlay" style={{ zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(4px)' }}>
+                    <div className="pin-modal-card" style={{ background: '#0b1329', border: '1px solid rgba(0, 242, 254, 0.15)', borderRadius: '16px', padding: '2rem', maxWidth: '450px', width: '100%', textAlign: 'center', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                            {systemAlert.type === 'success' && <CheckCircle2 size={48} style={{ color: '#10b981' }} />}
+                            {systemAlert.type === 'error' && <ShieldAlert size={48} style={{ color: '#ef4444' }} />}
+                            {systemAlert.type === 'warning' && <AlertTriangle size={48} style={{ color: '#facc15' }} />}
+                            {systemAlert.type === 'info' && <Info size={48} style={{ color: '#06b6d4' }} />}
+                        </div>
+                        <h3 style={{ margin: '0 0 0.75rem 0', color: '#fff', fontSize: '1.25rem', fontWeight: 700 }}>
+                            {systemAlert.title}
+                        </h3>
+                        <p style={{ margin: '0 0 1.75rem 0', fontSize: '0.9rem', color: '#cbd5e1', lineHeight: '1.5' }}>
+                            {systemAlert.message}
+                        </p>
+                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                            {systemAlert.isConfirm ? (
+                                <>
+                                    <button 
+                                        className="btn-tool" 
+                                        style={{ flex: 1, padding: '0.6rem 1.5rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8' }} 
+                                        onClick={() => {
+                                            if (systemAlert.onCancel) systemAlert.onCancel();
+                                            setSystemAlert(null);
+                                        }}
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button 
+                                        className="btn-send-aviso" 
+                                        style={{ flex: 1, padding: '0.6rem 1.5rem' }} 
+                                        onClick={() => {
+                                            if (systemAlert.onConfirm) systemAlert.onConfirm();
+                                            setSystemAlert(null);
+                                        }}
+                                    >
+                                        Confirmar
+                                    </button>
+                                </>
+                            ) : (
+                                <button 
+                                    className="btn-send-aviso" 
+                                    style={{ minWidth: '120px', padding: '0.6rem 2rem' }} 
+                                    onClick={() => {
+                                        if (systemAlert.onConfirm) systemAlert.onConfirm();
+                                        setSystemAlert(null);
+                                    }}
+                                >
+                                    OK
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

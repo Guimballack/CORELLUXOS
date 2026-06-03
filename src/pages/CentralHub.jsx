@@ -552,6 +552,7 @@ export default function CentralHub() {
                         style={{ 
                             width: '1100px', 
                             maxWidth: '95vw', 
+                            height: '700px',
                             maxHeight: '90vh', 
                             display: 'flex', 
                             flexDirection: 'column',
