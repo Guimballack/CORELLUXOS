@@ -4416,7 +4416,7 @@ export default function SettingsHub() {
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.5px'
                                 }}>
-                                    <Edit3 size={18} style={{ color: '#3b82f6' }} /> Editar Posições
+                                    <Edit2 size={18} style={{ color: '#3b82f6' }} /> Editar Posições
                                 </h3>
                                 <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.3rem' }}>
                                     Gerencie e redimensione as posições da célula do WMS
