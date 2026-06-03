@@ -455,6 +455,21 @@ export default function CentralHub() {
                                 <ChevronRight className="chevron" size={20} />
                             </button>
                         )}
+
+                        <button 
+                            className="menu-card teal" 
+                            onClick={() => {
+                                setKey('currentScreen', 'checklist-hub');
+                                setKey('checklistActiveTab', 'menu');
+                            }}
+                        >
+                            <div className="card-icon"><CheckSquare size={24} /></div>
+                            <div className="card-content">
+                                <h3>CHECK-LIST</h3>
+                                <p>Executar vistorias, checklists operacionais e auditorias de conformidade.</p>
+                            </div>
+                            <ChevronRight className="chevron" size={20} />
+                        </button>
                     </div>
                 )}
 
