@@ -948,6 +948,207 @@ export default function ChecklistHub() {
                     cursor: pointer;
                     font-size: 0.82rem;
                 }
+
+                /* BUILDER LAYOUT AND PREMIUM BRAND DESIGN SYSTEM */
+                .builder-container {
+                    display: grid;
+                    grid-template-columns: 280px 1fr;
+                    gap: 1.5rem;
+                    align-items: start;
+                    margin-top: 1rem;
+                }
+                @media (max-width: 900px) {
+                    .builder-container {
+                        grid-template-columns: 1fr;
+                    }
+                }
+                .builder-sidebar {
+                    background: rgba(30, 41, 59, 0.25);
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                    border-radius: 12px;
+                    padding: 1.5rem;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.75rem;
+                    position: sticky;
+                    top: 10px;
+                    box-sizing: border-box;
+                }
+                .btn-builder-add-item {
+                    width: 100%;
+                    background: rgba(15, 23, 42, 0.5);
+                    border: 1px solid rgba(255, 255, 255, 0.08);
+                    border-radius: 8px;
+                    color: #cbd5e1;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.75rem;
+                    padding: 0.75rem 1rem;
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                    font-weight: 600;
+                    transition: all 0.2s ease;
+                    text-align: left;
+                }
+                .btn-builder-add-item:hover {
+                    background: rgba(45, 212, 191, 0.08);
+                    border-color: rgba(45, 212, 191, 0.3);
+                    color: #fff;
+                    transform: translateX(2px);
+                }
+                .btn-builder-add-item svg {
+                    flex-shrink: 0;
+                }
+                .builder-questions-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1.25rem;
+                }
+                .builder-item-card {
+                    background: rgba(30, 41, 59, 0.2);
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                    border-radius: 12px;
+                    padding: 1.5rem;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1.25rem;
+                    box-sizing: border-box;
+                    transition: border-color 0.2s ease;
+                }
+                .builder-item-card:hover {
+                    border-color: rgba(255, 255, 255, 0.1);
+                }
+                .builder-item-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                    padding-bottom: 0.75rem;
+                }
+                .builder-type-pill {
+                    font-size: 0.7rem;
+                    font-weight: 800;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    padding: 0.2rem 0.6rem;
+                    border-radius: 4px;
+                    background: rgba(45, 212, 191, 0.1);
+                    color: #2dd4bf;
+                    border: 1px solid rgba(45, 212, 191, 0.2);
+                }
+                .composer-field-group {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.4rem;
+                }
+                .composer-field-group label {
+                    font-size: 0.72rem;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                .composer-field-group input,
+                .composer-field-group select,
+                .composer-field-group textarea {
+                    background: rgba(15, 23, 42, 0.6) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                    border-radius: 8px !important;
+                    color: #fff !important;
+                    padding: 0.65rem 0.85rem !important;
+                    outline: none !important;
+                    font-size: 0.88rem !important;
+                    transition: all 0.2s ease !important;
+                    box-sizing: border-box !important;
+                    width: 100% !important;
+                }
+                .composer-field-group input:focus,
+                .composer-field-group select:focus,
+                .composer-field-group textarea:focus {
+                    border-color: #2dd4bf !important;
+                    box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.15) !important;
+                }
+                .input-title {
+                    background: rgba(15, 23, 42, 0.6) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                    border-radius: 8px !important;
+                    color: #fff !important;
+                    padding: 0.65rem 0.85rem !important;
+                    outline: none !important;
+                    font-size: 0.88rem !important;
+                    transition: all 0.2s ease !important;
+                    box-sizing: border-box !important;
+                    width: 100% !important;
+                }
+                .input-title:focus {
+                    border-color: #2dd4bf !important;
+                    box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.15) !important;
+                }
+                .input-title::placeholder {
+                    color: #475569 !important;
+                }
+                select.input-title {
+                    cursor: pointer !important;
+                    appearance: none !important;
+                    background-image: url("data:image/svg+xml;utf8,<svg fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'><polyline points='6 9 12 15 18 9'></polyline></svg>") !important;
+                    background-repeat: no-repeat !important;
+                    background-position: right 0.85rem center !important;
+                    background-size: 1rem !important;
+                    padding-right: 2.5rem !important;
+                }
+                select.input-title option {
+                    background: #0f172a !important;
+                    color: #fff !important;
+                    padding: 0.5rem !important;
+                }
+                input[type="date"].input-title {
+                    color-scheme: dark !important;
+                }
+                .btn-send-aviso {
+                    background: var(--accent-orange) !important;
+                    color: white !important;
+                    border: none !important;
+                    border-radius: 8px !important;
+                    font-weight: 800 !important;
+                    font-size: 0.88rem !important;
+                    cursor: pointer !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 0.5rem !important;
+                    transition: all 0.2s ease !important;
+                    box-shadow: 0 4px 12px rgba(243, 107, 29, 0.2) !important;
+                }
+                .btn-send-aviso:hover {
+                    background: #d95e16 !important;
+                    transform: translateY(-1px) !important;
+                    box-shadow: 0 6px 15px rgba(243, 107, 29, 0.3) !important;
+                }
+                .btn-send-aviso:active {
+                    transform: translateY(0) !important;
+                }
+                .btn-tool {
+                    background: rgba(255, 255, 255, 0.03) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                    color: #cbd5e1 !important;
+                    border-radius: 8px !important;
+                    font-weight: 700 !important;
+                    font-size: 0.82rem !important;
+                    cursor: pointer !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    gap: 0.4rem !important;
+                    transition: all 0.2s ease !important;
+                }
+                .btn-tool:hover {
+                    background: rgba(255, 255, 255, 0.08) !important;
+                    border-color: rgba(255, 255, 255, 0.15) !important;
+                    color: #fff !important;
+                }
+                .btn-tool:active {
+                    transform: translateY(1px) !important;
+                }
             `}} />
 
             {/* Sidebar Lateral - REMOVIDA PARA LAYOUT DE CARDS */}
