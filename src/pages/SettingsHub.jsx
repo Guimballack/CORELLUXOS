@@ -4369,8 +4369,8 @@ export default function SettingsHub() {
                     <div className="pin-modal-card" style={{ maxWidth: '420px', width: '90%', padding: '2rem' }}>
                         <button className="btn-close-modal" onClick={() => setEditCellModal(null)}><X size={18} /></button>
                         <form onSubmit={handleSaveCellPositions} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-                            <h3 style={{ fontSize: '1.3rem', color: 'var(--accent-blue)', textTransform: 'uppercase', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Edit2 size={18} /> Editar Posições da Célula
+                            <h3 style={{ fontSize: '1.25rem', color: 'var(--accent-blue)', textTransform: 'uppercase', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '45px' }}>
+                                <Edit2 size={18} /> Editar Posições
                             </h3>
 
                             {/* Info da célula */}
