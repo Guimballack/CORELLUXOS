@@ -42,6 +42,26 @@ import {
     RefreshCw
 } from 'lucide-react';
 
+const checkJurisdiction = (userRole, checklistSector) => {
+    if (!userRole) return false;
+    const role = userRole.toLowerCase();
+    const sec = (checklistSector || '').toLowerCase();
+    
+    // Gerente e Administrador têm acesso irrestrito
+    if (role === 'administrador' || role === 'gerente') return true;
+    
+    if (role === 'estoquista' && (sec.includes('estoque') || sec.includes('suprimentos'))) return true;
+    if (role === 'cozinha' && (sec.includes('produção') || sec.includes('producao') || sec.includes('cozinha'))) return true;
+    if (role === 'produção' && (sec.includes('produção') || sec.includes('producao'))) return true;
+    if (role === 'caixa' && (sec.includes('salão') || sec.includes('salao') || sec.includes('atendimento'))) return true;
+    if (role === 'auxiliar' && (sec.includes('produção') || sec.includes('producao') || sec.includes('estoque') || sec.includes('serviços gerais') || sec.includes('servicos gerais') || sec.includes('limpeza'))) return true;
+    
+    // Correspondência direta/substring genérica
+    if (sec.includes(role) || role.includes(sec)) return true;
+    
+    return false;
+};
+
 export default function ChecklistHub() {
     const [state, setKey, updatePartial] = useCorelluxState([
         'currentUser',
@@ -96,6 +116,8 @@ export default function ChecklistHub() {
     const [execStartTime, setExecStartTime] = useState(null);
     
     // Novos Estados Avançados
+    const [qrPrintModalOpen, setQrPrintModalOpen] = useState(false);
+    const [qrPrintModel, setQrPrintModel] = useState(null);
     const [availableSectors, setAvailableSectors] = useState([]);
     const [builderDescImages, setBuilderDescImages] = useState([]);
     const [builderFrequencyDay, setBuilderFrequencyDay] = useState('');
@@ -161,6 +183,31 @@ export default function ChecklistHub() {
         refreshDbData();
         getGeoLocation();
     }, []);
+
+    // Intercepta execução automática de checklist pendente do QR Code
+    useEffect(() => {
+        const activeExecId = localStorage.getItem('activeExecuteChecklistId');
+        if (activeExecId && checklistModels.length > 0) {
+            localStorage.removeItem('activeExecuteChecklistId');
+            const model = checklistModels.find(m => String(m.id) === String(activeExecId));
+            if (model) {
+                const userRole = currentUser.role || 'Operador';
+                const hasAccess = checkJurisdiction(userRole, model.sector);
+                
+                if (hasAccess) {
+                    handleStartExecution(model);
+                } else {
+                    showSystemAlert(
+                        `Acesso Negado: Este checklist pertence ao setor "${model.sector}". Seu cargo (${userRole}) não tem permissão para executá-lo nesta jurisdição.`,
+                        'Jurisdição Inválida',
+                        'error'
+                    );
+                }
+            } else {
+                showSystemAlert('Checklist solicitado não foi encontrado.', 'Erro', 'error');
+            }
+        }
+    }, [checklistModels, currentUser]);
 
     // Sincronização automática quando voltar Online
     useEffect(() => {
@@ -2272,6 +2319,7 @@ export default function ChecklistHub() {
                                             <td style={{ textAlign: 'center' }}>
                                                 <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
                                                     <button className="btn-tool" style={{ padding: '0.3rem 0.5rem' }} onClick={() => handleOpenBuilder(m)}>Editar</button>
+                                                    <button className="btn-tool" style={{ padding: '0.3rem 0.5rem', color: 'var(--accent-orange)', borderColor: 'rgba(249, 115, 22, 0.2)' }} onClick={() => { setQrPrintModel(m); setQrPrintModalOpen(true); }}>Imprimir QR</button>
                                                     <button className="btn-tool" style={{ padding: '0.3rem 0.5rem', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.2)' }} onClick={() => handleDeleteTemplate(m.id, m.name)}>Excluir</button>
                                                 </div>
                                             </td>
@@ -3715,6 +3763,154 @@ export default function ChecklistHub() {
                                 </button>
                             )}
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* PREVIEW E IMPRESSÃO DO CARTÃO QR CODE */}
+            {qrPrintModalOpen && qrPrintModel && (
+                <div id="qrcode-print-area-wrapper" className="modal-overlay" style={{ zIndex: 12000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(5px)' }}>
+                    <style dangerouslySetInnerHTML={{__html: `
+                        @media print {
+                            body * {
+                                visibility: hidden !important;
+                            }
+                            #qrcode-print-area-wrapper, #qrcode-print-area-wrapper * {
+                                visibility: visible !important;
+                            }
+                            #qrcode-print-area-wrapper {
+                                position: absolute !important;
+                                left: 0 !important;
+                                top: 0 !important;
+                                width: 100% !important;
+                                height: 100% !important;
+                                background: #ffffff !important;
+                                display: flex !important;
+                                justify-content: center !important;
+                                align-items: center !important;
+                                padding: 0 !important;
+                                margin: 0 !important;
+                            }
+                            .no-print-btn {
+                                display: none !important;
+                            }
+                            .print-card-box {
+                                border: 3px dashed #000000 !important;
+                                background: #ffffff !important;
+                                color: #000000 !important;
+                                box-shadow: none !important;
+                                width: 16cm !important;
+                                padding: 2cm !important;
+                                border-radius: 0 !important;
+                                margin: auto !important;
+                            }
+                            .print-card-box h1, .print-card-box h2, .print-card-box h3, .print-card-box h4, .print-card-box p, .print-card-box span, .print-card-box strong {
+                                color: #000000 !important;
+                            }
+                            .print-card-box .badge-sector-print {
+                                border: 1.5px solid #000000 !important;
+                                color: #000000 !important;
+                                background: none !important;
+                            }
+                        }
+                    `}} />
+                    
+                    <div className="print-card-box" style={{ 
+                        background: '#ffffff', 
+                        color: '#1e293b', 
+                        padding: '3rem', 
+                        borderRadius: '12px', 
+                        width: '100%', 
+                        maxWidth: '550px', 
+                        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.5)', 
+                        textAlign: 'center',
+                        border: '3px dashed rgba(0, 242, 254, 0.4)',
+                        position: 'relative'
+                    }}>
+                        <div className="no-print-btn" style={{ position: 'absolute', top: '-15px', left: '20px', background: '#0f172a', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(0, 242, 254, 0.3)', color: 'var(--accent-orange)', fontSize: '0.7rem', fontWeight: 'bold' }}>
+                            ✂️ LINHA DE CORTE PARA FIXAÇÃO
+                        </div>
+                        
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+                            <img src="/logo_cubo.png?v=5" alt="Corelux Cube" style={{ width: '28px', height: '28px' }} />
+                            <span style={{ fontSize: '1.2rem', fontWeight: '900', letterSpacing: '0.5px', color: '#0f172a' }}>
+                                CORELUX <span style={{ color: '#f97316' }}>OS</span>
+                            </span>
+                        </div>
+                        
+                        <span className="badge-sector-print" style={{ 
+                            display: 'inline-block', 
+                            padding: '0.35rem 0.8rem', 
+                            borderRadius: '4px', 
+                            fontSize: '0.8rem', 
+                            fontWeight: 'bold', 
+                            background: '#f1f5f9', 
+                            color: '#0f172a', 
+                            border: '1px solid #cbd5e1',
+                            marginBottom: '1rem',
+                            textTransform: 'uppercase'
+                        }}>
+                            SETOR: {qrPrintModel.sector}
+                        </span>
+
+                        <h2 style={{ fontSize: '1.6rem', fontWeight: '800', color: '#0f172a', margin: '0 0 0.5rem 0', lineHeight: '1.2' }}>
+                            {qrPrintModel.name}
+                        </h2>
+                        
+                        <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0 0 1.5rem 0' }}>
+                            Código: <strong>{qrPrintModel.code || 'CK-MOCK'}</strong> | Frequência: <strong>{qrPrintModel.frequency}</strong>
+                            {qrPrintModel.startTime && qrPrintModel.endTime && (
+                                <> | Janela Recomendada: <strong>{qrPrintModel.startTime} às {qrPrintModel.endTime}</strong></>
+                            )}
+                        </p>
+                        
+                        <div style={{ display: 'flex', justifyContent: 'center', margin: '2rem 0' }}>
+                            <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'inline-block', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+                                <img 
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(window.location.origin + '?executeChecklist=' + qrPrintModel.id)}`} 
+                                    alt={`QR Code ${qrPrintModel.name}`}
+                                    style={{ width: '220px', height: '220px', display: 'block' }}
+                                />
+                            </div>
+                        </div>
+
+                        <div style={{ textAlign: 'left', background: '#f8fafc', padding: '1.25rem', borderRadius: '8px', border: '1px solid #e2e8f0', marginTop: '1.5rem' }}>
+                            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', fontWeight: 'bold', color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                Instruções para Execução:
+                            </h4>
+                            <ol style={{ margin: 0, paddingLeft: '1.2rem', fontSize: '0.8rem', color: '#475569', lineHeight: '1.6' }}>
+                                <li style={{ marginBottom: '0.25rem' }}>Escaneie este QR Code com a câmera do seu smartphone ou terminal.</li>
+                                <li style={{ marginBottom: '0.25rem' }}>Realize a autenticação de login e digite seu PIN numérico.</li>
+                                <li style={{ marginBottom: '0.25rem' }}>Verifique se o seu perfil possui permissão e jurisdição para o setor indicado.</li>
+                                <li>Realize a vistoria respondendo às perguntas obrigatórias do checklist.</li>
+                            </ol>
+                        </div>
+                        
+                        <div style={{ marginTop: '1.5rem', fontSize: '0.75rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                            Fixar este cartão em local visível na área de trabalho correspondente.
+                        </div>
+                    </div>
+                    
+                    <div className="no-print-btn" style={{ display: 'flex', gap: '1rem', marginTop: '2rem', width: '100%', maxWidth: '550px' }}>
+                        <button 
+                            className="btn-tool" 
+                            style={{ flex: 1, padding: '0.75rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', cursor: 'pointer' }}
+                            onClick={() => {
+                                setQrPrintModalOpen(false);
+                                setQrPrintModel(null);
+                            }}
+                            type="button"
+                        >
+                            Fechar
+                        </button>
+                        <button 
+                            className="btn-send-aviso" 
+                            style={{ flex: 1, padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', cursor: 'pointer' }}
+                            onClick={() => window.print()}
+                            type="button"
+                        >
+                            <Printer size={16} /> Imprimir Cartão QR
+                        </button>
                     </div>
                 </div>
             )}

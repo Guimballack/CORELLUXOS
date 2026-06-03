@@ -3,7 +3,7 @@
  * Orquestra a exibição das telas com base no estado global (Router reativo).
  */
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useCorelluxState } from './store/corellux-state';
 import Header from './components/Header';
 import Login from './pages/Login';
@@ -61,7 +61,30 @@ function PlaceholderModule({ name, description }) {
 }
 
 export default function App() {
-    const [state] = useCorelluxState(['currentScreen', 'workstationAuthenticated']);
+    const [state, setKey, updatePartial] = useCorelluxState(['currentScreen', 'workstationAuthenticated', 'currentUser']);
+
+    useEffect(() => {
+        // Captura o parâmetro ?executeChecklist do QR Code na montagem
+        const params = new URLSearchParams(window.location.search);
+        const executeChecklist = params.get('executeChecklist');
+        if (executeChecklist) {
+            localStorage.setItem('pendingChecklistId', executeChecklist);
+            // Limpa a URL para ficar limpa e profissional
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }, []);
+
+    useEffect(() => {
+        // Se houver um checklist pendente e o usuário estiver totalmente autenticado, redireciona diretamente
+        const pendingId = localStorage.getItem('pendingChecklistId');
+        if (pendingId && state.workstationAuthenticated && state.currentUser) {
+            localStorage.removeItem('pendingChecklistId');
+            localStorage.setItem('activeExecuteChecklistId', pendingId);
+            updatePartial({
+                currentScreen: 'checklist-hub'
+            });
+        }
+    }, [state.workstationAuthenticated, state.currentUser, updatePartial]);
 
     const renderScreen = () => {
         switch (state.currentScreen) {
