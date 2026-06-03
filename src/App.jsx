@@ -75,16 +75,19 @@ export default function App() {
     }, []);
 
     useEffect(() => {
-        // Se houver um checklist pendente e o usuário estiver totalmente autenticado, redireciona diretamente
+        // Se houver um checklist pendente e o usuário estiver totalmente autenticado (após passar pela validação de PIN), redireciona
         const pendingId = localStorage.getItem('pendingChecklistId');
         if (pendingId && state.workstationAuthenticated && state.currentUser) {
-            localStorage.removeItem('pendingChecklistId');
-            localStorage.setItem('activeExecuteChecklistId', pendingId);
-            updatePartial({
-                currentScreen: 'checklist-hub'
-            });
+            // Evita burlar o PIN: só redireciona quando a tela atual não for de login ou seleção de usuário
+            if (state.currentScreen !== 'login' && state.currentScreen !== 'user-select') {
+                localStorage.removeItem('pendingChecklistId');
+                localStorage.setItem('activeExecuteChecklistId', pendingId);
+                updatePartial({
+                    currentScreen: 'checklist-hub'
+                });
+            }
         }
-    }, [state.workstationAuthenticated, state.currentUser, updatePartial]);
+    }, [state.workstationAuthenticated, state.currentUser, state.currentScreen, updatePartial]);
 
     const renderScreen = () => {
         switch (state.currentScreen) {
