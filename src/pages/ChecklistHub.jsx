@@ -95,6 +95,14 @@ export default function ChecklistHub() {
     const [activeSignatureItemId, setActiveSignatureItemId] = useState(null);
     const [execStartTime, setExecStartTime] = useState(null);
     
+    // Novos Estados Avançados
+    const [availableSectors, setAvailableSectors] = useState([]);
+    const [builderDescImages, setBuilderDescImages] = useState([]);
+    const [builderFrequencyDay, setBuilderFrequencyDay] = useState('');
+    const [drawingImageModalOpen, setDrawingImageModalOpen] = useState(false);
+    const [activeDrawItemInfo, setActiveDrawItemInfo] = useState(null); // { itemId, type: 'antes' | 'depois' }
+    const [activeBrushColor, setActiveBrushColor] = useState('#ef4444'); // Vermelho padrão para 'antes'
+    
     // Barcode Scanner Simulator State
     const [isScanning, setIsScanning] = useState(false);
     const [activeScanItem, setActiveScanItem] = useState(null);
@@ -110,6 +118,10 @@ export default function ChecklistHub() {
     // Canvas Signatures Drawing Ref
     const canvasRef = useRef(null);
     const isDrawing = useRef(false);
+
+    // Canvas Antes/Depois Drawing Ref
+    const drawingCanvasRef = useRef(null);
+    const isDrawingDrawing = useRef(false);
 
     // Initial Loading
     useEffect(() => {
@@ -143,6 +155,19 @@ export default function ChecklistHub() {
         // Audit Logs
         const logs = await DbService.getChecklistAuditLogs();
         setAuditLogs(logs);
+
+        // Sectors loading
+        try {
+            const secs = await DbService.getSectors();
+            setAvailableSectors(secs && secs.length > 0 ? secs : [
+                { id: 1, name: 'COZINHA' },
+                { id: 2, name: 'SALÃO' },
+                { id: 3, name: 'ESTOQUE' },
+                { id: 4, name: 'ADMINISTRAÇÃO' }
+            ]);
+        } catch (e) {
+            console.error(e);
+        }
     };
 
     const getGeoLocation = () => {
@@ -249,11 +274,14 @@ export default function ChecklistHub() {
             setBuilderEffectiveDate(model.effectiveDate || new Date().toISOString().split('T')[0]);
             setBuilderStatus(model.status);
             setBuilderQuestions(model.items || []);
+            setBuilderFrequencyDay(model.frequencyDay || '');
+            setBuilderDescImages(model.descriptionImages || []);
         } else {
             setBuilderId(null);
             setBuilderCode('CK-' + Math.floor(Math.random() * 900 + 100));
             setBuilderName('');
-            setBuilderSector('COZINHA');
+            const defaultSector = availableSectors.length > 0 ? availableSectors[0].name : 'COZINHA';
+            setBuilderSector(defaultSector);
             setBuilderCategory('Qualidade');
             setBuilderDescription('');
             setBuilderFrequency('Diário');
@@ -261,6 +289,8 @@ export default function ChecklistHub() {
             setBuilderEffectiveDate(new Date().toISOString().split('T')[0]);
             setBuilderStatus('Ativo');
             setBuilderQuestions([]);
+            setBuilderFrequencyDay('');
+            setBuilderDescImages([]);
         }
         setTab('builder');
     };
@@ -277,6 +307,7 @@ export default function ChecklistHub() {
             evidenceRequired: false,
             commentRequired: false,
             ruleAction: 'none', // 'none', 'create_nc', 'alert', 'block'
+            ruleActions: [],
             options: type === 'multipla_escolha' ? 'Pendente, Aprovado, Rejeitado' : ''
         };
         setBuilderQuestions([...builderQuestions, newQ]);
@@ -304,6 +335,8 @@ export default function ChecklistHub() {
             category: builderCategory,
             description: builderDescription,
             frequency: builderFrequency,
+            frequencyDay: builderFrequencyDay,
+            descriptionImages: builderDescImages,
             version: builderVersion,
             effectiveDate: builderEffectiveDate,
             status: builderStatus,
@@ -496,6 +529,245 @@ export default function ChecklistHub() {
         };
     }, [isSignaturePopupOpen]);
 
+    // Equipment Base Outline Drawer
+    const drawEquipmentOutline = (ctx, width, height, type) => {
+        ctx.clearRect(0, 0, width, height);
+        
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 1;
+        for (let x = 0; x < width; x += 40) {
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, height);
+            ctx.stroke();
+        }
+        for (let y = 0; y < height; y += 40) {
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(width, y);
+            ctx.stroke();
+        }
+        
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+        ctx.lineWidth = 4;
+        
+        const cx = width * 0.35;
+        const cy = height * 0.5;
+        const r = 60;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        ctx.beginPath();
+        for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 6) {
+            const x1 = cx + Math.cos(angle) * r;
+            const y1 = cy + Math.sin(angle) * r;
+            const x2 = cx + Math.cos(angle) * (r + 12);
+            const y2 = cy + Math.sin(angle) * (r + 12);
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+        }
+        ctx.stroke();
+        
+        ctx.beginPath();
+        ctx.moveTo(cx + r, cy - 15);
+        ctx.lineTo(width * 0.8, cy - 15);
+        ctx.lineTo(width * 0.8, height - 30);
+        ctx.moveTo(cx + r, cy + 15);
+        ctx.lineTo(width * 0.75, cy + 15);
+        ctx.lineTo(width * 0.75, height - 30);
+        ctx.stroke();
+        
+        const gx = width * 0.75;
+        const gy = height * 0.25;
+        const gr = 30;
+        ctx.beginPath();
+        ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(gx, gy);
+        if (type === 'antes') {
+            ctx.lineTo(gx + 20, gy - 10);
+        } else {
+            ctx.lineTo(gx - 10, gy - 20);
+        }
+        ctx.stroke();
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.font = '10px sans-serif';
+        ctx.fillText('DIAGRAMA DE ATIVO', 15, 25);
+        
+        if (type === 'antes') {
+            ctx.strokeStyle = 'rgba(249, 115, 22, 0.4)';
+            ctx.lineWidth = 2;
+            ctx.fillStyle = 'rgba(249, 115, 22, 0.15)';
+            ctx.beginPath();
+            ctx.arc(cx + r + 30, cy + 35, 10, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.fillText('VAZAMENTO DETECTADO', cx + r + 10, cy + 60);
+            
+            ctx.beginPath();
+            ctx.moveTo(width * 0.55, cy - 15);
+            ctx.lineTo(width * 0.58, cy - 5);
+            ctx.lineTo(width * 0.56, cy + 15);
+            ctx.stroke();
+            
+            ctx.fillText('RACHADURA NA TUBULAÇÃO', width * 0.5, cy - 25);
+        } else {
+            ctx.fillStyle = 'rgba(16, 185, 129, 0.4)';
+            ctx.beginPath();
+            ctx.arc(width * 0.88, 30, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 9px sans-serif';
+            ctx.fillText('STATUS: REPARADO/LIMPO', width * 0.55, 33);
+        }
+    };
+
+    const startDrawingDrawing = (e) => {
+        if (e.cancelable) e.preventDefault();
+        isDrawingDrawing.current = true;
+        drawDrawing(e);
+    };
+
+    const stopDrawingDrawing = () => {
+        isDrawingDrawing.current = false;
+    };
+
+    const drawDrawing = (e) => {
+        if (!isDrawingDrawing.current) return;
+        if (e.cancelable) e.preventDefault();
+        const canvas = drawingCanvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+        const rect = canvas.getBoundingClientRect();
+        
+        let clientX = e.clientX;
+        let clientY = e.clientY;
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        }
+
+        const rectWidth = rect.width || canvas.width;
+        const rectHeight = rect.height || canvas.height;
+        const scaleX = canvas.width / rectWidth;
+        const scaleY = canvas.height / rectHeight;
+
+        const x = (clientX - rect.left) * scaleX;
+        const y = (clientY - rect.top) * scaleY;
+
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = activeBrushColor;
+
+        if (e.type === 'mousedown' || e.type === 'touchstart') {
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+        } else {
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+    };
+
+    // React Effect to bind non-passive Touch events to Drawing Canvas
+    useEffect(() => {
+        const canvas = drawingCanvasRef.current;
+        if (!canvas || !drawingImageModalOpen) return;
+
+        const handleTouchStart = (e) => {
+            if (e.cancelable) e.preventDefault();
+            isDrawingDrawing.current = true;
+            drawDrawing(e);
+        };
+
+        const handleTouchMove = (e) => {
+            if (e.cancelable) e.preventDefault();
+            drawDrawing(e);
+        };
+
+        const handleTouchEnd = (e) => {
+            if (e.cancelable) e.preventDefault();
+            isDrawingDrawing.current = false;
+        };
+
+        canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+        canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+        canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            canvas.removeEventListener('touchstart', handleTouchStart);
+            canvas.removeEventListener('touchmove', handleTouchMove);
+            canvas.removeEventListener('touchend', handleTouchEnd);
+            document.body.style.overflow = '';
+        };
+    }, [drawingImageModalOpen, activeBrushColor]);
+
+    useEffect(() => {
+        if (drawingImageModalOpen && activeDrawItemInfo) {
+            setTimeout(() => {
+                const canvas = drawingCanvasRef.current;
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    const { itemId, type } = activeDrawItemInfo;
+                    const ans = execAnswers[itemId] || {};
+                    const savedImage = type === 'antes' ? ans.photoAntes : ans.photoDepois;
+                    
+                    if (savedImage) {
+                        const img = new Image();
+                        img.onload = () => {
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.drawImage(img, 0, 0);
+                        };
+                        img.src = savedImage;
+                    } else {
+                        drawEquipmentOutline(ctx, canvas.width, canvas.height, type);
+                    }
+                    
+                    if (type === 'antes') {
+                        setActiveBrushColor('#ef4444');
+                    } else {
+                        setActiveBrushColor(ans.statusDepois || '#10b981');
+                    }
+                }
+            }, 100);
+        }
+    }, [drawingImageModalOpen, activeDrawItemInfo]);
+
+    const saveDrawingFromModal = () => {
+        if (drawingCanvasRef.current && activeDrawItemInfo) {
+            const dataUrl = drawingCanvasRef.current.toDataURL();
+            const { itemId, type } = activeDrawItemInfo;
+            const curAns = execAnswers[itemId] || { answer: '', photo: '', comment: '', barcode: '', signature: '', photoAntes: '', photoDepois: '', statusDepois: '#10b981' };
+            
+            if (type === 'antes') {
+                setExecAnswers({
+                    ...execAnswers,
+                    [itemId]: { ...curAns, photoAntes: dataUrl }
+                });
+            } else {
+                setExecAnswers({
+                    ...execAnswers,
+                    [itemId]: { ...curAns, photoDepois: dataUrl, statusDepois: activeBrushColor }
+                });
+            }
+        }
+        setDrawingImageModalOpen(false);
+        setActiveDrawItemInfo(null);
+    };
+
+    const restoreBaseOutline = () => {
+        if (drawingCanvasRef.current && activeDrawItemInfo) {
+            const canvas = drawingCanvasRef.current;
+            const ctx = canvas.getContext('2d');
+            drawEquipmentOutline(ctx, canvas.width, canvas.height, activeDrawItemInfo.type);
+        }
+    };
+
     // Barcode simulation
     const openBarcodeSimulator = (itemId) => {
         setActiveScanItem(itemId);
@@ -513,6 +785,10 @@ export default function ChecklistHub() {
         setActiveScanItem(null);
     };
 
+    const getItemRuleActions = (item) => {
+        return item.ruleActions || (item.ruleAction && item.ruleAction !== 'none' ? [item.ruleAction] : []);
+    };
+
     const handleFinishExecution = async () => {
         // Validate all required fields
         let isMissing = false;
@@ -520,10 +796,10 @@ export default function ChecklistHub() {
         const answersList = [];
 
         for (const item of activeExecution.items) {
-            const ans = execAnswers[item.id] || { answer: '', photo: '', comment: '', barcode: '', signature: '' };
+            const ans = execAnswers[item.id] || { answer: '', photo: '', comment: '', barcode: '', signature: '', photoAntes: '', photoDepois: '', statusDepois: '#10b981' };
             
             // Check mandatory
-            if (item.required && !ans.answer && item.type !== 'assinatura' && item.type !== 'codigo_barras' && item.type !== 'qr_code' && item.type !== 'foto') {
+            if (item.required && !ans.answer && item.type !== 'assinatura' && item.type !== 'codigo_barras' && item.type !== 'qr_code' && item.type !== 'foto' && item.type !== 'antes_depois') {
                 isMissing = true;
                 break;
             }
@@ -540,6 +816,12 @@ export default function ChecklistHub() {
                 break;
             }
 
+            // Antes e Depois checking
+            if (item.type === 'antes_depois' && item.required && (!ans.photoAntes || !ans.photoDepois)) {
+                isMissing = true;
+                break;
+            }
+
             // Check comments mandatory
             if (item.commentRequired && !ans.comment) {
                 alert(`O item "${item.label}" exige comentário descritivo.`);
@@ -547,7 +829,7 @@ export default function ChecklistHub() {
             }
 
             // Check evidence mandatory (e.g. photo)
-            if (item.evidenceRequired && !ans.photo) {
+            if (item.evidenceRequired && !ans.photo && item.type !== 'antes_depois') {
                 alert(`O item "${item.label}" exige anexo de foto/evidência.`);
                 return;
             }
@@ -556,24 +838,42 @@ export default function ChecklistHub() {
             if (item.type === 'numero' && ans.answer) {
                 const num = parseFloat(ans.answer);
                 if (num < item.minVal || num > item.maxVal) {
+                    const itemActions = getItemRuleActions(item);
                     alert(`O item "${item.label}" tem valor fora da faixa permitida (${item.minVal} a ${item.maxVal}).`);
-                    if (item.ruleAction === 'block') {
+                    if (itemActions.includes('block')) {
                         alert(`Bloqueio de Etapa: Execução cancelada pelo limite de segurança do sensor.`);
                         return;
+                    }
+                    if (itemActions.includes('alert')) {
+                        alert(`Alerta de Segurança disparado para o item "${item.label}"!`);
                     }
                 }
             }
 
-            answersList.push({
-                itemId: item.id,
-                label: item.label,
-                type: item.type,
-                answer: item.type === 'assinatura' ? ans.signature : (item.type === 'foto' ? ans.photo : ans.answer),
-                photo: ans.photo,
-                comment: ans.comment,
-                barcode: ans.barcode || ans.answer,
-                weight: item.weight || 1
-            });
+            if (item.type === 'antes_depois') {
+                answersList.push({
+                    itemId: item.id,
+                    label: item.label,
+                    type: item.type,
+                    answer: `Antes: ${ans.photoAntes ? 'Desenho Realizado' : 'Não'} | Depois: ${ans.photoDepois ? 'Desenho Realizado (' + (ans.statusDepois === '#eab308' ? 'Pendente' : 'Resolvido') + ')' : 'Não'}`,
+                    photoAntes: ans.photoAntes,
+                    photoDepois: ans.photoDepois,
+                    statusDepois: ans.statusDepois,
+                    comment: ans.comment,
+                    weight: item.weight || 1
+                });
+            } else {
+                answersList.push({
+                    itemId: item.id,
+                    label: item.label,
+                    type: item.type,
+                    answer: item.type === 'assinatura' ? ans.signature : (item.type === 'foto' ? ans.photo : ans.answer),
+                    photo: ans.photo,
+                    comment: ans.comment,
+                    barcode: ans.barcode || ans.answer,
+                    weight: item.weight || 1
+                });
+            }
         }
 
         if (isMissing) {
@@ -599,21 +899,21 @@ export default function ChecklistHub() {
                 if (num < item.minVal || num > item.maxVal) {
                     isCompliant = false;
                 }
+            } else if (item.type === 'antes_depois' && userAns.statusDepois === '#eab308') {
+                isCompliant = false;
             }
 
             if (isCompliant) {
                 compliantWeight += weight;
             } else {
-                // Rule triggered NC
-                if (item.ruleAction === 'create_nc' || item.type === 'sim_nao') {
+                const itemActions = getItemRuleActions(item);
+                if (itemActions.includes('create_nc') || item.type === 'sim_nao' || item.type === 'antes_depois') {
                     ncTriggered++;
                 }
             }
         });
 
         const conformityScore = totalWeight > 0 ? Math.round((compliantWeight / totalWeight) * 100) : 100;
-        
-        // Threshold for approval is 80% conformity score
         isApproved = conformityScore >= 80;
 
         const newExecution = {
@@ -631,31 +931,34 @@ export default function ChecklistHub() {
         };
 
         if (offlineMode) {
-            // Queue locally
             const updatedQueue = [...offlineQueue, newExecution];
             setKey('checklistOfflineQueue', updatedQueue);
             localStorage.setItem('corellux_offline_queue', JSON.stringify(updatedQueue));
             alert('Checklist salvo localmente na fila offline! Será sincronizado ao reconectar.');
         } else {
-            // Cloud db save
             const res = await DbService.saveChecklistExecution(newExecution);
             if (res.success) {
                 const dbExec = res.data;
 
-                // Rules Engine: Generates Non Conformities
-                if (ncTriggered > 0) {
-                    for (let idx = 0; idx < activeExecution.items.length; idx++) {
-                        const item = activeExecution.items[idx];
-                        const userAns = answersList[idx];
-                        
-                        let failed = false;
-                        if (item.type === 'sim_nao' && userAns.answer === 'Não') failed = true;
-                        if (item.type === 'numero' && userAns.answer) {
-                            const val = parseFloat(userAns.answer);
-                            if (val < item.minVal || val > item.maxVal) failed = true;
-                        }
+                // Rules Engine: Generates Non Conformities & Alerts
+                for (let idx = 0; idx < activeExecution.items.length; idx++) {
+                    const item = activeExecution.items[idx];
+                    const userAns = answersList[idx];
+                    const itemActions = getItemRuleActions(item);
+                    
+                    let failed = false;
+                    if (item.type === 'sim_nao' && userAns.answer === 'Não') failed = true;
+                    if (item.type === 'numero' && userAns.answer) {
+                        const val = parseFloat(userAns.answer);
+                        if (val < item.minVal || val > item.maxVal) failed = true;
+                    }
+                    if (item.type === 'antes_depois' && userAns.statusDepois === '#eab308') failed = true;
 
-                        if (failed) {
+                    if (failed) {
+                        if (itemActions.includes('alert')) {
+                            alert(`Alerta de Desvio Operacional: O item "${item.label}" falhou na execução!`);
+                        }
+                        if (itemActions.includes('create_nc') || item.type === 'sim_nao' || item.type === 'antes_depois') {
                             const ncObj = {
                                 executionId: dbExec.id,
                                 modelName: activeExecution.name,
@@ -1433,39 +1736,64 @@ export default function ChecklistHub() {
                             </div>
                         ) : (
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
-                                {checklistModels.filter(m => m.status === 'Ativo').map(m => (
-                                    <div 
-                                        key={m.id} 
-                                        className="chk-kpi-card" 
-                                        style={{ 
-                                            background: 'rgba(30, 41, 59, 0.25)', 
-                                            border: '1px solid rgba(255,255,255,0.05)', 
-                                            borderRadius: '12px', 
-                                            padding: '1.5rem', 
-                                            display: 'flex', 
-                                            flexDirection: 'column', 
-                                            justifyContent: 'space-between', 
-                                            gap: '1.25rem',
-                                            transition: 'border-color 0.2s',
-                                            cursor: 'default'
-                                        }}
-                                        onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(45, 212, 191, 0.2)'}
-                                        onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'}
-                                    >
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                <span style={{ fontSize: '0.65rem', background: 'rgba(45, 212, 191, 0.1)', color: '#2dd4bf', padding: '2px 8px', borderRadius: '20px', fontWeight: '800', textTransform: 'uppercase' }}>
-                                                    {m.frequency}
-                                                </span>
-                                                <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 'bold' }}>
-                                                    v{m.version || '1.0.0'}
-                                                </span>
+                                {checklistModels.filter(m => m.status === 'Ativo').map(m => {
+                                    const isDueToday = (() => {
+                                        const today = new Date();
+                                        if (m.frequency === 'Diário') return true;
+                                        if (m.frequency === 'Semanal') {
+                                            const daysOfWeek = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+                                            return m.frequencyDay === daysOfWeek[today.getDay()];
+                                        }
+                                        if (m.frequency === 'Mensal') {
+                                            const todayDay = today.getDate();
+                                            const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+                                            if (m.frequencyDay === 'Ultimo dia do mes') return todayDay === lastDay;
+                                            const target = parseInt(m.frequencyDay, 10);
+                                            if (target === todayDay) return true;
+                                            if (target > lastDay && todayDay === lastDay) return true;
+                                            return false;
+                                        }
+                                        return true;
+                                    })();
+
+                                    return (
+                                        <div 
+                                            key={m.id} 
+                                            className="chk-kpi-card" 
+                                            style={{ 
+                                                background: 'rgba(30, 41, 59, 0.25)', 
+                                                border: '1px solid rgba(255,255,255,0.05)', 
+                                                borderRadius: '12px', 
+                                                padding: '1.5rem', 
+                                                display: 'flex', 
+                                                flexDirection: 'column', 
+                                                justifyContent: 'space-between', 
+                                                gap: '1.25rem',
+                                                transition: 'border-color 0.2s',
+                                                cursor: 'default'
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(45, 212, 191, 0.2)'}
+                                            onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'}
+                                        >
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
+                                                    <span style={{ fontSize: '0.65rem', background: 'rgba(45, 212, 191, 0.1)', color: '#2dd4bf', padding: '2px 8px', borderRadius: '20px', fontWeight: '800', textTransform: 'uppercase' }}>
+                                                        {m.frequency}{m.frequencyDay ? ` (${m.frequencyDay})` : ''}
+                                                    </span>
+                                                    {isDueToday && (
+                                                        <span style={{ fontSize: '0.65rem', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '2px 8px', borderRadius: '20px', fontWeight: '800' }}>
+                                                            AGENDA DO DIA
+                                                        </span>
+                                                    )}
+                                                    <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 'bold' }}>
+                                                        v{m.version || '1.0.0'}
+                                                    </span>
+                                                </div>
+                                                <h3 style={{ fontSize: '1.1rem', color: '#fff', margin: '0.2rem 0 0', fontWeight: '800', lineHeight: '1.3' }}>{m.name}</h3>
+                                                <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0, display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden', height: '2.24rem' }}>
+                                                    {m.description || 'Nenhuma descrição fornecida.'}
+                                                </p>
                                             </div>
-                                            <h3 style={{ fontSize: '1.1rem', color: '#fff', margin: '0.2rem 0 0', fontWeight: '800', lineHeight: '1.3' }}>{m.name}</h3>
-                                            <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0, display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden', height: '2.24rem' }}>
-                                                {m.description || 'Nenhuma descrição fornecida.'}
-                                            </p>
-                                        </div>
 
                                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '1rem', marginTop: '0.5rem' }}>
                                             <div style={{ display: 'flex', gap: '1rem' }}>
@@ -1500,7 +1828,8 @@ export default function ChecklistHub() {
                                             </button>
                                         </div>
                                     </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </>
@@ -1514,10 +1843,9 @@ export default function ChecklistHub() {
                             <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 'bold' }}>Filtros Analíticos:</span>
                             <select className="chk-filter-select" value={filterSector} onChange={(e) => setFilterSector(e.target.value)}>
                                 <option value="TODOS">Setor: Todos</option>
-                                <option value="COZINHA">COZINHA</option>
-                                <option value="SALÃO">SALÃO</option>
-                                <option value="ESTOQUE">ESTOQUE</option>
-                                <option value="ADMINISTRAÇÃO">ADMINISTRAÇÃO</option>
+                                {availableSectors.map(sec => (
+                                    <option key={sec.id} value={sec.name}>{sec.name}</option>
+                                ))}
                             </select>
                             <select className="chk-filter-select" value={filterPeriod} onChange={(e) => setFilterPeriod(e.target.value)}>
                                 <option value="TODOS">Período: Todos</option>
@@ -1750,6 +2078,9 @@ export default function ChecklistHub() {
                             <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('foto')} type="button">
                                 <Camera size={13} style={{ color: '#f87171' }} /> Anexo de Foto
                             </button>
+                            <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('antes_depois')} type="button">
+                                <Sliders size={13} style={{ color: '#f97316' }} /> Antes e Depois (Desenho)
+                            </button>
                             
                             <div style={{ marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem', display: 'flex', gap: '0.5rem' }}>
                                 <button className="btn-tool" style={{ flex: 1, padding: '0.6rem' }} onClick={() => setTab('templates')}>Cancelar</button>
@@ -1775,10 +2106,9 @@ export default function ChecklistHub() {
                                     <div className="composer-field-group">
                                         <label>Setor Destinado</label>
                                         <select className="input-title" value={builderSector} onChange={(e) => setBuilderSector(e.target.value)} style={{ padding: '0.5rem 0.8rem', fontSize: '0.9rem', cursor: 'pointer' }}>
-                                            <option value="COZINHA">COZINHA</option>
-                                            <option value="SALÃO">SALÃO</option>
-                                            <option value="ESTOQUE">ESTOQUE</option>
-                                            <option value="ADMINISTRAÇÃO">ADMINISTRAÇÃO</option>
+                                            {availableSectors.map(sec => (
+                                                <option key={sec.id} value={sec.name}>{sec.name}</option>
+                                            ))}
                                         </select>
                                     </div>
                                     <div className="composer-field-group">
@@ -1788,11 +2118,17 @@ export default function ChecklistHub() {
                                             <option value="Segurança">Segurança</option>
                                             <option value="Recebimento">Recebimento</option>
                                             <option value="Manutenção">Manutenção</option>
+                                            <option value="Abertura">Abertura</option>
+                                            <option value="Encerramento">Encerramento</option>
+                                            <option value="Fechamento estabelecimento">Fechamento estabelecimento</option>
                                         </select>
                                     </div>
                                     <div className="composer-field-group">
                                         <label>Periodicidade</label>
-                                        <select className="input-title" value={builderFrequency} onChange={(e) => setBuilderFrequency(e.target.value)} style={{ padding: '0.5rem 0.8rem', fontSize: '0.9rem', cursor: 'pointer' }}>
+                                        <select className="input-title" value={builderFrequency} onChange={(e) => {
+                                            setBuilderFrequency(e.target.value);
+                                            setBuilderFrequencyDay(''); // reset day on frequency change
+                                        }} style={{ padding: '0.5rem 0.8rem', fontSize: '0.9rem', cursor: 'pointer' }}>
                                             <option value="Diário">Diário</option>
                                             <option value="Semanal">Semanal</option>
                                             <option value="Mensal">Mensal</option>
@@ -1800,6 +2136,45 @@ export default function ChecklistHub() {
                                             <option value="Sob demanda">Sob Demanda</option>
                                         </select>
                                     </div>
+
+                                    {builderFrequency === 'Semanal' && (
+                                        <div className="composer-field-group">
+                                            <label>Dia da Semana Recorrente</label>
+                                            <select 
+                                                className="input-title" 
+                                                value={builderFrequencyDay} 
+                                                onChange={(e) => setBuilderFrequencyDay(e.target.value)} 
+                                                style={{ padding: '0.5rem 0.8rem', fontSize: '0.9rem', cursor: 'pointer' }}
+                                            >
+                                                <option value="">Selecione...</option>
+                                                <option value="Segunda-feira">Segunda-feira</option>
+                                                <option value="Terça-feira">Terça-feira</option>
+                                                <option value="Quarta-feira">Quarta-feira</option>
+                                                <option value="Quinta-feira">Quinta-feira</option>
+                                                <option value="Sexta-feira">Sexta-feira</option>
+                                                <option value="Sábado">Sábado</option>
+                                                <option value="Domingo">Domingo</option>
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    {builderFrequency === 'Mensal' && (
+                                        <div className="composer-field-group">
+                                            <label>Dia do Mês Recorrente</label>
+                                            <select 
+                                                className="input-title" 
+                                                value={builderFrequencyDay} 
+                                                onChange={(e) => setBuilderFrequencyDay(e.target.value)} 
+                                                style={{ padding: '0.5rem 0.8rem', fontSize: '0.9rem', cursor: 'pointer' }}
+                                            >
+                                                <option value="">Selecione...</option>
+                                                {Array.from({ length: 31 }, (_, i) => String(i + 1)).map(day => (
+                                                    <option key={day} value={day}>Dia {day}</option>
+                                                ))}
+                                                <option value="Ultimo dia do mes">Último dia do mês</option>
+                                            </select>
+                                        </div>
+                                    )}
                                     <div className="composer-field-group">
                                         <label>Versão</label>
                                         <input type="text" className="input-title" placeholder="EX: 1.0.0" value={builderVersion} onChange={(e) => setBuilderVersion(e.target.value)} style={{ padding: '0.5rem 0.8rem', fontSize: '0.9rem' }} />
@@ -1818,7 +2193,42 @@ export default function ChecklistHub() {
                                 </div>
                                 <div className="composer-field-group" style={{ marginTop: '1rem' }}>
                                     <label>Descrição detalhada do Checklist</label>
-                                    <textarea className="input-title textarea-exec-obs" placeholder="Instruções para o executor do checklist..." value={builderDescription} onChange={(e) => setBuilderDescription(e.target.value)} style={{ padding: '0.5rem 0.8rem', fontSize: '0.9rem' }} />
+                                    <textarea className="input-title textarea-exec-obs" placeholder="Instruções para o executor do checklist..." value={builderDescription} onChange={(e) => setBuilderDescription(e.target.value)} style={{ padding: '0.5rem 0.8rem', fontSize: '0.9rem', marginBottom: '0.5rem' }} />
+                                    
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                                        <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 'bold' }}>Imagens de Instrução (Exibidas na Execução):</span>
+                                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                            {builderDescImages.map((img, idx) => (
+                                                <div key={idx} style={{ position: 'relative', width: '60px', height: '60px', borderRadius: '4px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                    <img src={img} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Instr" />
+                                                    <button 
+                                                        onClick={() => setBuilderDescImages(builderDescImages.filter((_, i) => i !== idx))}
+                                                        style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(239, 68, 68, 0.8)', border: 'none', color: '#fff', borderRadius: '50%', width: '16px', height: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '10px' }}
+                                                        type="button"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            ))}
+                                            <button 
+                                                className="btn-tool" 
+                                                onClick={() => {
+                                                    const mockUrls = [
+                                                        'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=400&q=80',
+                                                        'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?auto=format&fit=crop&w=400&q=80',
+                                                        'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?auto=format&fit=crop&w=400&q=80'
+                                                    ];
+                                                    const url = prompt('Insira a URL da imagem de referência (ou deixe em branco para usar uma imagem de exemplo):');
+                                                    const selectedUrl = url ? url.trim() : mockUrls[builderDescImages.length % mockUrls.length];
+                                                    setBuilderDescImages([...builderDescImages, selectedUrl]);
+                                                }}
+                                                style={{ width: '60px', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px dashed rgba(255,255,255,0.15)', background: 'transparent', cursor: 'pointer', color: '#cbd5e1' }}
+                                                type="button"
+                                            >
+                                                <Plus size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1835,10 +2245,31 @@ export default function ChecklistHub() {
                                     builderQuestions.map((q, idx) => (
                                         <div key={q.id} className="builder-item-card">
                                             <div className="builder-item-header">
-                                                <span className="builder-type-pill">{q.type === 'sim_nao' ? 'Sim / Não' : q.type}</span>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                    <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 'bold' }}>Tipo:</span>
+                                                    <select 
+                                                        className="chk-filter-select"
+                                                        value={q.type}
+                                                        onChange={(e) => handleUpdateBuilderQuestion(q.id, 'type', e.target.value)}
+                                                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', fontWeight: 'bold', color: '#2dd4bf', background: 'rgba(45, 212, 191, 0.1)', borderColor: 'rgba(45, 212, 191, 0.2)' }}
+                                                    >
+                                                        <option value="sim_nao">Sim / Não (Conformidade)</option>
+                                                        <option value="texto">Resposta de Texto</option>
+                                                        <option value="numero">Resposta Numérica</option>
+                                                        <option value="multipla_escolha">Múltipla Escolha (Checkboxes)</option>
+                                                        <option value="data">Campo de Data</option>
+                                                        <option value="hora">Campo de Hora</option>
+                                                        <option value="assinatura">Assinatura Digital</option>
+                                                        <option value="codigo_barras">Cód. Barras</option>
+                                                        <option value="qr_code">QR Code</option>
+                                                        <option value="foto">Anexo de Foto</option>
+                                                        <option value="antes_depois">Antes e Depois (Desenho)</option>
+                                                    </select>
+                                                </div>
                                                 <button 
                                                     style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer' }}
                                                     onClick={() => handleRemoveBuilderQuestion(q.id)}
+                                                    type="button"
                                                 >
                                                     <Trash2 size={14} />
                                                 </button>
@@ -1870,7 +2301,7 @@ export default function ChecklistHub() {
                                                 </div>
                                             )}
 
-                                            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+                                            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                                                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', cursor: 'pointer' }}>
                                                     <input type="checkbox" checked={q.required} onChange={(e) => handleUpdateBuilderQuestion(q.id, 'required', e.target.checked)} style={{ accentColor: '#2dd4bf' }} /> Obrigatório
                                                 </label>
@@ -1882,19 +2313,35 @@ export default function ChecklistHub() {
                                                 </label>
 
                                                 {/* Rules settings */}
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                                    <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Ação se Falhar:</span>
-                                                    <select 
-                                                        className="chk-filter-select"
-                                                        value={q.ruleAction}
-                                                        onChange={(e) => handleUpdateBuilderQuestion(q.id, 'ruleAction', e.target.value)}
-                                                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                                                    >
-                                                        <option value="none">Nenhuma</option>
-                                                        <option value="create_nc">Criar Não Conformidade</option>
-                                                        <option value="alert">Gerar Alerta</option>
-                                                        <option value="block">Bloquear Etapa</option>
-                                                    </select>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'bold' }}>Ações se Falhar:</span>
+                                                    <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+                                                        {[{ key: 'alert', label: 'Alerta' }, { key: 'create_nc', label: 'Criar NC' }, { key: 'block', label: 'Bloquear Etapa' }].map(act => {
+                                                            const activeActions = q.ruleActions || (q.ruleAction && q.ruleAction !== 'none' ? [q.ruleAction] : []);
+                                                            const isChecked = activeActions.includes(act.key);
+                                                            const handleCheckboxChange = (checked) => {
+                                                                let newActions = [...activeActions];
+                                                                if (checked) {
+                                                                    if (!newActions.includes(act.key)) newActions.push(act.key);
+                                                                } else {
+                                                                    newActions = newActions.filter(x => x !== act.key);
+                                                                }
+                                                                handleUpdateBuilderQuestion(q.id, 'ruleActions', newActions);
+                                                                handleUpdateBuilderQuestion(q.id, 'ruleAction', newActions.length > 0 ? newActions[0] : 'none');
+                                                            };
+                                                            return (
+                                                                <label key={act.key} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer', userSelect: 'none' }}>
+                                                                    <input 
+                                                                        type="checkbox" 
+                                                                        checked={isChecked} 
+                                                                        onChange={(e) => handleCheckboxChange(e.target.checked)} 
+                                                                        style={{ accentColor: '#ef4444' }} 
+                                                                    />
+                                                                    {act.label}
+                                                                </label>
+                                                            );
+                                                        })}
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -1938,6 +2385,23 @@ export default function ChecklistHub() {
                                 <span style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 600 }}>{gpsCoordinates}</span>
                             </div>
                         </div>
+
+                        {/* General Description & Reference Images */}
+                        {activeExecution.description && (
+                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+                                <span style={{ fontSize: '0.72rem', color: '#a855f7', fontWeight: 800, textTransform: 'uppercase', display: 'block', marginBottom: '0.3rem' }}>Instruções de Execução</span>
+                                <p style={{ margin: 0, fontSize: '0.88rem', color: '#cbd5e1', whiteSpace: 'pre-wrap' }}>{activeExecution.description}</p>
+                                {activeExecution.descriptionImages && activeExecution.descriptionImages.length > 0 && (
+                                    <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.8rem', flexWrap: 'wrap' }}>
+                                        {activeExecution.descriptionImages.map((imgUrl, iIdx) => (
+                                            <div key={iIdx} style={{ width: '80px', height: '80px', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.1)', background: '#000', position: 'relative' }}>
+                                                <img src={imgUrl} alt={`Instrução ${iIdx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Questions render */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
@@ -2108,7 +2572,7 @@ export default function ChecklistHub() {
                                         )}
 
                                         {/* Evidences image photo upload simulator */}
-                                        {(item.type === 'foto' || item.evidenceRequired) && (
+                                        {(item.type === 'foto' || (item.evidenceRequired && item.type !== 'antes_depois')) && (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '0.5rem' }}>
                                                 <label style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 600 }}>
                                                     {item.evidenceRequired ? 'Evidência Fotográfica Obrigatória *' : 'Anexo de Evidência Fotográfica'}
@@ -2144,6 +2608,65 @@ export default function ChecklistHub() {
                                                     </button>
                                                 </div>
                                                 {ans.photo && <span style={{ color: '#10b981', fontSize: '0.78rem' }}>✓ Foto anexada: {ans.photo}</span>}
+                                            </div>
+                                        )}
+
+                                        {/* Antes e Depois Drawing type */}
+                                        {item.type === 'antes_depois' && (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', flexWrap: 'wrap' }}>
+                                                    {/* Card Antes */}
+                                                    <div style={{ background: 'rgba(239, 68, 68, 0.03)', border: '1px solid rgba(239, 68, 68, 0.1)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.8rem' }}>
+                                                        <span style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: 'bold', textTransform: 'uppercase' }}>Fase 1: Antes (Anomalias)</span>
+                                                        {ans.photoAntes ? (
+                                                            <div style={{ width: '220px', height: '110px', background: '#000', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                                                <img src={ans.photoAntes} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Antes Preview" />
+                                                            </div>
+                                                        ) : (
+                                                            <div style={{ width: '220px', height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', color: '#64748b', fontSize: '0.78rem' }}>
+                                                                Nenhum desenho realizado
+                                                            </div>
+                                                        )}
+                                                        <button 
+                                                            className="btn-tool" 
+                                                            style={{ borderColor: 'rgba(239, 68, 68, 0.3)', color: '#ef4444', fontSize: '0.78rem', padding: '0.4rem 1rem' }}
+                                                            onClick={() => {
+                                                                setActiveDrawItemInfo({ itemId: item.id, type: 'antes' });
+                                                                setDrawingImageModalOpen(true);
+                                                            }}
+                                                            type="button"
+                                                        >
+                                                            <Camera size={13} /> {ans.photoAntes ? 'Refazer Desenho' : 'Desenhar Anomalia'}
+                                                        </button>
+                                                    </div>
+
+                                                    {/* Card Depois */}
+                                                    <div style={{ background: ans.statusDepois === '#eab308' ? 'rgba(234, 179, 8, 0.03)' : 'rgba(16, 185, 129, 0.03)', border: ans.statusDepois === '#eab308' ? '1px solid rgba(234, 179, 8, 0.1)' : '1px solid rgba(16, 185, 129, 0.1)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.8rem' }}>
+                                                        <span style={{ fontSize: '0.8rem', color: ans.statusDepois === '#eab308' ? '#eab308' : '#10b981', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                                                            Fase 2: Depois ({ans.statusDepois === '#eab308' ? 'Pendente' : 'Resolvido'})
+                                                        </span>
+                                                        {ans.photoDepois ? (
+                                                            <div style={{ width: '220px', height: '110px', background: '#000', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+                                                                <img src={ans.photoDepois} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Depois Preview" />
+                                                            </div>
+                                                        ) : (
+                                                            <div style={{ width: '220px', height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', color: '#64748b', fontSize: '0.78rem' }}>
+                                                                Nenhum desenho realizado
+                                                            </div>
+                                                        )}
+                                                        <button 
+                                                            className="btn-tool" 
+                                                            style={{ borderColor: ans.statusDepois === '#eab308' ? 'rgba(234, 179, 8, 0.3)' : 'rgba(16, 185, 129, 0.3)', color: ans.statusDepois === '#eab308' ? '#eab308' : '#10b981', fontSize: '0.78rem', padding: '0.4rem 1rem' }}
+                                                            onClick={() => {
+                                                                setActiveDrawItemInfo({ itemId: item.id, type: 'depois' });
+                                                                setDrawingImageModalOpen(true);
+                                                            }}
+                                                            type="button"
+                                                        >
+                                                            <Camera size={13} /> {ans.photoDepois ? 'Refazer Desenho' : 'Desenhar Correção'}
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         )}
 
@@ -2492,6 +3015,15 @@ export default function ChecklistHub() {
                                 <strong>Setor:</strong> {activeExecutionDetail.sector}<br />
                                 <strong>Executor:</strong> {activeExecutionDetail.executor}<br />
                                 <strong>Data Execução:</strong> {new Date(activeExecutionDetail.endTime).toLocaleString('pt-BR')}<br />
+                                <strong>Horário de Início:</strong> {activeExecutionDetail.startTime ? new Date(activeExecutionDetail.startTime).toLocaleTimeString('pt-BR') : 'N/A'}<br />
+                                <strong>Horário de Término:</strong> {activeExecutionDetail.endTime ? new Date(activeExecutionDetail.endTime).toLocaleTimeString('pt-BR') : 'N/A'}<br />
+                                <strong>Duração Total:</strong> {(() => {
+                                    if (!activeExecutionDetail.startTime || !activeExecutionDetail.endTime) return 'N/A';
+                                    const diffMs = new Date(activeExecutionDetail.endTime) - new Date(activeExecutionDetail.startTime);
+                                    const diffMins = Math.floor(diffMs / 60000);
+                                    const diffSecs = Math.floor((diffMs % 60000) / 1000);
+                                    return `${diffMins}m ${diffSecs}s`;
+                                })()}<br />
                                 <strong>Localização GPS:</strong> {activeExecutionDetail.gps}<br />
                                 <strong>Conformidade:</strong> <span style={{ color: activeExecutionDetail.status === 'Aprovado' ? '#10b981' : '#ef4444', fontWeight: 'bold' }}>{activeExecutionDetail.conformity}% ({activeExecutionDetail.status})</span>
                             </div>
@@ -2505,7 +3037,25 @@ export default function ChecklistHub() {
                                             <div style={{ color: '#2dd4bf', fontSize: '0.8rem', marginTop: '0.2rem' }}>
                                                 Resposta: {ans.type === 'assinatura' ? '[Assinatura Salva]' : ans.answer}
                                             </div>
-                                            {ans.photo && <div style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>Foto: {ans.photo}</div>}
+                                            {ans.photo && ans.type !== 'antes_depois' && <div style={{ fontSize: '0.75rem', color: '#cbd5e1' }}>Foto: {ans.photo}</div>}
+                                            {ans.type === 'antes_depois' && (
+                                                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                                                    {ans.photoAntes && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                            <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 'bold' }}>ANTES (Defeitos):</span>
+                                                            <img src={ans.photoAntes} style={{ width: '180px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)' }} alt="Antes" />
+                                                        </div>
+                                                    )}
+                                                    {ans.photoDepois && (
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                                            <span style={{ fontSize: '0.7rem', color: ans.statusDepois === '#eab308' ? '#eab308' : '#10b981', fontWeight: 'bold' }}>
+                                                                DEPOIS ({ans.statusDepois === '#eab308' ? 'Pendente' : 'Resolvido'}):
+                                                            </span>
+                                                            <img src={ans.photoDepois} style={{ width: '180px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)' }} alt="Depois" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
                                             {ans.comment && <div style={{ fontSize: '0.75rem', color: '#facc15' }}>Comentário: {ans.comment}</div>}
                                         </div>
                                     ))}
@@ -2551,6 +3101,99 @@ export default function ChecklistHub() {
                     </div>
                 </div>
             </div>
+
+            {/* ANTES E DEPOIS DRAWING MODAL */}
+            {drawingImageModalOpen && activeDrawItemInfo && (
+                <div className="modal-overlay" style={{ zIndex: 12000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', touchAction: 'none' }}>
+                    <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '600px', width: '100%', textAlign: 'center', touchAction: 'none' }}>
+                        <h3 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.2rem', fontWeight: 800 }}>
+                            {activeDrawItemInfo.type === 'antes' ? 'DESENHAR ANOMALIAS (ANTES)' : 'DESENHAR CORREÇÃO (DEPOIS)'}
+                        </h3>
+                        <p style={{ margin: '0 0 1.25rem 0', fontSize: '0.82rem', color: '#94a3b8' }}>
+                            {activeDrawItemInfo.type === 'antes' 
+                                ? 'Pincel vermelho travado: marque na imagem os pontos de vazamento, sujeira ou defeitos.' 
+                                : 'Escolha a cor do pincel e o status da correção para desenhar.'}
+                        </p>
+                        
+                        {activeDrawItemInfo.type === 'depois' && (
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '1.25rem' }}>
+                                <button 
+                                    className={`btn-badge-btn ${activeBrushColor === '#10b981' ? 'online' : ''}`}
+                                    onClick={() => setActiveBrushColor('#10b981')}
+                                    style={{ 
+                                        padding: '0.5rem 1.25rem', 
+                                        borderRadius: '8px', 
+                                        background: activeBrushColor === '#10b981' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(255,255,255,0.02)',
+                                        border: `1px solid ${activeBrushColor === '#10b981' ? '#10b981' : 'rgba(255,255,255,0.08)'}`,
+                                        color: activeBrushColor === '#10b981' ? '#10b981' : '#94a3b8',
+                                        fontWeight: 'bold',
+                                        fontSize: '0.8rem',
+                                        cursor: 'pointer'
+                                    }}
+                                    type="button"
+                                >
+                                    <span style={{ display: 'inline-block', width: '10px', height: '10px', background: '#10b981', borderRadius: '50%', marginRight: '0.5rem' }}></span>
+                                    RESOLVIDO (Pincel Verde)
+                                </button>
+                                <button 
+                                    className={`btn-badge-btn ${activeBrushColor === '#eab308' ? 'pending' : ''}`}
+                                    onClick={() => setActiveBrushColor('#eab308')}
+                                    style={{ 
+                                        padding: '0.5rem 1.25rem', 
+                                        borderRadius: '8px', 
+                                        background: activeBrushColor === '#eab308' ? 'rgba(234, 179, 8, 0.15)' : 'rgba(255,255,255,0.02)',
+                                        border: `1px solid ${activeBrushColor === '#eab308' ? '#eab308' : 'rgba(255,255,255,0.08)'}`,
+                                        color: activeBrushColor === '#eab308' ? '#eab308' : '#94a3b8',
+                                        fontWeight: 'bold',
+                                        fontSize: '0.8rem',
+                                        cursor: 'pointer'
+                                    }}
+                                    type="button"
+                                >
+                                    <span style={{ display: 'inline-block', width: '10px', height: '10px', background: '#eab308', borderRadius: '50%', marginRight: '0.5rem' }}></span>
+                                    PENDENTE (Pincel Amarelo)
+                                </button>
+                            </div>
+                        )}
+
+                        <div style={{ background: '#000', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem', padding: '10px', touchAction: 'none' }}>
+                            <canvas 
+                                ref={drawingCanvasRef}
+                                width="520"
+                                height="260"
+                                style={{ 
+                                    background: '#04060a', 
+                                    border: '2px dashed rgba(255,255,255,0.1)', 
+                                    borderRadius: '8px',
+                                    cursor: 'crosshair',
+                                    touchAction: 'none',
+                                    maxWidth: '100%'
+                                }}
+                                onMouseDown={startDrawingDrawing}
+                                onMouseMove={drawDrawing}
+                                onMouseUp={stopDrawingDrawing}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button className="btn-tool" style={{ flex: 1 }} onClick={restoreBaseOutline} type="button">Restaurar Base</button>
+                            <button className="btn-tool" style={{ flex: 1 }} onClick={() => {
+                                if (drawingCanvasRef.current) {
+                                    const canvas = drawingCanvasRef.current;
+                                    const ctx = canvas.getContext('2d');
+                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                }
+                            }} type="button">Limpar Tudo</button>
+                            <button className="btn-tool" style={{ flex: 1, color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.2)' }} onClick={() => {
+                                setDrawingImageModalOpen(false);
+                                setActiveDrawItemInfo(null);
+                            }} type="button">Cancelar</button>
+                            <button className="btn-send-aviso" style={{ flex: 1 }} onClick={saveDrawingFromModal} type="button">
+                                Confirmar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
