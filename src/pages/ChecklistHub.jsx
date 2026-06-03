@@ -91,7 +91,8 @@ export default function ChecklistHub() {
     // Execução Local States
     const [execAnswers, setExecAnswers] = useState({}); // { [itemId]: { answer: '', photo: '', comment: '', barcode: '', signature: '' } }
     const [gpsCoordinates, setGpsCoordinates] = useState('Buscando localização...');
-    const [signatureData, setSignatureData] = useState(null);
+    const [isSignaturePopupOpen, setIsSignaturePopupOpen] = useState(false);
+    const [activeSignatureItemId, setActiveSignatureItemId] = useState(null);
     const [execStartTime, setExecStartTime] = useState(null);
     
     // Barcode Scanner Simulator State
@@ -356,7 +357,6 @@ export default function ChecklistHub() {
         setActiveExecution(model);
         setExecStartTime(new Date().toISOString());
         setExecAnswers({});
-        setSignatureData(null);
         getGeoLocation();
         setTab('execution');
     };
@@ -371,21 +371,54 @@ export default function ChecklistHub() {
     };
 
     // Signature Pad
+    const openSignaturePopup = (itemId) => {
+        setActiveSignatureItemId(itemId);
+        setIsSignaturePopupOpen(true);
+        setTimeout(() => {
+            const canvas = canvasRef.current;
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                const curAns = execAnswers[itemId] || { answer: '', photo: '', comment: '', barcode: '', signature: '' };
+                if (curAns.signature) {
+                    const img = new Image();
+                    img.onload = () => {
+                        ctx.drawImage(img, 0, 0);
+                    };
+                    img.src = curAns.signature;
+                }
+            }
+        }, 50);
+    };
+
+    const saveSignatureFromPopup = () => {
+        if (canvasRef.current) {
+            const dataUrl = canvasRef.current.toDataURL();
+            if (activeSignatureItemId) {
+                const curAns = execAnswers[activeSignatureItemId] || { answer: '', photo: '', comment: '', barcode: '', signature: '' };
+                setExecAnswers({
+                    ...execAnswers,
+                    [activeSignatureItemId]: { ...curAns, answer: dataUrl, signature: dataUrl }
+                });
+            }
+        }
+        setIsSignaturePopupOpen(false);
+        setActiveSignatureItemId(null);
+    };
+
     const startDrawing = (e) => {
+        if (e.cancelable) e.preventDefault();
         isDrawing.current = true;
         draw(e);
     };
 
     const stopDrawing = () => {
         isDrawing.current = false;
-        if (canvasRef.current) {
-            const dataUrl = canvasRef.current.toDataURL();
-            setSignatureData(dataUrl);
-        }
     };
 
     const draw = (e) => {
         if (!isDrawing.current) return;
+        if (e.cancelable) e.preventDefault();
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -398,10 +431,15 @@ export default function ChecklistHub() {
             clientY = e.touches[0].clientY;
         }
 
-        const x = clientX - rect.left;
-        const y = clientY - rect.top;
+        const rectWidth = rect.width || canvas.width;
+        const rectHeight = rect.height || canvas.height;
+        const scaleX = canvas.width / rectWidth;
+        const scaleY = canvas.height / rectHeight;
 
-        ctx.lineWidth = 2.5;
+        const x = (clientX - rect.left) * scaleX;
+        const y = (clientY - rect.top) * scaleY;
+
+        ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         ctx.strokeStyle = '#38bdf8'; // Sky blue neon brush
 
@@ -419,8 +457,43 @@ export default function ChecklistHub() {
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        setSignatureData(null);
     };
+
+    // React Effect to bind non-passive Touch events to Canvas
+    useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas || !isSignaturePopupOpen) return;
+
+        const handleTouchStart = (e) => {
+            if (e.cancelable) e.preventDefault();
+            isDrawing.current = true;
+            draw(e);
+        };
+
+        const handleTouchMove = (e) => {
+            if (e.cancelable) e.preventDefault();
+            draw(e);
+        };
+
+        const handleTouchEnd = (e) => {
+            if (e.cancelable) e.preventDefault();
+            isDrawing.current = false;
+        };
+
+        canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+        canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+        canvas.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+        // Scroll lock body
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            canvas.removeEventListener('touchstart', handleTouchStart);
+            canvas.removeEventListener('touchmove', handleTouchMove);
+            canvas.removeEventListener('touchend', handleTouchEnd);
+            document.body.style.overflow = '';
+        };
+    }, [isSignaturePopupOpen]);
 
     // Barcode simulation
     const openBarcodeSimulator = (itemId) => {
@@ -455,7 +528,7 @@ export default function ChecklistHub() {
             }
 
             // Canvas signatures checking
-            if (item.type === 'assinatura' && item.required && !signatureData) {
+            if (item.type === 'assinatura' && item.required && !ans.signature) {
                 isMissing = true;
                 break;
             }
@@ -488,7 +561,7 @@ export default function ChecklistHub() {
                 itemId: item.id,
                 label: item.label,
                 type: item.type,
-                answer: item.type === 'assinatura' ? signatureData : ans.answer,
+                answer: item.type === 'assinatura' ? ans.signature : ans.answer,
                 photo: ans.photo,
                 comment: ans.comment,
                 barcode: ans.barcode || ans.answer,
@@ -1900,23 +1973,31 @@ export default function ChecklistHub() {
 
                                         {/* Signature Canvas type */}
                                         {item.type === 'assinatura' && (
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                                                <canvas 
-                                                    ref={canvasRef}
-                                                    width="400"
-                                                    height="120"
-                                                    className="chk-canvas-pad"
-                                                    onMouseDown={startDrawing}
-                                                    onMouseMove={draw}
-                                                    onMouseUp={stopDrawing}
-                                                    onTouchStart={startDrawing}
-                                                    onTouchMove={draw}
-                                                    onTouchEnd={stopDrawing}
-                                                />
-                                                <div style={{ display: 'flex', gap: '0.8rem' }}>
-                                                    <button className="btn-tool" onClick={clearSignature} style={{ padding: '0.4rem 1rem' }}>Limpar Assinatura</button>
-                                                    {signatureData && <span style={{ color: '#10b981', fontSize: '0.78rem', alignSelf: 'center' }}>✓ Assinado</span>}
-                                                </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', width: 'fit-content' }}>
+                                                {ans.signature ? (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                        <div style={{ background: '#090d16', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '0.5rem', width: '220px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                            <img src={ans.signature} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} alt="Assinatura" />
+                                                        </div>
+                                                        <div style={{ display: 'flex', gap: '0.8rem' }}>
+                                                            <button className="btn-tool" onClick={() => openSignaturePopup(item.id)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }} type="button">Alterar</button>
+                                                            <button className="btn-tool" style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.15)' }} onClick={() => {
+                                                                const curAns = execAnswers[item.id] || { answer: '', photo: '', comment: '', barcode: '', signature: '' };
+                                                                setExecAnswers({ ...execAnswers, [item.id]: { ...curAns, answer: '', signature: '' } });
+                                                            }} type="button">Limpar</button>
+                                                            <span style={{ color: '#10b981', fontSize: '0.75rem', alignSelf: 'center', fontWeight: 'bold' }}>✓ Assinado</span>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <button 
+                                                        className="btn-send-aviso" 
+                                                        onClick={() => openSignaturePopup(item.id)}
+                                                        style={{ padding: '0.6rem 1.2rem', fontSize: '0.82rem', width: 'fit-content' }}
+                                                        type="button"
+                                                    >
+                                                        <Signature size={15} /> CLIQUE PARA ASSINAR
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
 
@@ -2329,6 +2410,42 @@ export default function ChecklistHub() {
                     </div>
                 </div>
             )}
+
+            {/* SIGNATURE POPUP MODAL */}
+            <div className="modal-overlay" style={{ display: isSignaturePopupOpen ? 'flex' : 'none', zIndex: 12000, alignItems: 'center', justifyContent: 'center', padding: '1.5rem', touchAction: 'none' }}>
+                <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '600px', width: '100%', textAlign: 'center', touchAction: 'none' }}>
+                    <h3 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.2rem', fontWeight: 800 }}>ASSINATURA DIGITAL</h3>
+                    <p style={{ margin: '0 0 1.25rem 0', fontSize: '0.82rem', color: '#94a3b8' }}>Use o dedo na tela touchscreen ou o mouse para assinar.</p>
+                    <div style={{ background: '#000', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem', padding: '10px', touchAction: 'none' }}>
+                        <canvas 
+                            ref={canvasRef}
+                            width="520"
+                            height="240"
+                            style={{ 
+                                background: '#04060a', 
+                                border: '2px dashed rgba(255,255,255,0.1)', 
+                                borderRadius: '8px',
+                                cursor: 'crosshair',
+                                touchAction: 'none',
+                                maxWidth: '100%'
+                            }}
+                            onMouseDown={startDrawing}
+                            onMouseMove={draw}
+                            onMouseUp={stopDrawing}
+                        />
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className="btn-tool" style={{ flex: 1 }} onClick={clearSignature} type="button">Limpar</button>
+                        <button className="btn-tool" style={{ flex: 1, color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.2)' }} onClick={() => {
+                            setIsSignaturePopupOpen(false);
+                            setActiveSignatureItemId(null);
+                        }} type="button">Cancelar</button>
+                        <button className="btn-send-aviso" style={{ flex: 1 }} onClick={saveSignatureFromPopup} type="button">
+                            Confirmar
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
