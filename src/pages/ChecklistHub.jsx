@@ -77,6 +77,11 @@ export default function ChecklistHub() {
     const offlineMode = state.checklistOfflineMode || false;
     const offlineQueue = state.checklistOfflineQueue || [];
     
+    const currentUser = state.currentUser || { name: 'Sistema', id: 0, role: 'Gerente', permissions: {} };
+    const appUsers = state.appUsers || [];
+    const checklistModels = state.checklistModels || [];
+    const checklistExecutions = state.checklistExecutions || [];
+
     // UI Local States
     const [theme, setTheme] = useState('dark');
     const [activeExecution, setActiveExecution] = useState(null);
@@ -477,11 +482,6 @@ export default function ChecklistHub() {
     const setTab = (tabName) => {
         setKey('checklistActiveTab', tabName);
     };
-
-    const currentUser = state.currentUser || { name: 'Sistema', id: 0, role: 'Gerente', permissions: {} };
-    const appUsers = state.appUsers || [];
-    const checklistModels = state.checklistModels || [];
-    const checklistExecutions = state.checklistExecutions || [];
 
     // Verificação de permissões do usuário logado
     const hasTabPermission = (permType) => {
