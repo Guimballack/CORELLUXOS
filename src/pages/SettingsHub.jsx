@@ -4365,172 +4365,57 @@ export default function SettingsHub() {
                 MODAL: EDITAR POSIÇÕES DE CÉLULA ESPECÍFICA
             ============================================= */}
             {editCellModal && createPortal(
-                <div className="pin-modal-overlay active" style={{ zIndex: 10500, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(12px)', background: 'rgba(5, 8, 16, 0.85)' }}>
-                    <div className="pin-modal-card" style={{ maxWidth: '460px', width: '95%', padding: '2.5rem 2rem 2rem 2rem', background: 'linear-gradient(135deg, #131b27 0%, #0d131f 100%)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: '20px', boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.9), 0 0 50px rgba(59, 130, 246, 0.15)', position: 'relative', overflow: 'hidden' }}>
-                        <button 
-                            type="button" 
-                            onClick={() => setEditCellModal(null)} 
-                            style={{
-                                position: 'absolute',
-                                top: '1.2rem',
-                                right: '1.2rem',
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '50%',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                background: 'rgba(255, 255, 255, 0.05)',
-                                color: 'rgba(255, 255, 255, 0.6)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                outline: 'none'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
-                                e.currentTarget.style.color = '#ef4444';
-                                e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.4)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                                e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)';
-                                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                            }}
-                        >
-                            <X size={16} />
-                        </button>
-                        <form onSubmit={handleSaveCellPositions} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                            <div style={{ marginBottom: '0.2rem', textAlign: 'center' }}>
-                                <h3 style={{
-                                    fontSize: '1.3rem',
-                                    background: 'linear-gradient(to right, #60a5fa, #3b82f6)',
-                                    WebkitBackgroundClip: 'text',
-                                    WebkitTextFillColor: 'transparent',
-                                    fontWeight: '850',
-                                    margin: 0,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '10px',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px'
-                                }}>
-                                    <Edit2 size={18} style={{ color: '#3b82f6' }} /> Editar Posições
-                                </h3>
-                                <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '0.3rem' }}>
-                                    Gerencie e redimensione as posições da célula do WMS
-                                </p>
-                            </div>
+                <div className="pin-modal-overlay active" style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '420px', width: '90%', padding: '2rem' }}>
+                        <button className="btn-close-modal" onClick={() => setEditCellModal(null)}><X size={18} /></button>
+                        <form onSubmit={handleSaveCellPositions} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                            <h3 style={{ fontSize: '1.3rem', color: 'var(--accent-blue)', textTransform: 'uppercase', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <Edit2 size={18} /> Editar Posições da Célula
+                            </h3>
 
                             {/* Info da célula */}
-                            <div style={{
-                                background: 'rgba(59, 130, 246, 0.05)',
-                                border: '1px solid rgba(59, 130, 246, 0.15)',
-                                borderRadius: '12px',
-                                padding: '1rem',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '0.4rem',
-                                boxShadow: 'inset 0 1px 1px rgba(255, 255, 255, 0.05)'
-                            }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                        Endereço da Célula
-                                    </span>
-                                    <span style={{
-                                        background: 'rgba(59, 130, 246, 0.15)',
-                                        color: '#60a5fa',
-                                        fontSize: '0.7rem',
-                                        padding: '2px 8px',
-                                        borderRadius: '10px',
-                                        fontWeight: '700'
-                                    }}>
-                                        SELECIONADA
-                                    </span>
-                                </div>
-                                <div style={{ fontWeight: '800', fontSize: '1.2rem', color: '#ffffff', letterSpacing: '0.05em' }}>
+                            <div style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: '8px', padding: '0.75rem 1rem' }}>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>Célula selecionada</div>
+                                <div style={{ fontWeight: '800', fontSize: '1rem', color: 'white', letterSpacing: '0.05em' }}>
                                     {editCellModal && formatAddressVisual(selectedZone, editCellModal.aisle, editCellModal.row, editCellModal.shelf, null)}
                                 </div>
-                                <div style={{ fontSize: '0.78rem', color: 'rgba(255,255,255,0.5)', display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '0.1rem' }}>
-                                    <span>Rua {editCellModal?.aisle}</span>
-                                    <span style={{ color: 'rgba(255,255,255,0.2)' }}>•</span>
-                                    <span>Fileira {editCellModal?.row}</span>
-                                    <span style={{ color: 'rgba(255,255,255,0.2)' }}>•</span>
-                                    <span>Prateleira {editCellModal?.shelf}</span>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                                    Rua {editCellModal?.aisle} · Fileira {editCellModal?.row} · Prateleira {editCellModal?.shelf}
                                 </div>
                             </div>
 
                             {/* Preview das posições atuais */}
                             {editCellModal?.currentLocs?.length > 0 && (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                        Posições Atuais:
-                                    </span>
-                                    <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                        {editCellModal.currentLocs.map(l => (
-                                            <span key={l.id} style={{
-                                                padding: '4px 10px',
-                                                borderRadius: '6px',
-                                                fontSize: '0.78rem',
-                                                fontWeight: '700',
-                                                background: l.status === 'Ativo' ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)',
-                                                color: l.status === 'Ativo' ? '#4ade80' : '#f87171',
-                                                border: l.status === 'Ativo' ? '1px solid rgba(34,197,94,0.2)' : '1px solid rgba(239,68,68,0.2)',
-                                                display: 'inline-flex',
-                                                alignItems: 'center',
-                                                gap: '4px'
-                                            }}>
-                                                <span style={{
-                                                    width: '6px',
-                                                    height: '6px',
-                                                    borderRadius: '50%',
-                                                    background: l.status === 'Ativo' ? '#22c55e' : '#ef4444',
-                                                    display: 'inline-block'
-                                                }} />
-                                                {l.position}
-                                            </span>
-                                        ))}
-                                    </div>
+                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Atual:</span>
+                                    {editCellModal.currentLocs.map(l => (
+                                        <span key={l.id} style={{
+                                            padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '700',
+                                            background: l.status === 'Ativo' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                                            color: l.status === 'Ativo' ? 'var(--accent-green)' : 'var(--accent-red)',
+                                            border: l.status === 'Ativo' ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(239,68,68,0.3)',
+                                        }}>
+                                            {l.position}
+                                        </span>
+                                    ))}
                                 </div>
                             )}
 
                             {/* Input novas posições */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                <label style={{ fontSize: '0.75rem', fontWeight: '750', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            <div className="card-input-group">
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                                     Novas Posições (A a J, separadas por ;)
                                 </label>
                                 <input
                                     type="text"
+                                    required
                                     value={editCellPositions}
                                     onChange={e => setEditCellPositions(e.target.value.toUpperCase())}
                                     placeholder="Ex: A;B;C;D;E"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.85rem',
-                                        borderRadius: '10px',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                                        background: 'rgba(0, 0, 0, 0.25)',
-                                        color: '#ffffff',
-                                        fontSize: '1.1rem',
-                                        letterSpacing: '0.12em',
-                                        fontWeight: '800',
-                                        textAlign: 'center',
-                                        outline: 'none',
-                                        transition: 'all 0.2s ease',
-                                        boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.3)'
-                                    }}
-                                    onFocus={(e) => {
-                                        e.currentTarget.style.borderColor = '#3b82f6';
-                                        e.currentTarget.style.boxShadow = '0 0 10px rgba(59, 130, 246, 0.3), inset 0 2px 4px rgba(0, 0, 0, 0.3)';
-                                    }}
-                                    onBlur={(e) => {
-                                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                                        e.currentTarget.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.3)';
-                                    }}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
                                     autoFocus
                                 />
-                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.3rem' }}>
                                     Máximo 10 posições (A;B;C;D;E;F;G;H;I;J). Todas criadas como <strong>Ativo</strong>.
                                 </div>
                             </div>
@@ -4545,28 +4430,14 @@ export default function SettingsHub() {
                                             type="button"
                                             onClick={() => setEditCellPositions(preset)}
                                             style={{
-                                                padding: '0.35rem 0.75rem',
-                                                borderRadius: '8px',
+                                                padding: '0.25rem 0.6rem',
+                                                borderRadius: '5px',
                                                 fontSize: '0.75rem',
                                                 fontWeight: '700',
                                                 cursor: 'pointer',
-                                                border: isSelected ? '1px solid #3b82f6' : '1px solid rgba(255, 255, 255, 0.08)',
-                                                background: isSelected ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-                                                color: isSelected ? '#60a5fa' : 'rgba(255, 255, 255, 0.6)',
-                                                transition: 'all 0.18s ease',
-                                                outline: 'none'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                if (!isSelected) {
-                                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
-                                                    e.currentTarget.style.color = '#ffffff';
-                                                }
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                if (!isSelected) {
-                                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                                                    e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)';
-                                                }
+                                                border: isSelected ? '1px solid var(--accent-blue)' : '1px solid var(--border-color)',
+                                                background: isSelected ? 'rgba(59,130,246,0.2)' : 'rgba(0,0,0,0.2)',
+                                                color: isSelected ? 'white' : 'var(--text-secondary)',
                                             }}
                                         >
                                             {preset.split(';').length}x ({preset})
@@ -4576,9 +4447,9 @@ export default function SettingsHub() {
                             </div>
 
                             {/* Dimensões da Célula */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.6rem', background: 'rgba(255, 255, 255, 0.01)', border: '1px solid rgba(255, 255, 255, 0.04)', borderRadius: '12px', padding: '0.75rem' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                    <label style={{ fontSize: '0.68rem', fontWeight: '750', color: 'var(--text-secondary)', textAlign: 'center', letterSpacing: '0.3px' }}>ALTURA (m)</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.2rem' }}>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center' }}>Altura (m)</label>
                                     <input 
                                         type="number"
                                         step="any"
@@ -4589,24 +4460,11 @@ export default function SettingsHub() {
                                             setEditCellHeight(val);
                                             updateCellVolumeFromDims(val, editCellLength, editCellDepth);
                                         }}
-                                        style={{
-                                            padding: '0.5rem',
-                                            background: 'rgba(0, 0, 0, 0.2)',
-                                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                                            borderRadius: '6px',
-                                            color: '#ffffff',
-                                            textAlign: 'center',
-                                            fontSize: '0.9rem',
-                                            fontWeight: '700',
-                                            outline: 'none',
-                                            transition: 'border-color 0.2s'
-                                        }}
-                                        onFocus={(e) => e.currentTarget.style.borderColor = '#3b82f6'}
-                                        onBlur={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
+                                        style={{ width: '100%', padding: '0.6rem 0.4rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textAlign: 'center' }}
                                     />
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                    <label style={{ fontSize: '0.68rem', fontWeight: '750', color: 'var(--text-secondary)', textAlign: 'center', letterSpacing: '0.3px' }}>COMP. (m)</label>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center' }}>Comp. (m)</label>
                                     <input 
                                         type="number"
                                         step="any"
@@ -4617,24 +4475,11 @@ export default function SettingsHub() {
                                             setEditCellLength(val);
                                             updateCellVolumeFromDims(editCellHeight, val, editCellDepth);
                                         }}
-                                        style={{
-                                            padding: '0.5rem',
-                                            background: 'rgba(0, 0, 0, 0.2)',
-                                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                                            borderRadius: '6px',
-                                            color: '#ffffff',
-                                            textAlign: 'center',
-                                            fontSize: '0.9rem',
-                                            fontWeight: '700',
-                                            outline: 'none',
-                                            transition: 'border-color 0.2s'
-                                        }}
-                                        onFocus={(e) => e.currentTarget.style.borderColor = '#3b82f6'}
-                                        onBlur={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
+                                        style={{ width: '100%', padding: '0.6rem 0.4rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textAlign: 'center' }}
                                     />
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                    <label style={{ fontSize: '0.68rem', fontWeight: '750', color: 'var(--text-secondary)', textAlign: 'center', letterSpacing: '0.3px' }}>PROF. (m)</label>
+                                <div className="card-input-group">
+                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center' }}>Prof. (m)</label>
                                     <input 
                                         type="number"
                                         step="any"
@@ -4645,27 +4490,14 @@ export default function SettingsHub() {
                                             setEditCellDepth(val);
                                             updateCellVolumeFromDims(editCellHeight, editCellLength, val);
                                         }}
-                                        style={{
-                                            padding: '0.5rem',
-                                            background: 'rgba(0, 0, 0, 0.2)',
-                                            border: '1px solid rgba(255, 255, 255, 0.08)',
-                                            borderRadius: '6px',
-                                            color: '#ffffff',
-                                            textAlign: 'center',
-                                            fontSize: '0.9rem',
-                                            fontWeight: '700',
-                                            outline: 'none',
-                                            transition: 'border-color 0.2s'
-                                        }}
-                                        onFocus={(e) => e.currentTarget.style.borderColor = '#3b82f6'}
-                                        onBlur={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
+                                        style={{ width: '100%', padding: '0.6rem 0.4rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textAlign: 'center' }}
                                     />
                                 </div>
                             </div>
 
                             {/* Input Volume Cúbico Total */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                <label style={{ fontSize: '0.75rem', fontWeight: '750', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            <div className="card-input-group">
+                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
                                     Volume Cúbico Total da Célula (m³)
                                 </label>
                                 <input
@@ -4675,104 +4507,23 @@ export default function SettingsHub() {
                                     value={editCellVolume}
                                     onChange={e => setEditCellVolume(e.target.value)}
                                     placeholder="Ex: 1.2"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.8rem',
-                                        borderRadius: '8px',
-                                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                                        background: 'rgba(0, 0, 0, 0.25)',
-                                        color: '#ffffff',
-                                        fontSize: '1rem',
-                                        fontWeight: '700',
-                                        textAlign: 'center',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s'
-                                    }}
-                                    onFocus={(e) => e.currentTarget.style.borderColor = '#3b82f6'}
-                                    onBlur={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
+                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textAlign: 'center' }}
                                 />
                                 {(() => {
                                     const numPositions = editCellPositions.toUpperCase().split(';').map(p => p.trim()).filter(Boolean).length || 1;
                                     const parsedVol = parseFloat(editCellVolume) || 0;
                                     const perPos = parsedVol / numPositions;
                                     return (
-                                        <div style={{
-                                            fontSize: '0.75rem',
-                                            color: '#4ade80',
-                                            fontWeight: '600',
-                                            background: 'rgba(34, 197, 94, 0.08)',
-                                            border: '1px solid rgba(34, 197, 94, 0.15)',
-                                            padding: '0.5rem 0.8rem',
-                                            borderRadius: '8px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '6px',
-                                            marginTop: '0.2rem'
-                                        }}>
-                                            <span>💡</span>
-                                            <span>
-                                                Cada uma das <strong>{numPositions}</strong> posições receberá: <strong>{perPos.toFixed(3)} m³</strong>
-                                            </span>
+                                        <div style={{ fontSize: '0.72rem', color: 'var(--accent-green)', fontWeight: '600', marginTop: '0.3rem' }}>
+                                            💡 Cada uma das {numPositions} posições receberá automaticamente: {perPos.toFixed(3)} m³
                                         </div>
                                     );
                                 })()}
                             </div>
 
-                            <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.75rem' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setEditCellModal(null)}
-                                    style={{
-                                        flex: 1,
-                                        padding: '0.8rem',
-                                        borderRadius: '10px',
-                                        border: '1px solid rgba(255,255,255,0.08)',
-                                        background: 'rgba(255,255,255,0.02)',
-                                        color: 'rgba(255,255,255,0.7)',
-                                        fontSize: '0.85rem',
-                                        fontWeight: '700',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                        outline: 'none'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
-                                        e.currentTarget.style.color = '#ffffff';
-                                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = 'rgba(255,255,255,0.02)';
-                                        e.currentTarget.style.color = 'rgba(255,255,255,0.7)';
-                                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
-                                    }}
-                                >
-                                    CANCELAR
-                                </button>
-                                <button
-                                    type="submit"
-                                    style={{
-                                        flex: 1,
-                                        padding: '0.8rem',
-                                        borderRadius: '10px',
-                                        border: 'none',
-                                        background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                                        color: '#ffffff',
-                                        fontSize: '0.85rem',
-                                        fontWeight: '800',
-                                        cursor: 'pointer',
-                                        boxShadow: '0 4px 15px rgba(59, 130, 246, 0.3)',
-                                        transition: 'all 0.2s',
-                                        outline: 'none'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(-1px)';
-                                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.45)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                        e.currentTarget.style.boxShadow = '0 4px 15px rgba(59, 130, 246, 0.3)';
-                                    }}
-                                >
+                            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                                <button type="button" className="btn-secondary" onClick={() => setEditCellModal(null)} style={{ flex: 1, padding: '0.75rem' }}>CANCELAR</button>
+                                <button type="submit" className="btn-header-action" style={{ flex: 1, padding: '0.75rem', background: 'var(--accent-blue)', borderColor: 'var(--accent-blue)', margin: 0, justifyContent: 'center' }}>
                                     SALVAR
                                 </button>
                             </div>
