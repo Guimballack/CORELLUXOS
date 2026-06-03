@@ -1313,26 +1313,6 @@ export default function CentralHub() {
                         {checklistSubTab === 'dashboard' && (
                             /* INTERFACE DO DASHBOARD DE CHECKLISTS */
                             <>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                                    <button 
-                                        className="btn-tool" 
-                                        onClick={() => {
-                                            if (activeModelForExecution) {
-                                                showSystemConfirm('Um checklist está em andamento. Voltar descartará suas respostas atuais. Continuar?', () => {
-                                                    setActiveModelForExecution(null);
-                                                    setChecklistSubTab('menu');
-                                                });
-                                            } else {
-                                                setChecklistSubTab('menu');
-                                            }
-                                        }}
-                                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
-                                    >
-                                        <ArrowLeft size={16} /> Voltar
-                                    </button>
-                                    <h2 style={{ margin: 0, color: '#fff', fontSize: '1.25rem', fontWeight: 700 }}>Painel & Vistorias</h2>
-                                </div>
-
                                 <div className="kpi-row-grid">
                                     <div className="kpi-stat-card green">
                                         <h6>Vistorias Finalizadas</h6>
@@ -1384,82 +1364,61 @@ export default function CentralHub() {
 
                         {checklistSubTab === 'history' && (
                             /* HISTÓRICO DE AUDITORIA */
-                            <>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
-                                    <button 
-                                        className="btn-tool" 
-                                        onClick={() => setChecklistSubTab('menu')}
-                                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
-                                    >
-                                        <ArrowLeft size={16} /> Voltar
-                                    </button>
-                                    <h2 style={{ margin: 0, color: '#fff', fontSize: '1.25rem', fontWeight: 700 }}>Histórico de Auditoria</h2>
+                            <div style={{ background: 'rgba(30, 41, 59, 0.15)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem', overflow: 'hidden' }}>
+                                <div style={{ marginBottom: '1rem' }}>
+                                    <h4 style={{ margin: 0, color: '#fff', fontSize: '1rem', fontWeight: 700 }}>Histórico de Execuções</h4>
                                 </div>
-                                <div style={{ background: 'rgba(30, 41, 59, 0.15)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem', overflow: 'hidden' }}>
-                                    <div style={{ marginBottom: '1rem' }}>
-                                        <h4 style={{ margin: 0, color: '#fff', fontSize: '1rem', fontWeight: 700 }}>Histórico de Execuções</h4>
-                                    </div>
 
-                                    {checklistExecutions.length === 0 ? (
-                                        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Nenhuma vistoria finalizada cadastrada no histórico.</div>
-                                    ) : (
-                                        <div className="table-responsive">
-                                            <table className="products-table">
-                                                <thead>
-                                                    <tr>
-                                                        <th>Checklist / Modelo</th>
-                                                        <th>Setor</th>
-                                                        <th>Data / Hora</th>
-                                                        <th>Executor</th>
-                                                        <th style={{ textAlign: 'center' }}>Conformidade</th>
-                                                        <th style={{ textAlign: 'center' }}>Detalhes</th>
+                                {checklistExecutions.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Nenhuma vistoria finalizada cadastrada no histórico.</div>
+                                ) : (
+                                    <div className="table-responsive">
+                                        <table className="products-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>Checklist / Modelo</th>
+                                                    <th>Setor</th>
+                                                    <th>Data / Hora</th>
+                                                    <th>Executor</th>
+                                                    <th style={{ textAlign: 'center' }}>Conformidade</th>
+                                                    <th style={{ textAlign: 'center' }}>Detalhes</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {checklistExecutions.map(e => (
+                                                    <tr key={e.id}>
+                                                        <td><strong>{e.modelName}</strong></td>
+                                                        <td><span className={`model-badge-sector ${e.sector.toLowerCase()}`}>{e.sector}</span></td>
+                                                        <td>{new Date(e.endTime).toLocaleString('pt-BR')}</td>
+                                                        <td>{e.executor}</td>
+                                                        <td style={{ textAlign: 'center' }}>
+                                                            <span style={{ color: (e.conformity || 0) >= 80 ? '#4ade80' : '#f87171', fontWeight: 800, fontSize: '0.92rem' }}>
+                                                                {e.conformity || 0}%
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ textAlign: 'center' }}>
+                                                            <button 
+                                                                className="btn-tool" 
+                                                                style={{ padding: '0.3rem 0.5rem', margin: '0 auto' }} 
+                                                                onClick={() => setActiveExecutionDetail(e)}
+                                                            >
+                                                                <Eye size={13} />
+                                                            </button>
+                                                        </td>
                                                     </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {checklistExecutions.map(e => (
-                                                        <tr key={e.id}>
-                                                            <td><strong>{e.modelName}</strong></td>
-                                                            <td><span className={`model-badge-sector ${e.sector.toLowerCase()}`}>{e.sector}</span></td>
-                                                            <td>{new Date(e.endTime).toLocaleString('pt-BR')}</td>
-                                                            <td>{e.executor}</td>
-                                                            <td style={{ textAlign: 'center' }}>
-                                                                <span style={{ color: (e.conformity || 0) >= 80 ? '#4ade80' : '#f87171', fontWeight: 800, fontSize: '0.92rem' }}>
-                                                                    {e.conformity || 0}%
-                                                                </span>
-                                                            </td>
-                                                            <td style={{ textAlign: 'center' }}>
-                                                                <button 
-                                                                    className="btn-tool" 
-                                                                    style={{ padding: '0.3rem 0.5rem', margin: '0 auto' }} 
-                                                                    onClick={() => setActiveExecutionDetail(e)}
-                                                                >
-                                                                    <Eye size={13} />
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    )}
-                                </div>
-                            </>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+                            </div>
                         )}
 
                         {checklistSubTab === 'models' && (
                             /* MODELOS DE CHECKLIST (TEMPLATES) */
                             <>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.8rem', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                        <button 
-                                            className="btn-tool" 
-                                            onClick={() => setChecklistSubTab('menu')}
-                                            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
-                                        >
-                                            <ArrowLeft size={16} /> Voltar
-                                        </button>
-                                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>Modelos de Checklist</h3>
-                                    </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.8rem', marginBottom: '1.25rem' }}>
+                                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>Modelos de Checklist</h3>
                                     {currentUser.permissions.chkCreate && (
                                         <button className="btn-send-aviso" style={{ padding: '0.5rem 1.2rem', fontSize: '0.82rem' }} onClick={() => handleOpenBuilder()}>
                                             <Plus size={14} /> Novo Modelo
@@ -1647,25 +1606,11 @@ export default function CentralHub() {
                             /* EXECUÇÃO DO CHECKLIST */
                             <div className="exec-panel">
                                 <div className="exec-info-row">
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                                        <button 
-                                            className="btn-tool" 
-                                            onClick={() => {
-                                                showSystemConfirm('Deseja realmente cancelar? Suas respostas atuais serão apagadas.', () => {
-                                                    setActiveModelForExecution(null);
-                                                    setChecklistSubTab('dashboard');
-                                                });
-                                            }}
-                                            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
-                                        >
-                                            <ArrowLeft size={16} /> Voltar
-                                        </button>
-                                        <div>
-                                            <h3 style={{ margin: 0, color: '#fff', fontSize: '1.2rem', fontWeight: 800 }}>{activeModelForExecution.name}</h3>
-                                            <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                Setor: <strong>{activeModelForExecution.sector}</strong> | Executor: <strong>{currentUser.name}</strong>
-                                            </p>
-                                        </div>
+                                    <div>
+                                        <h3 style={{ margin: 0, color: '#fff', fontSize: '1.2rem', fontWeight: 800 }}>{activeModelForExecution.name}</h3>
+                                        <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                            Setor: <strong>{activeModelForExecution.sector}</strong> | Executor: <strong>{currentUser.name}</strong>
+                                        </p>
                                     </div>
 
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
