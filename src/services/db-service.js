@@ -1774,11 +1774,191 @@ export const DbService = {
                 .insert([snakeExec])
                 .select();
             if (error) throw error;
-            return { success: true, data: toCamelCase(data[0]) };
+            const saved = toCamelCase(data[0]);
+
+            // Sync local
+            const local = localStorage.getItem('corellux_checklist_executions');
+            let list = local ? JSON.parse(local) : [];
+            list.push(saved);
+            localStorage.setItem('corellux_checklist_executions', JSON.stringify(list));
+            return { success: true, data: saved };
         } catch (e) {
             console.warn('[DbService] Erro ao salvar execução de checklist no Supabase. Gravando localmente:', e.message || e);
-            localStorage.setItem('corellux_checklist_executions', JSON.stringify(execs));
-            return { success: true, data: newExec };
+            const saved = { ...execution, id: execution.id || 'exec_' + Date.now() };
+            const local = localStorage.getItem('corellux_checklist_executions');
+            let list = local ? JSON.parse(local) : [];
+            list.push(saved);
+            localStorage.setItem('corellux_checklist_executions', JSON.stringify(list));
+            return { success: true, data: saved };
+        }
+    },
+
+    async getChecklistNonConformities() {
+        try {
+            const { data, error } = await supabase
+                .from('checklist_non_conformities')
+                .select('*')
+                .order('timestamp', { ascending: false });
+            if (error) throw error;
+            return toCamelCase(data);
+        } catch (e) {
+            console.warn('[DbService] Erro ao buscar não conformidades no Supabase. Usando localStorage:', e.message || e);
+            const local = localStorage.getItem('corellux_checklist_non_conformities');
+            return local ? JSON.parse(local) : [];
+        }
+    },
+
+    async saveChecklistNonConformity(nc) {
+        try {
+            const snakeNc = toSnakeCase(nc);
+            let result;
+            if (nc.id && !String(nc.id).startsWith('nc_')) {
+                result = await supabase
+                    .from('checklist_non_conformities')
+                    .update(snakeNc)
+                    .eq('id', nc.id)
+                    .select();
+            } else {
+                delete snakeNc.id;
+                result = await supabase
+                    .from('checklist_non_conformities')
+                    .insert([snakeNc])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            const saved = toCamelCase(result.data[0]);
+
+            // Sync local
+            const local = localStorage.getItem('corellux_checklist_non_conformities');
+            let list = local ? JSON.parse(local) : [];
+            const idx = list.findIndex(item => String(item.id) === String(saved.id));
+            if (idx !== -1) {
+                list[idx] = saved;
+            } else {
+                list.unshift(saved);
+            }
+            localStorage.setItem('corellux_checklist_non_conformities', JSON.stringify(list));
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar não conformidade no Supabase. Gravando localmente:', e.message || e);
+            const saved = { ...nc, id: nc.id || 'nc_' + Date.now() };
+            const local = localStorage.getItem('corellux_checklist_non_conformities');
+            let list = local ? JSON.parse(local) : [];
+            const idx = list.findIndex(item => String(item.id) === String(saved.id));
+            if (idx !== -1) {
+                list[idx] = saved;
+            } else {
+                list.unshift(saved);
+            }
+            localStorage.setItem('corellux_checklist_non_conformities', JSON.stringify(list));
+            return { success: true, data: saved };
+        }
+    },
+
+    async getChecklistActionPlans() {
+        try {
+            const { data, error } = await supabase
+                .from('checklist_action_plans')
+                .select('*')
+                .order('due_date', { ascending: true });
+            if (error) throw error;
+            return toCamelCase(data);
+        } catch (e) {
+            console.warn('[DbService] Erro ao buscar planos de ação no Supabase. Usando localStorage:', e.message || e);
+            const local = localStorage.getItem('corellux_checklist_action_plans');
+            return local ? JSON.parse(local) : [];
+        }
+    },
+
+    async saveChecklistActionPlan(plan) {
+        try {
+            const snakePlan = toSnakeCase(plan);
+            let result;
+            if (plan.id && !String(plan.id).startsWith('plan_')) {
+                result = await supabase
+                    .from('checklist_action_plans')
+                    .update(snakePlan)
+                    .eq('id', plan.id)
+                    .select();
+            } else {
+                delete snakePlan.id;
+                result = await supabase
+                    .from('checklist_action_plans')
+                    .insert([snakePlan])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            const saved = toCamelCase(result.data[0]);
+
+            // Sync local
+            const local = localStorage.getItem('corellux_checklist_action_plans');
+            let list = local ? JSON.parse(local) : [];
+            const idx = list.findIndex(item => String(item.id) === String(saved.id));
+            if (idx !== -1) {
+                list[idx] = saved;
+            } else {
+                list.push(saved);
+            }
+            localStorage.setItem('corellux_checklist_action_plans', JSON.stringify(list));
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar plano de ação no Supabase. Gravando localmente:', e.message || e);
+            const saved = { ...plan, id: plan.id || 'plan_' + Date.now() };
+            const local = localStorage.getItem('corellux_checklist_action_plans');
+            let list = local ? JSON.parse(local) : [];
+            const idx = list.findIndex(item => String(item.id) === String(saved.id));
+            if (idx !== -1) {
+                list[idx] = saved;
+            } else {
+                list.push(saved);
+            }
+            localStorage.setItem('corellux_checklist_action_plans', JSON.stringify(list));
+            return { success: true, data: saved };
+        }
+    },
+
+    async getChecklistAuditLogs() {
+        try {
+            const { data, error } = await supabase
+                .from('checklist_audit_logs')
+                .select('*')
+                .order('timestamp', { ascending: false });
+            if (error) throw error;
+            return toCamelCase(data);
+        } catch (e) {
+            console.warn('[DbService] Erro ao buscar logs de auditoria no Supabase. Usando localStorage:', e.message || e);
+            const local = localStorage.getItem('corellux_checklist_audit_logs');
+            return local ? JSON.parse(local) : [];
+        }
+    },
+
+    async saveChecklistAuditLog(auditLog) {
+        try {
+            const snakeLog = toSnakeCase(auditLog);
+            if (snakeLog.id && typeof snakeLog.id === 'string' && snakeLog.id.startsWith('log_')) {
+                delete snakeLog.id;
+            }
+            const { data, error } = await supabase
+                .from('checklist_audit_logs')
+                .insert([snakeLog])
+                .select();
+            if (error) throw error;
+            const saved = toCamelCase(data[0]);
+
+            // Sync local
+            const local = localStorage.getItem('corellux_checklist_audit_logs');
+            let list = local ? JSON.parse(local) : [];
+            list.unshift(saved);
+            localStorage.setItem('corellux_checklist_audit_logs', JSON.stringify(list));
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar log de auditoria no Supabase. Gravando localmente:', e.message || e);
+            const saved = { ...auditLog, id: auditLog.id || 'log_' + Date.now() };
+            const local = localStorage.getItem('corellux_checklist_audit_logs');
+            let list = local ? JSON.parse(local) : [];
+            list.unshift(saved);
+            localStorage.setItem('corellux_checklist_audit_logs', JSON.stringify(list));
+            return { success: true, data: saved };
         }
     },
 

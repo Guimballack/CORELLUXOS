@@ -4366,34 +4366,60 @@ export default function SettingsHub() {
             ============================================= */}
             {editCellModal && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div className="pin-modal-card" style={{ maxWidth: '420px', width: '90%', padding: '2rem' }}>
-                        <button className="btn-close-modal" onClick={() => setEditCellModal(null)}><X size={18} /></button>
-                        <form onSubmit={handleSaveCellPositions} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-                            <h3 style={{ fontSize: '1.25rem', color: 'var(--accent-blue)', textTransform: 'uppercase', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '45px' }}>
-                                <Edit2 size={18} /> Editar Posições
+                    <div className="pin-modal-card" style={{ maxWidth: '420px', width: '90%', padding: '1.75rem', maxHeight: '90vh', overflowY: 'auto' }}>
+                        <button 
+                            className="btn-close-modal" 
+                            onClick={() => setEditCellModal(null)}
+                            style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#94a3b8',
+                                boxShadow: 'none',
+                                position: 'absolute',
+                                top: '1.2rem',
+                                right: '1.2rem',
+                                width: '32px',
+                                height: '32px',
+                                minWidth: '32px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '50%',
+                                cursor: 'pointer',
+                                padding: 0,
+                                margin: 0
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.color = '#fff'}
+                            onMouseLeave={e => e.currentTarget.style.color = '#94a3b8'}
+                        >
+                            <X size={18} />
+                        </button>
+                        <form onSubmit={handleSaveCellPositions} style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
+                            <h3 style={{ fontSize: '1.15rem', color: '#fff', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '8px', paddingRight: '45px' }}>
+                                <Edit2 size={16} style={{ color: 'var(--accent-blue)' }} /> Editar Posições
                             </h3>
 
                             {/* Info da célula */}
-                            <div style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.25)', borderRadius: '8px', padding: '0.75rem 1rem' }}>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.2rem' }}>Célula selecionada</div>
+                            <div style={{ background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.2)', borderRadius: '8px', padding: '0.75rem 1rem' }}>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.15rem', textTransform: 'uppercase', fontWeight: '700', letterSpacing: '0.05em' }}>Célula selecionada</div>
                                 <div style={{ fontWeight: '800', fontSize: '1rem', color: 'white', letterSpacing: '0.05em' }}>
                                     {editCellModal && formatAddressVisual(selectedZone, editCellModal.aisle, editCellModal.row, editCellModal.shelf, null)}
                                 </div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.2rem' }}>
                                     Rua {editCellModal?.aisle} · Fileira {editCellModal?.row} · Prateleira {editCellModal?.shelf}
                                 </div>
                             </div>
 
                             {/* Preview das posições atuais */}
                             {editCellModal?.currentLocs?.length > 0 && (
-                                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Atual:</span>
+                                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: '700', textTransform: 'uppercase' }}>Atual:</span>
                                     {editCellModal.currentLocs.map(l => (
                                         <span key={l.id} style={{
-                                            padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '700',
-                                            background: l.status === 'Ativo' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)',
+                                            padding: '2px 6px', borderRadius: '4px', fontSize: '0.78rem', fontWeight: '700',
+                                            background: l.status === 'Ativo' ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
                                             color: l.status === 'Ativo' ? 'var(--accent-green)' : 'var(--accent-red)',
-                                            border: l.status === 'Ativo' ? '1px solid rgba(34,197,94,0.3)' : '1px solid rgba(239,68,68,0.3)',
+                                            border: l.status === 'Ativo' ? '1px solid rgba(34,197,94,0.2)' : '1px solid rgba(239,68,68,0.2)',
                                         }}>
                                             {l.position}
                                         </span>
@@ -4402,8 +4428,8 @@ export default function SettingsHub() {
                             )}
 
                             {/* Input novas posições */}
-                            <div className="card-input-group">
-                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                            <div className="card-input-group" style={{ display: 'flex', flexDirection: 'column' }}>
+                                <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                                     Novas Posições (A a J, separadas por ;)
                                 </label>
                                 <input
@@ -4412,10 +4438,10 @@ export default function SettingsHub() {
                                     value={editCellPositions}
                                     onChange={e => setEditCellPositions(e.target.value.toUpperCase())}
                                     placeholder="Ex: A;B;C;D;E"
-                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)' }}
+                                    style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', outline: 'none' }}
                                     autoFocus
                                 />
-                                <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: '0.3rem' }}>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
                                     Máximo 10 posições (A;B;C;D;E;F;G;H;I;J). Todas criadas como <strong>Ativo</strong>.
                                 </div>
                             </div>
@@ -4430,14 +4456,15 @@ export default function SettingsHub() {
                                             type="button"
                                             onClick={() => setEditCellPositions(preset)}
                                             style={{
-                                                padding: '0.25rem 0.6rem',
+                                                padding: '0.25rem 0.5rem',
                                                 borderRadius: '5px',
-                                                fontSize: '0.75rem',
+                                                fontSize: '0.72rem',
                                                 fontWeight: '700',
                                                 cursor: 'pointer',
                                                 border: isSelected ? '1px solid var(--accent-blue)' : '1px solid var(--border-color)',
-                                                background: isSelected ? 'rgba(59,130,246,0.2)' : 'rgba(0,0,0,0.2)',
+                                                background: isSelected ? 'rgba(59,130,246,0.15)' : 'rgba(0,0,0,0.2)',
                                                 color: isSelected ? 'white' : 'var(--text-secondary)',
+                                                transition: 'all 0.15s ease'
                                             }}
                                         >
                                             {preset.split(';').length}x ({preset})
@@ -4447,9 +4474,9 @@ export default function SettingsHub() {
                             </div>
 
                             {/* Dimensões da Célula */}
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.2rem' }}>
-                                <div className="card-input-group">
-                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center' }}>Altura (m)</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.1rem' }}>
+                                <div className="card-input-group" style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.72rem', color: 'var(--text-secondary)', textAlign: 'center', fontWeight: '600', textTransform: 'uppercase' }}>Altura (m)</label>
                                     <input 
                                         type="number"
                                         step="any"
@@ -4460,11 +4487,11 @@ export default function SettingsHub() {
                                             setEditCellHeight(val);
                                             updateCellVolumeFromDims(val, editCellLength, editCellDepth);
                                         }}
-                                        style={{ width: '100%', padding: '0.6rem 0.4rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textAlign: 'center' }}
+                                        style={{ width: '100%', minWidth: 0, padding: '0.5rem 0.3rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textAlign: 'center', outline: 'none' }}
                                     />
                                 </div>
-                                <div className="card-input-group">
-                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center' }}>Comp. (m)</label>
+                                <div className="card-input-group" style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.72rem', color: 'var(--text-secondary)', textAlign: 'center', fontWeight: '600', textTransform: 'uppercase' }}>Comp. (m)</label>
                                     <input 
                                         type="number"
                                         step="any"
@@ -4475,11 +4502,11 @@ export default function SettingsHub() {
                                             setEditCellLength(val);
                                             updateCellVolumeFromDims(editCellHeight, val, editCellDepth);
                                         }}
-                                        style={{ width: '100%', padding: '0.6rem 0.4rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textAlign: 'center' }}
+                                        style={{ width: '100%', minWidth: 0, padding: '0.5rem 0.3rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textAlign: 'center', outline: 'none' }}
                                     />
                                 </div>
-                                <div className="card-input-group">
-                                    <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center' }}>Prof. (m)</label>
+                                <div className="card-input-group" style={{ minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                                    <label style={{ display: 'block', marginBottom: '0.3rem', fontSize: '0.72rem', color: 'var(--text-secondary)', textAlign: 'center', fontWeight: '600', textTransform: 'uppercase' }}>Prof. (m)</label>
                                     <input 
                                         type="number"
                                         step="any"
@@ -4490,14 +4517,14 @@ export default function SettingsHub() {
                                             setEditCellDepth(val);
                                             updateCellVolumeFromDims(editCellHeight, editCellLength, val);
                                         }}
-                                        style={{ width: '100%', padding: '0.6rem 0.4rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textAlign: 'center' }}
+                                        style={{ width: '100%', minWidth: 0, padding: '0.5rem 0.3rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textAlign: 'center', outline: 'none' }}
                                     />
                                 </div>
                             </div>
 
                             {/* Input Volume Cúbico Total */}
-                            <div className="card-input-group">
-                                <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                            <div className="card-input-group" style={{ display: 'flex', flexDirection: 'column' }}>
+                                <label style={{ display: 'block', marginBottom: '0.35rem', fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
                                     Volume Cúbico Total da Célula (m³)
                                 </label>
                                 <input
@@ -4507,14 +4534,14 @@ export default function SettingsHub() {
                                     value={editCellVolume}
                                     onChange={e => setEditCellVolume(e.target.value)}
                                     placeholder="Ex: 1.2"
-                                    style={{ width: '100%', padding: '0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textAlign: 'center' }}
+                                    style={{ width: '100%', padding: '0.65rem 0.75rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', textAlign: 'center', outline: 'none' }}
                                 />
                                 {(() => {
                                     const numPositions = editCellPositions.toUpperCase().split(';').map(p => p.trim()).filter(Boolean).length || 1;
                                     const parsedVol = parseFloat(editCellVolume) || 0;
                                     const perPos = parsedVol / numPositions;
                                     return (
-                                        <div style={{ fontSize: '0.72rem', color: 'var(--accent-green)', fontWeight: '600', marginTop: '0.3rem' }}>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--accent-green)', fontWeight: '600', marginTop: '0.25rem' }}>
                                             💡 Cada uma das {numPositions} posições receberá automaticamente: {perPos.toFixed(3)} m³
                                         </div>
                                     );
@@ -4522,8 +4549,8 @@ export default function SettingsHub() {
                             </div>
 
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-                                <button type="button" className="btn-secondary" onClick={() => setEditCellModal(null)} style={{ flex: 1, padding: '0.75rem' }}>CANCELAR</button>
-                                <button type="submit" className="btn-header-action" style={{ flex: 1, padding: '0.75rem', background: 'var(--accent-blue)', borderColor: 'var(--accent-blue)', margin: 0, justifyContent: 'center' }}>
+                                <button type="button" className="btn-secondary" onClick={() => setEditCellModal(null)} style={{ flex: 1, padding: '0.65rem', fontSize: '0.85rem' }}>CANCELAR</button>
+                                <button type="submit" className="btn-header-action" style={{ flex: 1, padding: '0.65rem', background: 'var(--accent-blue)', borderColor: 'var(--accent-blue)', margin: 0, justifyContent: 'center', fontSize: '0.85rem' }}>
                                     SALVAR
                                 </button>
                             </div>

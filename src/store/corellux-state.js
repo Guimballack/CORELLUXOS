@@ -45,6 +45,9 @@ const DEFAULTS = {
     currentChecklist: null,
     checklistLocation: null,
     checklistSubTab: 'menu',
+    checklistActiveTab: 'menu',
+    checklistOfflineMode: false,
+    checklistOfflineQueue: [],
 
     // Sectors and Areas
     currentSectorId: null,
