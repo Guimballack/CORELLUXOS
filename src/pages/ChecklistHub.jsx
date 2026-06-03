@@ -105,6 +105,12 @@ export default function ChecklistHub() {
     const [builderStartTime, setBuilderStartTime] = useState('08:00');
     const [builderEndTime, setBuilderEndTime] = useState('18:00');
     
+    // Webcam Camera Modal State
+    const [cameraModal, setCameraModal] = useState({ isOpen: false, itemId: null, type: null });
+    const [cameraLoading, setCameraLoading] = useState(false);
+    const videoRef = useRef(null);
+    const streamRef = useRef(null);
+    
     // Custom System Alert / Confirm States
     const [systemAlert, setSystemAlert] = useState(null);
 
@@ -162,6 +168,175 @@ export default function ChecklistHub() {
             syncOfflineQueue();
         }
     }, [offlineMode, offlineQueue]);
+
+    // Webcam Camera stream setup & teardown
+    useEffect(() => {
+        let activeStream = null;
+        if (cameraModal.isOpen) {
+            setCameraLoading(true);
+            navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: 'environment',
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                } 
+            })
+            .then(stream => {
+                activeStream = stream;
+                streamRef.current = stream;
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                }
+                setCameraLoading(false);
+            })
+            .catch(err => {
+                console.error("Erro ao acessar a câmera principal (environment):", err);
+                // Fallback to any camera if environment camera is not available
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(stream => {
+                        activeStream = stream;
+                        streamRef.current = stream;
+                        if (videoRef.current) {
+                            videoRef.current.srcObject = stream;
+                        }
+                        setCameraLoading(false);
+                    })
+                    .catch(err2 => {
+                        console.error("Erro completo ao acessar webcam:", err2);
+                        setCameraLoading(false);
+                        showSystemAlert("Não foi possível acessar a câmera do dispositivo. Verifique as permissões de acesso ao site.", "Erro na Câmera", "error");
+                        setCameraModal({ isOpen: false, itemId: null, type: null });
+                    });
+            });
+        }
+
+        return () => {
+            if (activeStream) {
+                activeStream.getTracks().forEach(track => track.stop());
+            }
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+                streamRef.current = null;
+            }
+        };
+    }, [cameraModal.isOpen, cameraModal.type]);
+
+    const handleCapturePhoto = () => {
+        if (videoRef.current && streamRef.current) {
+            const video = videoRef.current;
+            const canvas = document.createElement('canvas');
+            
+            // Set canvas size matching the video resolution
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            
+            const { itemId, type } = cameraModal;
+            const curAns = execAnswers[itemId] || { answer: '', photo: '', comment: '', barcode: '', signature: '', photoAntes: '', photoDepois: '', statusDepois: '#10b981' };
+            
+            if (type === 'foto') {
+                setExecAnswers({
+                    ...execAnswers,
+                    [itemId]: { ...curAns, photo: dataUrl, answer: dataUrl }
+                });
+            } else if (type === 'antes') {
+                setExecAnswers({
+                    ...execAnswers,
+                    [itemId]: { ...curAns, bgPhotoAntes: dataUrl, photoAntes: '' }
+                });
+            } else if (type === 'depois') {
+                setExecAnswers({
+                    ...execAnswers,
+                    [itemId]: { ...curAns, bgPhotoDepois: dataUrl, photoDepois: '' }
+                });
+            }
+            
+            // Stop stream and close modal
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+                streamRef.current = null;
+            }
+            setCameraModal({ isOpen: false, itemId: null, type: null });
+        }
+    };
+
+    const closeCameraModal = () => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach(track => track.stop());
+            streamRef.current = null;
+        }
+        setCameraModal({ isOpen: false, itemId: null, type: null });
+    };
+
+    // Real Photo Upload and Capture handler
+    const handlePhotoUpload = (e, itemId) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        // Max 5MB
+        if (file.size > 5 * 1024 * 1024) {
+            showSystemAlert('O arquivo da foto deve ter no máximo 5MB.', 'Arquivo Muito Grande', 'warning');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const dataUrl = event.target.result;
+            const curAns = execAnswers[itemId] || { answer: '', photo: '', comment: '', barcode: '', signature: '' };
+            setExecAnswers({
+                ...execAnswers,
+                [itemId]: { ...curAns, photo: dataUrl, answer: dataUrl }
+            });
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleBgPhotoUpload = (e, itemId, type) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        if (file.size > 5 * 1024 * 1024) {
+            showSystemAlert('A imagem de fundo deve ter no máximo 5MB.', 'Arquivo Muito Grande', 'warning');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const dataUrl = event.target.result;
+            const curAns = execAnswers[itemId] || { answer: '', photo: '', comment: '', barcode: '', signature: '', photoAntes: '', photoDepois: '', statusDepois: '#10b981' };
+            if (type === 'antes') {
+                setExecAnswers({
+                    ...execAnswers,
+                    [itemId]: { ...curAns, bgPhotoAntes: dataUrl, photoAntes: '' }
+                });
+            } else {
+                setExecAnswers({
+                    ...execAnswers,
+                    [itemId]: { ...curAns, bgPhotoDepois: dataUrl, photoDepois: '' }
+                });
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const clearBgPhoto = (itemId, type) => {
+        const curAns = execAnswers[itemId] || {};
+        if (type === 'antes') {
+            setExecAnswers({
+                ...execAnswers,
+                [itemId]: { ...curAns, bgPhotoAntes: '', photoAntes: '' }
+            });
+        } else {
+            setExecAnswers({
+                ...execAnswers,
+                [itemId]: { ...curAns, bgPhotoDepois: '', photoDepois: '' }
+            });
+        }
+    };
 
     const refreshDbData = async () => {
         // Models & Executions
@@ -754,14 +929,23 @@ export default function ChecklistHub() {
                     const { itemId, type } = activeDrawItemInfo;
                     const ans = execAnswers[itemId] || {};
                     const savedImage = type === 'antes' ? ans.photoAntes : ans.photoDepois;
+                    const bgPhoto = type === 'antes' ? ans.bgPhotoAntes : ans.bgPhotoDepois;
                     
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
                     if (savedImage) {
                         const img = new Image();
+                        img.crossOrigin = "anonymous";
                         img.onload = () => {
-                            ctx.clearRect(0, 0, canvas.width, canvas.height);
-                            ctx.drawImage(img, 0, 0);
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                         };
                         img.src = savedImage;
+                    } else if (bgPhoto) {
+                        const img = new Image();
+                        img.crossOrigin = "anonymous";
+                        img.onload = () => {
+                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        };
+                        img.src = bgPhoto;
                     } else {
                         drawEquipmentOutline(ctx, canvas.width, canvas.height, type);
                     }
@@ -802,7 +986,20 @@ export default function ChecklistHub() {
         if (drawingCanvasRef.current && activeDrawItemInfo) {
             const canvas = drawingCanvasRef.current;
             const ctx = canvas.getContext('2d');
-            drawEquipmentOutline(ctx, canvas.width, canvas.height, activeDrawItemInfo.type);
+            const { itemId, type } = activeDrawItemInfo;
+            const ans = execAnswers[itemId] || {};
+            const bgPhoto = type === 'antes' ? ans.bgPhotoAntes : ans.bgPhotoDepois;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            if (bgPhoto) {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.onload = () => {
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                };
+                img.src = bgPhoto;
+            } else {
+                drawEquipmentOutline(ctx, canvas.width, canvas.height, type);
+            }
         }
     };
 
@@ -2656,37 +2853,63 @@ export default function ChecklistHub() {
                                                 <label style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 600 }}>
                                                     {item.evidenceRequired ? 'Evidência Fotográfica Obrigatória *' : 'Anexo de Evidência Fotográfica'}
                                                 </label>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
                                                     <input 
-                                                        type="text" 
-                                                        className="input-title" 
-                                                        placeholder="Caminho da foto ou mock..." 
-                                                        value={ans.photo || ''}
-                                                        onChange={(e) => {
-                                                            const pVal = e.target.value;
-                                                            setExecAnswers({ 
-                                                                ...execAnswers, 
-                                                                [item.id]: { ...ans, photo: pVal, answer: item.type === 'foto' ? pVal : ans.answer } 
-                                                            });
-                                                        }}
-                                                        style={{ background: 'rgba(0,0,0,0.15)', padding: '0.5rem 0.8rem', fontSize: '0.9rem', width: '250px' }}
+                                                        type="file" 
+                                                        accept="image/*" 
+                                                        id={`file-upload-${item.id}`} 
+                                                        style={{ display: 'none' }} 
+                                                        onChange={(e) => handlePhotoUpload(e, item.id)} 
+                                                    />
+                                                    <input 
+                                                        type="file" 
+                                                        accept="image/*" 
+                                                        capture="environment" 
+                                                        id={`camera-capture-${item.id}`} 
+                                                        style={{ display: 'none' }} 
+                                                        onChange={(e) => handlePhotoUpload(e, item.id)} 
                                                     />
                                                     <button 
                                                         className="btn-tool"
-                                                        onClick={() => {
-                                                            const mockPhoto = '/sample_evidence_' + Math.floor(Math.random() * 5 + 1) + '.jpg';
-                                                            setExecAnswers({ 
-                                                                ...execAnswers, 
-                                                                [item.id]: { ...ans, photo: mockPhoto, answer: item.type === 'foto' ? mockPhoto : ans.answer } 
-                                                            });
-                                                        }}
+                                                        onClick={() => document.getElementById(`camera-capture-${item.id}`).click()}
                                                         style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
                                                         type="button"
                                                     >
-                                                        <Camera size={13} /> Capturar Foto MOCK
+                                                        <Camera size={13} /> Tirar Foto (Câmera)
+                                                    </button>
+                                                    <button 
+                                                        className="btn-tool"
+                                                        onClick={() => document.getElementById(`file-upload-${item.id}`).click()}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
+                                                        type="button"
+                                                    >
+                                                        <Upload size={13} /> Upload Imagem
+                                                    </button>
+                                                    <button 
+                                                        className="btn-tool"
+                                                        onClick={() => setCameraModal({ isOpen: true, itemId: item.id, type: 'foto' })}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', borderColor: 'rgba(6, 182, 212, 0.4)' }}
+                                                        type="button"
+                                                    >
+                                                        <Camera size={13} style={{ color: '#06b6d4' }} /> Usar Mock (Câmera)
                                                     </button>
                                                 </div>
-                                                {ans.photo && <span style={{ color: '#10b981', fontSize: '0.78rem' }}>✓ Foto anexada: {ans.photo}</span>}
+                                                {ans.photo && (
+                                                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', marginTop: '0.4rem', background: 'rgba(255,255,255,0.02)', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', maxWidth: '400px' }}>
+                                                        <img src={ans.photo} style={{ width: '120px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)' }} alt="Preview" />
+                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                                            <span style={{ color: '#10b981', fontSize: '0.78rem', fontWeight: 'bold' }}>✓ Foto anexada com sucesso</span>
+                                                            <button 
+                                                                className="btn-tool" 
+                                                                onClick={() => setExecAnswers({ ...execAnswers, [item.id]: { ...ans, photo: '', answer: '' } })} 
+                                                                style={{ fontSize: '0.7rem', color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)', padding: '0.2rem 0.5rem' }}
+                                                                type="button"
+                                                            >
+                                                                Excluir Foto
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
                                             </div>
                                         )}
 
@@ -2697,26 +2920,100 @@ export default function ChecklistHub() {
                                                     {/* Card Antes */}
                                                     <div style={{ background: 'rgba(239, 68, 68, 0.03)', border: '1px solid rgba(239, 68, 68, 0.1)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.8rem' }}>
                                                         <span style={{ fontSize: '0.8rem', color: '#ef4444', fontWeight: 'bold', textTransform: 'uppercase' }}>Fase 1: Antes (Anomalias)</span>
+                                                        
                                                         {ans.photoAntes ? (
                                                             <div style={{ width: '220px', height: '110px', background: '#000', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
                                                                 <img src={ans.photoAntes} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Antes Preview" />
                                                             </div>
+                                                        ) : ans.bgPhotoAntes ? (
+                                                            <div style={{ width: '220px', height: '110px', background: '#000', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', position: 'relative' }}>
+                                                                <img src={ans.bgPhotoAntes} style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: 0.7 }} alt="Antes Base" />
+                                                                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', fontSize: '0.72rem', color: '#ef4444', fontWeight: 'bold' }}>Aguardando Desenho...</div>
+                                                            </div>
                                                         ) : (
-                                                            <div style={{ width: '220px', height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', color: '#64748b', fontSize: '0.78rem' }}>
-                                                                Nenhum desenho realizado
+                                                            <div style={{ width: '220px', height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', color: '#64748b', fontSize: '0.78rem', textAlign: 'center', padding: '0.5rem' }}>
+                                                                Sem foto de fundo.<br />Tire uma foto ou use o diagrama.
                                                             </div>
                                                         )}
-                                                        <button 
-                                                            className="btn-tool" 
-                                                            style={{ borderColor: 'rgba(239, 68, 68, 0.3)', color: '#ef4444', fontSize: '0.78rem', padding: '0.4rem 1rem' }}
-                                                            onClick={() => {
-                                                                setActiveDrawItemInfo({ itemId: item.id, type: 'antes' });
-                                                                setDrawingImageModalOpen(true);
-                                                            }}
-                                                            type="button"
-                                                        >
-                                                            <Camera size={13} /> {ans.photoAntes ? 'Refazer Desenho' : 'Desenhar Anomalia'}
-                                                        </button>
+
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', justifyContent: 'center' }}>
+                                                            {!ans.bgPhotoAntes ? (
+                                                                <>
+                                                                    <input 
+                                                                        type="file" 
+                                                                        accept="image/*" 
+                                                                        id={`antes-upload-${item.id}`} 
+                                                                        style={{ display: 'none' }} 
+                                                                        onChange={(e) => handleBgPhotoUpload(e, item.id, 'antes')} 
+                                                                    />
+                                                                    <input 
+                                                                        type="file" 
+                                                                        accept="image/*" 
+                                                                        capture="environment" 
+                                                                        id={`antes-camera-${item.id}`} 
+                                                                        style={{ display: 'none' }} 
+                                                                        onChange={(e) => handleBgPhotoUpload(e, item.id, 'antes')} 
+                                                                    />
+                                                                    <button 
+                                                                        className="btn-tool" 
+                                                                        style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem' }}
+                                                                        onClick={() => document.getElementById(`antes-camera-${item.id}`).click()}
+                                                                        type="button"
+                                                                    >
+                                                                        <Camera size={11} /> Tirar Foto
+                                                                    </button>
+                                                                    <button 
+                                                                        className="btn-tool" 
+                                                                        style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem' }}
+                                                                        onClick={() => document.getElementById(`antes-upload-${item.id}`).click()}
+                                                                        type="button"
+                                                                    >
+                                                                        <Upload size={11} /> Upload
+                                                                    </button>
+                                                                    <button 
+                                                                        className="btn-tool" 
+                                                                        style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem', borderColor: 'rgba(6, 182, 212, 0.4)' }}
+                                                                        onClick={() => setCameraModal({ isOpen: true, itemId: item.id, type: 'antes' })}
+                                                                        type="button"
+                                                                    >
+                                                                        <Camera size={11} style={{ color: '#06b6d4' }} /> Mock Câmera
+                                                                    </button>
+                                                                    <button 
+                                                                        className="btn-tool" 
+                                                                        style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem', background: 'rgba(255,255,255,0.05)' }}
+                                                                        onClick={() => {
+                                                                            setActiveDrawItemInfo({ itemId: item.id, type: 'antes' });
+                                                                            setDrawingImageModalOpen(true);
+                                                                        }}
+                                                                        type="button"
+                                                                    >
+                                                                        Usar Diagrama
+                                                                    </button>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <button 
+                                                                        className="btn-tool" 
+                                                                        style={{ borderColor: 'rgba(239, 68, 68, 0.3)', color: '#ef4444', fontSize: '0.72rem', padding: '0.3rem 0.8rem', fontWeight: 'bold' }}
+                                                                        onClick={() => {
+                                                                            setActiveDrawItemInfo({ itemId: item.id, type: 'antes' });
+                                                                            setDrawingImageModalOpen(true);
+                                                                        }}
+                                                                        type="button"
+                                                                    >
+                                                                        <Sliders size={11} /> {ans.photoAntes ? 'Editar Desenho' : 'Desenhar Anomalia'}
+                                                                    </button>
+                                                                    <button 
+                                                                        className="btn-tool" 
+                                                                        style={{ fontSize: '0.72rem', padding: '0.3rem 0.8rem', color: '#64748b' }}
+                                                                        onClick={() => clearBgPhoto(item.id, 'antes')}
+                                                                        type="button"
+                                                                    >
+                                                                        Remover Foto
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     </div>
 
                                                     {/* Card Depois */}
@@ -2724,26 +3021,100 @@ export default function ChecklistHub() {
                                                         <span style={{ fontSize: '0.8rem', color: ans.statusDepois === '#eab308' ? '#eab308' : '#10b981', fontWeight: 'bold', textTransform: 'uppercase' }}>
                                                             Fase 2: Depois ({ans.statusDepois === '#eab308' ? 'Pendente' : 'Resolvido'})
                                                         </span>
+                                                        
                                                         {ans.photoDepois ? (
                                                             <div style={{ width: '220px', height: '110px', background: '#000', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
                                                                 <img src={ans.photoDepois} style={{ width: '100%', height: '100%', objectFit: 'contain' }} alt="Depois Preview" />
                                                             </div>
+                                                        ) : ans.bgPhotoDepois ? (
+                                                            <div style={{ width: '220px', height: '110px', background: '#000', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', position: 'relative' }}>
+                                                                <img src={ans.bgPhotoDepois} style={{ width: '100%', height: '100%', objectFit: 'contain', opacity: 0.7 }} alt="Depois Base" />
+                                                                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.4)', fontSize: '0.72rem', color: '#facc15', fontWeight: 'bold' }}>Aguardando Desenho...</div>
+                                                            </div>
                                                         ) : (
-                                                            <div style={{ width: '220px', height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', color: '#64748b', fontSize: '0.78rem' }}>
-                                                                Nenhum desenho realizado
+                                                            <div style={{ width: '220px', height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', color: '#64748b', fontSize: '0.78rem', textAlign: 'center', padding: '0.5rem' }}>
+                                                                Sem foto de fundo.<br />Tire uma foto ou use o diagrama.
                                                             </div>
                                                         )}
-                                                        <button 
-                                                            className="btn-tool" 
-                                                            style={{ borderColor: ans.statusDepois === '#eab308' ? 'rgba(234, 179, 8, 0.3)' : 'rgba(16, 185, 129, 0.3)', color: ans.statusDepois === '#eab308' ? '#eab308' : '#10b981', fontSize: '0.78rem', padding: '0.4rem 1rem' }}
-                                                            onClick={() => {
-                                                                setActiveDrawItemInfo({ itemId: item.id, type: 'depois' });
-                                                                setDrawingImageModalOpen(true);
-                                                            }}
-                                                            type="button"
-                                                        >
-                                                            <Camera size={13} /> {ans.photoDepois ? 'Refazer Desenho' : 'Desenhar Correção'}
-                                                        </button>
+
+                                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', justifyContent: 'center' }}>
+                                                            {!ans.bgPhotoDepois ? (
+                                                                <>
+                                                                    <input 
+                                                                        type="file" 
+                                                                        accept="image/*" 
+                                                                        id={`depois-upload-${item.id}`} 
+                                                                        style={{ display: 'none' }} 
+                                                                        onChange={(e) => handleBgPhotoUpload(e, item.id, 'depois')} 
+                                                                    />
+                                                                    <input 
+                                                                        type="file" 
+                                                                        accept="image/*" 
+                                                                        capture="environment" 
+                                                                        id={`depois-camera-${item.id}`} 
+                                                                        style={{ display: 'none' }} 
+                                                                        onChange={(e) => handleBgPhotoUpload(e, item.id, 'depois')} 
+                                                                    />
+                                                                    <button 
+                                                                        className="btn-tool" 
+                                                                        style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem' }}
+                                                                        onClick={() => document.getElementById(`depois-camera-${item.id}`).click()}
+                                                                        type="button"
+                                                                    >
+                                                                        <Camera size={11} /> Tirar Foto
+                                                                    </button>
+                                                                    <button 
+                                                                        className="btn-tool" 
+                                                                        style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem' }}
+                                                                        onClick={() => document.getElementById(`depois-upload-${item.id}`).click()}
+                                                                        type="button"
+                                                                    >
+                                                                        <Upload size={11} /> Upload
+                                                                    </button>
+                                                                    <button 
+                                                                        className="btn-tool" 
+                                                                        style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem', borderColor: 'rgba(6, 182, 212, 0.4)' }}
+                                                                        onClick={() => setCameraModal({ isOpen: true, itemId: item.id, type: 'depois' })}
+                                                                        type="button"
+                                                                    >
+                                                                        <Camera size={11} style={{ color: '#06b6d4' }} /> Mock Câmera
+                                                                    </button>
+                                                                    <button 
+                                                                        className="btn-tool" 
+                                                                        style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem', background: 'rgba(255,255,255,0.05)' }}
+                                                                        onClick={() => {
+                                                                            setActiveDrawItemInfo({ itemId: item.id, type: 'depois' });
+                                                                            setDrawingImageModalOpen(true);
+                                                                        }}
+                                                                        type="button"
+                                                                    >
+                                                                        Usar Diagrama
+                                                                    </button>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <button 
+                                                                        className="btn-tool" 
+                                                                        style={{ borderColor: ans.statusDepois === '#eab308' ? 'rgba(234, 179, 8, 0.3)' : 'rgba(16, 185, 129, 0.3)', color: ans.statusDepois === '#eab308' ? '#eab308' : '#10b981', fontSize: '0.72rem', padding: '0.3rem 0.8rem', fontWeight: 'bold' }}
+                                                                        onClick={() => {
+                                                                            setActiveDrawItemInfo({ itemId: item.id, type: 'depois' });
+                                                                            setDrawingImageModalOpen(true);
+                                                                        }}
+                                                                        type="button"
+                                                                    >
+                                                                        <Sliders size={11} /> {ans.photoDepois ? 'Editar Desenho' : 'Desenhar Correção'}
+                                                                    </button>
+                                                                    <button 
+                                                                        className="btn-tool" 
+                                                                        style={{ fontSize: '0.72rem', padding: '0.3rem 0.8rem', color: '#64748b' }}
+                                                                        onClick={() => clearBgPhoto(item.id, 'depois')}
+                                                                        type="button"
+                                                                    >
+                                                                        Remover Foto
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -3262,10 +3633,21 @@ export default function ChecklistHub() {
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                             <button className="btn-tool" style={{ flex: 1 }} onClick={restoreBaseOutline} type="button">Restaurar Base</button>
                             <button className="btn-tool" style={{ flex: 1 }} onClick={() => {
-                                if (drawingCanvasRef.current) {
+                                if (drawingCanvasRef.current && activeDrawItemInfo) {
                                     const canvas = drawingCanvasRef.current;
                                     const ctx = canvas.getContext('2d');
+                                    const { itemId, type } = activeDrawItemInfo;
+                                    const ans = execAnswers[itemId] || {};
+                                    const bgPhoto = type === 'antes' ? ans.bgPhotoAntes : ans.bgPhotoDepois;
                                     ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                    if (bgPhoto) {
+                                        const img = new Image();
+                                        img.crossOrigin = "anonymous";
+                                        img.onload = () => {
+                                            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                                        };
+                                        img.src = bgPhoto;
+                                    }
                                 }
                             }} type="button">Limpar Tudo</button>
                             <button className="btn-tool" style={{ flex: 1, color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.2)' }} onClick={() => {
