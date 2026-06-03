@@ -15,6 +15,7 @@ export default function Header() {
         'currentScreen',
         'settingsActiveTab',
         'centralActiveTab',
+        'checklistSubTab',
         'logisticsActiveTab',
         'logisticsFlowType',
         'logisticsFlowStep',
@@ -60,6 +61,16 @@ export default function Header() {
         } else if (state.currentScreen === 'central-hub') {
             if (state.centralActiveTab === 'menu') {
                 setKey('currentScreen', 'dashboard');
+            } else if (state.centralActiveTab === 'checklist') {
+                if (state.checklistSubTab === 'menu') {
+                    setKey('centralActiveTab', 'menu');
+                } else if (state.checklistSubTab === 'builder') {
+                    setKey('checklistSubTab', 'models');
+                } else if (state.checklistSubTab === 'execution') {
+                    window.dispatchEvent(new CustomEvent('corellux-checklist-back'));
+                } else {
+                    setKey('checklistSubTab', 'menu');
+                }
             } else {
                 setKey('centralActiveTab', 'menu');
             }

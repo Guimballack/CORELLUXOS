@@ -44,6 +44,7 @@ const DEFAULTS = {
     builderEditId: null,
     currentChecklist: null,
     checklistLocation: null,
+    checklistSubTab: 'menu',
 
     // Sectors and Areas
     currentSectorId: null,

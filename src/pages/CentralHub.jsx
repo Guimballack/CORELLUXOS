@@ -51,7 +51,8 @@ export default function CentralHub() {
         'checklistModels',
         'checklistExecutions',
         'builderItems',
-        'centralActiveTab'
+        'centralActiveTab',
+        'checklistSubTab'
     ]);
 
     // Local UI States (Avisos e Geral)
@@ -65,7 +66,8 @@ export default function CentralHub() {
     const [areas, setAreas] = useState([]);
     
     // Checklist Sub-Tabs
-    const [checklistSubTab, setChecklistSubTab] = useState('dashboard'); // 'dashboard', 'history', 'models', 'builder', 'execution'
+    const checklistSubTab = state.checklistSubTab || 'menu';
+    const setChecklistSubTab = (subTab) => setKey('checklistSubTab', subTab);
     const [activeExecutionDetail, setActiveExecutionDetail] = useState(null);
 
     // Form States (Avisos)
@@ -141,6 +143,21 @@ export default function CentralHub() {
         });
         setKey('centralActiveTab', 'menu');
     }, []);
+
+    // Listen to global back event when checklist is running
+    useEffect(() => {
+        const handleGlobalBack = () => {
+            if (activeModelForExecution) {
+                showSystemConfirm('Deseja realmente cancelar? Suas respostas atuais serão apagadas.', () => {
+                    setActiveModelForExecution(null);
+                    setChecklistSubTab('dashboard');
+                });
+            }
+        };
+
+        window.addEventListener('corellux-checklist-back', handleGlobalBack);
+        return () => window.removeEventListener('corellux-checklist-back', handleGlobalBack);
+    }, [activeModelForExecution]);
 
     const currentUser = state.currentUser || { name: 'Sistema', id: 0, role: 'Gerente', permissions: {} };
     const notifications = state.notifications || [];
@@ -1118,57 +1135,6 @@ export default function CentralHub() {
 
 
 
-            {/* SUB-NAV SE FOR CHECKLIST */}
-            {activeTab === 'checklist' && (
-                <div className="checklist-subnav">
-                    <button 
-                        className={`checklist-subnav-btn ${['dashboard', 'execution'].includes(checklistSubTab) ? 'active' : ''}`}
-                        onClick={() => {
-                            if (activeModelForExecution) {
-                                showSystemConfirm('Um checklist está em andamento. Voltar para o painel descartará suas respostas atuais. Continuar?', () => {
-                                    setActiveModelForExecution(null);
-                                    setChecklistSubTab('dashboard');
-                                });
-                            } else {
-                                setChecklistSubTab('dashboard');
-                            }
-                        }}
-                    >
-                        <Compass size={14} /> Painel & Vistorias
-                    </button>
-                    <button 
-                        className={`checklist-subnav-btn ${checklistSubTab === 'history' ? 'active' : ''}`}
-                        onClick={() => {
-                            if (activeModelForExecution) {
-                                showSystemConfirm('Um checklist está em andamento. Ir para o histórico descartará suas respostas atuais. Continuar?', () => {
-                                    setActiveModelForExecution(null);
-                                    setChecklistSubTab('history');
-                                });
-                            } else {
-                                setChecklistSubTab('history');
-                            }
-                        }}
-                    >
-                        <FileSpreadsheet size={14} /> Histórico de Auditoria
-                    </button>
-                    <button 
-                        className={`checklist-subnav-btn ${['models', 'builder'].includes(checklistSubTab) ? 'active' : ''}`}
-                        onClick={() => {
-                            if (activeModelForExecution) {
-                                showSystemConfirm('Um checklist está em andamento. Ir para modelos descartará suas respostas atuais. Continuar?', () => {
-                                    setActiveModelForExecution(null);
-                                    setChecklistSubTab('models');
-                                });
-                            } else {
-                                setChecklistSubTab('models');
-                            }
-                        }}
-                    >
-                        <Settings size={14} /> Modelos de Checklist
-                    </button>
-                </div>
-            )}
-
             {/* CONTEÚDO PRINCIPAL */}
             <div className="central-content-container" style={{ overflowY: isComposeModalOpen || activeTab === 'feed' ? 'hidden' : 'auto' }}>
                 {activeTab === 'menu' && (
@@ -1215,7 +1181,7 @@ export default function CentralHub() {
                             className="menu-card teal" 
                             onClick={() => {
                                 setActiveTab('checklist');
-                                setChecklistSubTab('dashboard');
+                                setChecklistSubTab('menu');
                             }}
                         >
                             <div className="card-icon"><CheckSquare size={24} /></div>
@@ -1303,9 +1269,70 @@ export default function CentralHub() {
                 {activeTab === 'checklist' && (
                     /* PRINCIPAL DE CHECKLISTS */
                     <>
+                        {checklistSubTab === 'menu' && (
+                            /* MENU PRINCIPAL DE CHECKLIST */
+                            <div className="dashboard-menu">
+                                <button 
+                                    className="menu-card teal" 
+                                    onClick={() => setChecklistSubTab('dashboard')}
+                                >
+                                    <div className="card-icon"><Compass size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>PAINEL & VISTORIAS</h3>
+                                        <p>Conferir indicadores gerais e iniciar novas vistorias operacionais.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
+
+                                <button 
+                                    className="menu-card blue" 
+                                    onClick={() => setChecklistSubTab('history')}
+                                >
+                                    <div className="card-icon"><FileSpreadsheet size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>HISTÓRICO DE AUDITORIA</h3>
+                                        <p>Consultar vistorias finalizadas, histórico detalhado e conformidades.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
+
+                                <button 
+                                    className="menu-card dark-blue" 
+                                    onClick={() => setChecklistSubTab('models')}
+                                >
+                                    <div className="card-icon"><Settings size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>MODELOS DE CHECKLIST</h3>
+                                        <p>Configurar templates, criar novos formulários e gerenciar perguntas.</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
+                            </div>
+                        )}
+
                         {checklistSubTab === 'dashboard' && (
                             /* INTERFACE DO DASHBOARD DE CHECKLISTS */
                             <>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                                    <button 
+                                        className="btn-tool" 
+                                        onClick={() => {
+                                            if (activeModelForExecution) {
+                                                showSystemConfirm('Um checklist está em andamento. Voltar descartará suas respostas atuais. Continuar?', () => {
+                                                    setActiveModelForExecution(null);
+                                                    setChecklistSubTab('menu');
+                                                });
+                                            } else {
+                                                setChecklistSubTab('menu');
+                                            }
+                                        }}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
+                                    >
+                                        <ArrowLeft size={16} /> Voltar
+                                    </button>
+                                    <h2 style={{ margin: 0, color: '#fff', fontSize: '1.25rem', fontWeight: 700 }}>Painel & Vistorias</h2>
+                                </div>
+
                                 <div className="kpi-row-grid">
                                     <div className="kpi-stat-card green">
                                         <h6>Vistorias Finalizadas</h6>
@@ -1357,61 +1384,82 @@ export default function CentralHub() {
 
                         {checklistSubTab === 'history' && (
                             /* HISTÓRICO DE AUDITORIA */
-                            <div style={{ background: 'rgba(30, 41, 59, 0.15)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem', overflow: 'hidden' }}>
-                                <div style={{ marginBottom: '1rem' }}>
-                                    <h4 style={{ margin: 0, color: '#fff', fontSize: '1rem', fontWeight: 700 }}>Histórico de Execuções</h4>
+                            <>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' }}>
+                                    <button 
+                                        className="btn-tool" 
+                                        onClick={() => setChecklistSubTab('menu')}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
+                                    >
+                                        <ArrowLeft size={16} /> Voltar
+                                    </button>
+                                    <h2 style={{ margin: 0, color: '#fff', fontSize: '1.25rem', fontWeight: 700 }}>Histórico de Auditoria</h2>
                                 </div>
-
-                                {checklistExecutions.length === 0 ? (
-                                    <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Nenhuma vistoria finalizada cadastrada no histórico.</div>
-                                ) : (
-                                    <div className="table-responsive">
-                                        <table className="products-table">
-                                            <thead>
-                                                <tr>
-                                                    <th>Checklist / Modelo</th>
-                                                    <th>Setor</th>
-                                                    <th>Data / Hora</th>
-                                                    <th>Executor</th>
-                                                    <th style={{ textAlign: 'center' }}>Conformidade</th>
-                                                    <th style={{ textAlign: 'center' }}>Detalhes</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {checklistExecutions.map(e => (
-                                                    <tr key={e.id}>
-                                                        <td><strong>{e.modelName}</strong></td>
-                                                        <td><span className={`model-badge-sector ${e.sector.toLowerCase()}`}>{e.sector}</span></td>
-                                                        <td>{new Date(e.endTime).toLocaleString('pt-BR')}</td>
-                                                        <td>{e.executor}</td>
-                                                        <td style={{ textAlign: 'center' }}>
-                                                            <span style={{ color: (e.conformity || 0) >= 80 ? '#4ade80' : '#f87171', fontWeight: 800, fontSize: '0.92rem' }}>
-                                                                {e.conformity || 0}%
-                                                            </span>
-                                                        </td>
-                                                        <td style={{ textAlign: 'center' }}>
-                                                            <button 
-                                                                className="btn-tool" 
-                                                                style={{ padding: '0.3rem 0.5rem', margin: '0 auto' }} 
-                                                                onClick={() => setActiveExecutionDetail(e)}
-                                                            >
-                                                                <Eye size={13} />
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                <div style={{ background: 'rgba(30, 41, 59, 0.15)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem', overflow: 'hidden' }}>
+                                    <div style={{ marginBottom: '1rem' }}>
+                                        <h4 style={{ margin: 0, color: '#fff', fontSize: '1rem', fontWeight: 700 }}>Histórico de Execuções</h4>
                                     </div>
-                                )}
-                            </div>
+
+                                    {checklistExecutions.length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-secondary)' }}>Nenhuma vistoria finalizada cadastrada no histórico.</div>
+                                    ) : (
+                                        <div className="table-responsive">
+                                            <table className="products-table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Checklist / Modelo</th>
+                                                        <th>Setor</th>
+                                                        <th>Data / Hora</th>
+                                                        <th>Executor</th>
+                                                        <th style={{ textAlign: 'center' }}>Conformidade</th>
+                                                        <th style={{ textAlign: 'center' }}>Detalhes</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {checklistExecutions.map(e => (
+                                                        <tr key={e.id}>
+                                                            <td><strong>{e.modelName}</strong></td>
+                                                            <td><span className={`model-badge-sector ${e.sector.toLowerCase()}`}>{e.sector}</span></td>
+                                                            <td>{new Date(e.endTime).toLocaleString('pt-BR')}</td>
+                                                            <td>{e.executor}</td>
+                                                            <td style={{ textAlign: 'center' }}>
+                                                                <span style={{ color: (e.conformity || 0) >= 80 ? '#4ade80' : '#f87171', fontWeight: 800, fontSize: '0.92rem' }}>
+                                                                    {e.conformity || 0}%
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ textAlign: 'center' }}>
+                                                                <button 
+                                                                    className="btn-tool" 
+                                                                    style={{ padding: '0.3rem 0.5rem', margin: '0 auto' }} 
+                                                                    onClick={() => setActiveExecutionDetail(e)}
+                                                                >
+                                                                    <Eye size={13} />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
                         )}
 
                         {checklistSubTab === 'models' && (
                             /* MODELOS DE CHECKLIST (TEMPLATES) */
                             <>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.8rem', marginBottom: '1.25rem' }}>
-                                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>Templates de Checklists</h3>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.8rem', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        <button 
+                                            className="btn-tool" 
+                                            onClick={() => setChecklistSubTab('menu')}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
+                                        >
+                                            <ArrowLeft size={16} /> Voltar
+                                        </button>
+                                        <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#fff' }}>Modelos de Checklist</h3>
+                                    </div>
                                     {currentUser.permissions.chkCreate && (
                                         <button className="btn-send-aviso" style={{ padding: '0.5rem 1.2rem', fontSize: '0.82rem' }} onClick={() => handleOpenBuilder()}>
                                             <Plus size={14} /> Novo Modelo
@@ -1599,11 +1647,25 @@ export default function CentralHub() {
                             /* EXECUÇÃO DO CHECKLIST */
                             <div className="exec-panel">
                                 <div className="exec-info-row">
-                                    <div>
-                                        <h3 style={{ margin: 0, color: '#fff', fontSize: '1.2rem', fontWeight: 800 }}>{activeModelForExecution.name}</h3>
-                                        <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                            Setor: <strong>{activeModelForExecution.sector}</strong> | Executor: <strong>{currentUser.name}</strong>
-                                        </p>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                                        <button 
+                                            className="btn-tool" 
+                                            onClick={() => {
+                                                showSystemConfirm('Deseja realmente cancelar? Suas respostas atuais serão apagadas.', () => {
+                                                    setActiveModelForExecution(null);
+                                                    setChecklistSubTab('dashboard');
+                                                });
+                                            }}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
+                                        >
+                                            <ArrowLeft size={16} /> Voltar
+                                        </button>
+                                        <div>
+                                            <h3 style={{ margin: 0, color: '#fff', fontSize: '1.2rem', fontWeight: 800 }}>{activeModelForExecution.name}</h3>
+                                            <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                Setor: <strong>{activeModelForExecution.sector}</strong> | Executor: <strong>{currentUser.name}</strong>
+                                            </p>
+                                        </div>
                                     </div>
 
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
