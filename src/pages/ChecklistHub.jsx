@@ -276,7 +276,8 @@ export default function ChecklistHub() {
             maxVal: 100,
             evidenceRequired: false,
             commentRequired: false,
-            ruleAction: 'none' // 'none', 'create_nc', 'alert', 'block'
+            ruleAction: 'none', // 'none', 'create_nc', 'alert', 'block'
+            options: type === 'multipla_escolha' ? 'Pendente, Aprovado, Rejeitado' : ''
         };
         setBuilderQuestions([...builderQuestions, newQ]);
     };
@@ -522,13 +523,19 @@ export default function ChecklistHub() {
             const ans = execAnswers[item.id] || { answer: '', photo: '', comment: '', barcode: '', signature: '' };
             
             // Check mandatory
-            if (item.required && !ans.answer && item.type !== 'assinatura' && item.type !== 'codigo_barras' && item.type !== 'qr_code') {
+            if (item.required && !ans.answer && item.type !== 'assinatura' && item.type !== 'codigo_barras' && item.type !== 'qr_code' && item.type !== 'foto') {
                 isMissing = true;
                 break;
             }
 
             // Canvas signatures checking
             if (item.type === 'assinatura' && item.required && !ans.signature) {
+                isMissing = true;
+                break;
+            }
+
+            // Photo checking
+            if (item.type === 'foto' && item.required && !ans.photo) {
                 isMissing = true;
                 break;
             }
@@ -561,7 +568,7 @@ export default function ChecklistHub() {
                 itemId: item.id,
                 label: item.label,
                 type: item.type,
-                answer: item.type === 'assinatura' ? ans.signature : ans.answer,
+                answer: item.type === 'assinatura' ? ans.signature : (item.type === 'foto' ? ans.photo : ans.answer),
                 photo: ans.photo,
                 comment: ans.comment,
                 barcode: ans.barcode || ans.answer,
@@ -1716,22 +1723,31 @@ export default function ChecklistHub() {
                         <div className="builder-sidebar">
                             <h5 style={{ margin: 0, fontSize: '0.78rem', color: '#64748b', textTransform: 'uppercase' }}>Inserir Campo</h5>
                             
-                            <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('sim_nao')}>
+                            <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('sim_nao')} type="button">
                                 <CheckCircle2 size={13} style={{ color: '#4ade80' }} /> Sim / Não (Conformidade)
                             </button>
-                            <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('texto')}>
+                            <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('texto')} type="button">
                                 <FileSpreadsheet size={13} style={{ color: '#60a5fa' }} /> Resposta de Texto
                             </button>
-                            <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('numero')}>
-                                <Clock size={13} style={{ color: '#facc15' }} /> Resposta Numérica
+                            <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('numero')} type="button">
+                                <Sliders size={13} style={{ color: '#facc15' }} /> Resposta Numérica
                             </button>
-                            <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('assinatura')}>
+                            <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('multipla_escolha')} type="button">
+                                <CheckSquare size={13} style={{ color: '#2dd4bf' }} /> Múltipla Escolha (Checkboxes)
+                            </button>
+                            <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('data')} type="button">
+                                <Calendar size={13} style={{ color: '#fb7185' }} /> Campo de Data
+                            </button>
+                            <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('hora')} type="button">
+                                <Clock size={13} style={{ color: '#fbbf24' }} /> Campo de Hora
+                            </button>
+                            <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('assinatura')} type="button">
                                 <Signature size={13} style={{ color: '#38bdf8' }} /> Assinatura Digital
                             </button>
-                            <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('codigo_barras')}>
+                            <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('codigo_barras')} type="button">
                                 <Database size={13} style={{ color: '#c084fc' }} /> Cód. Barras / QR Code
                             </button>
-                            <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('foto')}>
+                            <button className="btn-builder-add-item" onClick={() => handleAddBuilderQuestion('foto')} type="button">
                                 <Camera size={13} style={{ color: '#f87171' }} /> Anexo de Foto
                             </button>
                             
@@ -1839,6 +1855,20 @@ export default function ChecklistHub() {
                                                     style={{ background: 'rgba(0,0,0,0.15)', padding: '0.5rem 0.8rem', fontSize: '0.9rem' }}
                                                 />
                                             </div>
+
+                                            {q.type === 'multipla_escolha' && (
+                                                <div className="composer-field-group" style={{ marginBottom: '1.2rem' }}>
+                                                    <label style={{ color: '#2dd4bf', fontWeight: 600 }}>Opções de Escolha (separadas por vírgula) *</label>
+                                                    <input 
+                                                        type="text" 
+                                                        className="input-title" 
+                                                        placeholder="EX: Pendente, Aprovado, Rejeitado" 
+                                                        value={q.options || ''}
+                                                        onChange={(e) => handleUpdateBuilderQuestion(q.id, 'options', e.target.value)}
+                                                        style={{ background: 'rgba(0,0,0,0.15)', padding: '0.5rem 0.8rem', fontSize: '0.9rem' }}
+                                                    />
+                                                </div>
+                                            )}
 
                                             <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
                                                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', cursor: 'pointer' }}>
@@ -2001,6 +2031,65 @@ export default function ChecklistHub() {
                                             </div>
                                         )}
 
+                                        {/* Multiple Choice (Checkboxes) type */}
+                                        {item.type === 'multipla_escolha' && (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', marginTop: '0.5rem', background: 'rgba(0,0,0,0.1)', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.02)' }}>
+                                                {((item.options || 'Opção 1, Opção 2, Opção 3').split(',')).map((opt, oIdx) => {
+                                                    const trimmedOpt = opt.trim();
+                                                    if (!trimmedOpt) return null;
+                                                    const selectedList = ans.answer ? ans.answer.split(',').map(s => s.trim()) : [];
+                                                    const isChecked = selectedList.includes(trimmedOpt);
+                                                    
+                                                    const handleCheckboxChange = (checked) => {
+                                                        let newList = [...selectedList];
+                                                        if (checked) {
+                                                            if (!newList.includes(trimmedOpt)) newList.push(trimmedOpt);
+                                                        } else {
+                                                            newList = newList.filter(v => v !== trimmedOpt);
+                                                        }
+                                                        setExecAnswers({
+                                                            ...execAnswers,
+                                                            [item.id]: { ...ans, answer: newList.join(', ') }
+                                                        });
+                                                    };
+
+                                                    return (
+                                                        <label key={oIdx} style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.86rem', color: '#cbd5e1', cursor: 'pointer', userSelect: 'none' }}>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={isChecked}
+                                                                onChange={(e) => handleCheckboxChange(e.target.checked)}
+                                                                style={{ accentColor: '#38bdf8', width: '16px', height: '16px', cursor: 'pointer' }}
+                                                            />
+                                                            {trimmedOpt}
+                                                        </label>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+
+                                        {/* Date question type */}
+                                        {item.type === 'data' && (
+                                            <input 
+                                                type="date" 
+                                                className="input-title"
+                                                value={ans.answer || ''}
+                                                onChange={(e) => setExecAnswers({ ...execAnswers, [item.id]: { ...ans, answer: e.target.value } })}
+                                                style={{ background: 'rgba(0,0,0,0.15)', padding: '0.5rem 0.8rem', fontSize: '0.9rem', width: '200px', colorScheme: 'dark' }}
+                                            />
+                                        )}
+
+                                        {/* Time question type */}
+                                        {item.type === 'hora' && (
+                                            <input 
+                                                type="time" 
+                                                className="input-title"
+                                                value={ans.answer || ''}
+                                                onChange={(e) => setExecAnswers({ ...execAnswers, [item.id]: { ...ans, answer: e.target.value } })}
+                                                style={{ background: 'rgba(0,0,0,0.15)', padding: '0.5rem 0.8rem', fontSize: '0.9rem', width: '150px', colorScheme: 'dark' }}
+                                            />
+                                        )}
+
                                         {/* Barcode/QR Code scanner simulator */}
                                         {(item.type === 'codigo_barras' || item.type === 'qr_code') && (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -2019,21 +2108,37 @@ export default function ChecklistHub() {
                                         )}
 
                                         {/* Evidences image photo upload simulator */}
-                                        {item.type === 'foto' && (
+                                        {(item.type === 'foto' || item.evidenceRequired) && (
                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', marginTop: '0.5rem' }}>
+                                                <label style={{ fontSize: '0.75rem', color: '#38bdf8', fontWeight: 600 }}>
+                                                    {item.evidenceRequired ? 'Evidência Fotográfica Obrigatória *' : 'Anexo de Evidência Fotográfica'}
+                                                </label>
                                                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                                                     <input 
                                                         type="text" 
                                                         className="input-title" 
                                                         placeholder="Caminho da foto ou mock..." 
-                                                        value={ans.photo}
-                                                        onChange={(e) => setExecAnswers({ ...execAnswers, [item.id]: { ...ans, photo: e.target.value } })}
+                                                        value={ans.photo || ''}
+                                                        onChange={(e) => {
+                                                            const pVal = e.target.value;
+                                                            setExecAnswers({ 
+                                                                ...execAnswers, 
+                                                                [item.id]: { ...ans, photo: pVal, answer: item.type === 'foto' ? pVal : ans.answer } 
+                                                            });
+                                                        }}
                                                         style={{ background: 'rgba(0,0,0,0.15)', padding: '0.5rem 0.8rem', fontSize: '0.9rem', width: '250px' }}
                                                     />
                                                     <button 
                                                         className="btn-tool"
-                                                        onClick={() => setExecAnswers({ ...execAnswers, [item.id]: { ...ans, photo: '/sample_evidence_' + Math.floor(Math.random() * 5 + 1) + '.jpg' } })}
+                                                        onClick={() => {
+                                                            const mockPhoto = '/sample_evidence_' + Math.floor(Math.random() * 5 + 1) + '.jpg';
+                                                            setExecAnswers({ 
+                                                                ...execAnswers, 
+                                                                [item.id]: { ...ans, photo: mockPhoto, answer: item.type === 'foto' ? mockPhoto : ans.answer } 
+                                                            });
+                                                        }}
                                                         style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
+                                                        type="button"
                                                     >
                                                         <Camera size={13} /> Capturar Foto MOCK
                                                     </button>
