@@ -3944,10 +3944,9 @@ export default function LogisticsHub() {
 
                                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                                                            <label style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)' }}>DATA DE VALIDADE *</label>
+                                                            <label style={{ fontSize: '0.7rem', fontWeight: '700', color: 'var(--text-secondary)' }}>DATA DE VALIDADE</label>
                                                             <input
                                                                 type="date"
-                                                                required
                                                                 value={batch.expirationDate}
                                                                 onChange={(e) => {
                                                                     const val = e.target.value;
@@ -4516,14 +4515,13 @@ export default function LogisticsHub() {
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                                    <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>DATA DE VALIDADE *</label>
+                                    <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>DATA DE VALIDADE</label>
                                     <div className="custom-date-picker-wrapper">
                                         <Calendar className="custom-date-picker-icon" size={16} />
                                         <input 
                                             type="date"
                                             value={batchExpDate}
                                             onChange={(e) => setBatchExpDate(e.target.value)}
-                                            required
                                             className="custom-date-picker-input"
                                         />
                                     </div>
