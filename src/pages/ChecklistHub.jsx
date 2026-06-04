@@ -39,7 +39,8 @@ import {
     TrendingUp,
     Play,
     Printer,
-    RefreshCw
+    RefreshCw,
+    Award
 } from 'lucide-react';
 
 const checkJurisdiction = (userRole, checklistSector) => {
@@ -93,6 +94,15 @@ export default function ChecklistHub() {
     const [filterSector, setFilterSector] = useState('TODOS');
     const [filterPeriod, setFilterPeriod] = useState('TODOS'); // 'TODOS', 'HOJE', 'SEMANA', 'MES'
     const [filterUser, setFilterUser] = useState('TODOS');
+    const [auditFilterStatus, setAuditFilterStatus] = useState('TODOS');
+    const [checklistAssignments, setChecklistAssignments] = useState(() => {
+        try {
+            const saved = localStorage.getItem('corellux_checklist_assignments');
+            return saved ? JSON.parse(saved) : {};
+        } catch (e) {
+            return {};
+        }
+    });
 
     // Filtros e estados específicos para o gráfico de evolução
     const [chartPeriod, setChartPeriod] = useState('SEMANAL'); // 'SEMANAL' | 'MENSAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL'
@@ -228,6 +238,58 @@ export default function ChecklistHub() {
         return points;
     }, [checklistExecutions, chartPeriod, chartSector, chartUser]);
 
+    // Aggregated scoring and ranking data for the Pontuação dashboard
+    const rankingData = React.useMemo(() => {
+        const sectorSums = {};
+        const sectorCounts = {};
+        
+        const userSums = {};
+        const userCounts = {};
+
+        checklistExecutions.forEach(ex => {
+            const sec = ex.sector || 'GERAL';
+            const user = ex.executor || 'Desconhecido';
+            const score = ex.conformity || 0;
+
+            sectorSums[sec] = (sectorSums[sec] || 0) + score;
+            sectorCounts[sec] = (sectorCounts[sec] || 0) + 1;
+
+            userSums[user] = (userSums[user] || 0) + score;
+            userCounts[user] = (userCounts[user] || 0) + 1;
+        });
+
+        const sectorRanking = Object.keys(sectorSums).map(name => ({
+            name,
+            avgScore: Math.round(sectorSums[name] / sectorCounts[name]),
+            count: sectorCounts[name]
+        })).sort((a, b) => b.avgScore - a.avgScore);
+
+        if (sectorRanking.length === 0) {
+            sectorRanking.push(
+                { name: 'COZINHA', avgScore: 88, count: 12 },
+                { name: 'SALÃO', avgScore: 82, count: 8 },
+                { name: 'ESTOQUE', avgScore: 78, count: 5 },
+                { name: 'ADMINISTRAÇÃO', avgScore: 95, count: 3 }
+            );
+        }
+
+        const userRanking = Object.keys(userSums).map(name => ({
+            name,
+            avgScore: Math.round(userSums[name] / userCounts[name]),
+            count: userCounts[name]
+        })).sort((a, b) => b.avgScore - a.avgScore);
+
+        if (userRanking.length === 0) {
+            userRanking.push(
+                { name: 'Administrador', avgScore: 92, count: 14 },
+                { name: 'Gerente Geral', avgScore: 86, count: 9 },
+                { name: 'Operador Padrão', avgScore: 74, count: 5 }
+            );
+        }
+
+        return { sectorRanking, userRanking };
+    }, [checklistExecutions]);
+
     // Construtor (Builder) Local States
     const [builderId, setBuilderId] = useState(null);
     const [builderCode, setBuilderCode] = useState('');
@@ -249,6 +311,7 @@ export default function ChecklistHub() {
     const [execStartTime, setExecStartTime] = useState(null);
     
     // Novos Estados Avançados
+    const [execResultModal, setExecResultModal] = useState(null);
     const [qrPrintModalOpen, setQrPrintModalOpen] = useState(false);
     const [qrPrintModel, setQrPrintModel] = useState(null);
     const [availableSectors, setAvailableSectors] = useState([]);
@@ -561,6 +624,35 @@ export default function ChecklistHub() {
                 }
             });
         }
+    };
+
+    const handleAddAssignment = (modelId, userId) => {
+        const currentList = checklistAssignments[modelId] || [];
+        const strUserId = String(userId);
+        if (!currentList.includes(strUserId)) {
+            const updated = {
+                ...checklistAssignments,
+                [modelId]: [...currentList, strUserId]
+            };
+            setChecklistAssignments(updated);
+            localStorage.setItem('corellux_checklist_assignments', JSON.stringify(updated));
+            showSystemAlert('Colaborador vinculado com sucesso!', 'Vínculo Confirmado', 'success');
+        } else {
+            showSystemAlert('Este colaborador já está vinculado a este checklist.', 'Já Vinculado', 'warning');
+        }
+    };
+
+    const handleRemoveAssignment = (modelId, userId) => {
+        const currentList = checklistAssignments[modelId] || [];
+        const strUserId = String(userId);
+        const updatedList = currentList.filter(id => String(id) !== strUserId);
+        const updated = {
+            ...checklistAssignments,
+            [modelId]: updatedList
+        };
+        setChecklistAssignments(updated);
+        localStorage.setItem('corellux_checklist_assignments', JSON.stringify(updated));
+        showSystemAlert('Vínculo removido com sucesso!', 'Vínculo Removido', 'info');
     };
 
     const refreshDbData = async () => {
@@ -1405,7 +1497,13 @@ export default function ChecklistHub() {
             const updatedQueue = [...offlineQueue, newExecution];
             setKey('checklistOfflineQueue', updatedQueue);
             localStorage.setItem('corellux_offline_queue', JSON.stringify(updatedQueue));
-            showSystemAlert('Checklist salvo localmente na fila offline! Será sincronizado ao reconectar.', 'Modo Offline', 'info');
+            setExecResultModal({
+                name: activeExecution.name,
+                conformity: conformityScore,
+                status: newExecution.status,
+                ncCount: ncTriggered,
+                offline: true
+            });
         } else {
             const res = await DbService.saveChecklistExecution(newExecution);
             if (res.success) {
@@ -1446,7 +1544,13 @@ export default function ChecklistHub() {
                 }
 
                 logEvent('Checklist executado', { name: activeExecution.name, conformity: conformityScore, status: newExecution.status });
-                showSystemAlert(`Checklist enviado! Conformidade: ${conformityScore}% (${newExecution.status})`, 'Vistoria Concluída', 'success');
+                setExecResultModal({
+                    name: activeExecution.name,
+                    conformity: conformityScore,
+                    status: newExecution.status,
+                    ncCount: ncTriggered,
+                    offline: false
+                });
             }
         }
 
@@ -2003,6 +2107,10 @@ export default function ChecklistHub() {
                 .btn-tool:active {
                     transform: translateY(1px) !important;
                 }
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
             `}} />
 
             {/* Sidebar Lateral - REMOVIDA PARA LAYOUT DE CARDS */}
@@ -2024,8 +2132,11 @@ export default function ChecklistHub() {
                             {activeTab === 'nc' && 'Gerenciamento de Não Conformidades'}
                             {activeTab === 'action_plans' && 'Plano de Ação Corretiva'}
                             {activeTab === 'integrations' && 'Motor de Integrações ERP'}
+                            {activeTab === 'checklist_audit' && 'Auditoria de Checklists Realizados'}
+                            {activeTab === 'score_ranking' && 'Pontuação, Performance & Rankings'}
                             {activeTab === 'audit' && 'Logs e Trilhas de Auditoria'}
                             {activeTab === 'permissions' && 'Acessos e Permissões Granulares'}
+                            {activeTab === 'collaborator_diagram' && 'Diagrama de Vínculo de Colaboradores'}
                         </h1>
                     </div>
 
@@ -2164,6 +2275,26 @@ export default function ChecklistHub() {
                                 </div>
                             </div>
 
+                            <div className="chk-menu-card emerald" onClick={() => setTab('checklist_audit')}>
+                                <div className="chk-menu-card-icon">
+                                    <Eye size={24} />
+                                </div>
+                                <div className="chk-menu-card-content">
+                                    <h3>Auditoria de Checklist</h3>
+                                    <p>Audite vistorias finalizadas, assinaturas, conformidades e evidências fotográficas.</p>
+                                </div>
+                            </div>
+
+                            <div className="chk-menu-card yellow" onClick={() => setTab('score_ranking')}>
+                                <div className="chk-menu-card-icon">
+                                    <Award size={24} />
+                                </div>
+                                <div className="chk-menu-card-content">
+                                    <h3>Pontuação & Performance</h3>
+                                    <p>Consulte o ranking de conformidade de setores e indicadores de performance de colaboradores.</p>
+                                </div>
+                            </div>
+
                             <div className="chk-menu-card slate" onClick={() => setTab('audit')}>
                                 <div className="chk-menu-card-icon">
                                     <Database size={24} />
@@ -2181,6 +2312,16 @@ export default function ChecklistHub() {
                                 <div className="chk-menu-card-content">
                                     <h3>Acessos e Permissões</h3>
                                     <p>Defina permissões de visualização, edição, execução e auditoria por cargos.</p>
+                                </div>
+                            </div>
+
+                            <div className="chk-menu-card purple" onClick={() => setTab('collaborator_diagram')}>
+                                <div className="chk-menu-card-icon">
+                                    <Users size={24} />
+                                </div>
+                                <div className="chk-menu-card-content">
+                                    <h3>Diagrama de Colaboradores</h3>
+                                    <p>Vincule colaboradores aos checklists operacionais arrastando-os diretamente.</p>
                                 </div>
                             </div>
                         </div>
@@ -2235,58 +2376,44 @@ export default function ChecklistHub() {
                                                 background: 'rgba(30, 41, 59, 0.25)', 
                                                 border: '1px solid rgba(255,255,255,0.05)', 
                                                 borderRadius: '12px', 
-                                                padding: '1.5rem', 
+                                                padding: '1.25rem 1.5rem', 
                                                 display: 'flex', 
-                                                flexDirection: 'column', 
+                                                alignItems: 'center', 
                                                 justifyContent: 'space-between', 
-                                                gap: '1.25rem',
+                                                gap: '1.5rem',
                                                 transition: 'border-color 0.2s',
                                                 cursor: 'default'
                                             }}
                                             onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(45, 212, 191, 0.2)'}
                                             onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'}
                                         >
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.4rem' }}>
-                                                    <span style={{ fontSize: '0.65rem', background: 'rgba(45, 212, 191, 0.1)', color: '#2dd4bf', padding: '2px 8px', borderRadius: '20px', fontWeight: '800', textTransform: 'uppercase' }}>
-                                                        {m.frequency}{m.frequencyDay ? ` (${m.frequencyDay})` : ''}
-                                                    </span>
-                                                    {m.startTime && m.endTime && (
-                                                        <span style={{ fontSize: '0.65rem', background: 'rgba(99, 102, 241, 0.15)', color: '#a5b4fc', padding: '2px 8px', borderRadius: '20px', fontWeight: '800' }}>
-                                                            {m.startTime} às {m.endTime}
-                                                        </span>
-                                                    )}
-                                                    {isDueToday && (
-                                                        <span style={{ fontSize: '0.65rem', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '2px 8px', borderRadius: '20px', fontWeight: '800' }}>
-                                                            AGENDA DO DIA
-                                                        </span>
-                                                    )}
-                                                    <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 'bold' }}>
-                                                        v{m.version || '1.0.0'}
-                                                    </span>
-                                                </div>
-                                                <h3 style={{ fontSize: '1.1rem', color: '#fff', margin: '0.2rem 0 0', fontWeight: '800', lineHeight: '1.3' }}>{m.name}</h3>
-                                                <p style={{ fontSize: '0.8rem', color: '#94a3b8', margin: 0, display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden', height: '2.24rem' }}>
-                                                    {m.description || 'Nenhuma descrição fornecida.'}
-                                                </p>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flexGrow: 1 }}>
+                                                <h3 style={{ fontSize: '1.05rem', color: '#fff', margin: 0, fontWeight: '800', lineHeight: '1.3' }}>{m.name}</h3>
+                                                {(() => {
+                                                    const assignedIds = checklistAssignments[m.id] || [];
+                                                    if (assignedIds.length === 0) return null;
+                                                    return (
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
+                                                            <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Designados:</span>
+                                                            {assignedIds.map(userId => {
+                                                                const user = appUsers.find(u => String(u.id) === String(userId));
+                                                                if (!user) return null;
+                                                                return (
+                                                                    <span key={userId} style={{ fontSize: '0.7rem', background: 'rgba(45, 212, 191, 0.08)', border: '1px solid rgba(45, 212, 191, 0.15)', color: '#2dd4bf', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>
+                                                                        {user.name}
+                                                                    </span>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    );
+                                                })()}
                                             </div>
-
-                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid rgba(255,255,255,0.04)', paddingTop: '1rem', marginTop: '0.5rem' }}>
-                                            <div style={{ display: 'flex', gap: '1rem' }}>
-                                                <div>
-                                                    <div style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Setor</div>
-                                                    <span className={`model-badge-sector ${m.sector.toLowerCase()}`} style={{ fontSize: '0.75rem', fontWeight: 'bold', display: 'inline-block', marginTop: '0.1rem' }}>{m.sector}</span>
-                                                </div>
-                                                <div>
-                                                    <div style={{ fontSize: '0.65rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 'bold' }}>Itens</div>
-                                                    <span style={{ fontSize: '0.85rem', color: '#fff', fontWeight: '700', display: 'inline-block', marginTop: '0.1rem' }}>{m.items?.length || 0}</span>
-                                                </div>
-                                            </div>
+                                            
                                             <button 
                                                 className="btn-send-aviso" 
                                                 onClick={() => handleStartExecution(m)} 
                                                 style={{ 
-                                                    padding: '0.45rem 0.9rem', 
+                                                    padding: '0.45rem 1.25rem', 
                                                     fontSize: '0.78rem', 
                                                     display: 'flex', 
                                                     alignItems: 'center', 
@@ -2295,15 +2422,12 @@ export default function ChecklistHub() {
                                                     borderColor: 'var(--accent-orange)', 
                                                     color: '#fff',
                                                     fontWeight: '800',
-                                                    marginLeft: 'auto',
-                                                    marginRight: 0,
-                                                    marginTop: 0
+                                                    flexShrink: 0
                                                 }}
                                             >
                                                 <Play size={12} fill="currentColor" /> Iniciar
                                             </button>
                                         </div>
-                                    </div>
                                     );
                                 })}
                             </div>
@@ -3183,18 +3307,25 @@ export default function ChecklistHub() {
                                                     <input 
                                                         type="file" 
                                                         accept="image/*" 
-                                                        capture="environment" 
-                                                        id={`camera-capture-${item.id}`} 
+                                                        id={`file-upload-${item.id}`} 
                                                         style={{ display: 'none' }} 
                                                         onChange={(e) => handlePhotoUpload(e, item.id)} 
                                                     />
                                                     <button 
                                                         className="btn-tool"
-                                                        onClick={() => document.getElementById(`camera-capture-${item.id}`).click()}
+                                                        onClick={() => setCameraModal({ isOpen: true, itemId: item.id, type: 'foto' })}
                                                         style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', background: 'var(--accent-orange)', color: '#fff', borderColor: 'var(--accent-orange)' }}
                                                         type="button"
                                                     >
-                                                        <Camera size={13} /> Tirar Foto (Câmera)
+                                                        <Camera size={13} /> Tirar Foto
+                                                    </button>
+                                                    <button 
+                                                        className="btn-tool"
+                                                        onClick={() => document.getElementById(`file-upload-${item.id}`).click()}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
+                                                        type="button"
+                                                    >
+                                                        <Upload size={13} /> Upload Imagem
                                                     </button>
                                                 </div>
                                                 {ans.photo && (
@@ -3249,18 +3380,10 @@ export default function ChecklistHub() {
                                                                         style={{ display: 'none' }} 
                                                                         onChange={(e) => handleBgPhotoUpload(e, item.id, 'antes')} 
                                                                     />
-                                                                    <input 
-                                                                        type="file" 
-                                                                        accept="image/*" 
-                                                                        capture="environment" 
-                                                                        id={`antes-camera-${item.id}`} 
-                                                                        style={{ display: 'none' }} 
-                                                                        onChange={(e) => handleBgPhotoUpload(e, item.id, 'antes')} 
-                                                                    />
                                                                     <button 
                                                                         className="btn-tool" 
                                                                         style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem' }}
-                                                                        onClick={() => document.getElementById(`antes-camera-${item.id}`).click()}
+                                                                        onClick={() => setCameraModal({ isOpen: true, itemId: item.id, type: 'antes' })}
                                                                         type="button"
                                                                     >
                                                                         <Camera size={11} /> Tirar Foto
@@ -3331,18 +3454,10 @@ export default function ChecklistHub() {
                                                                         style={{ display: 'none' }} 
                                                                         onChange={(e) => handleBgPhotoUpload(e, item.id, 'depois')} 
                                                                     />
-                                                                    <input 
-                                                                        type="file" 
-                                                                        accept="image/*" 
-                                                                        capture="environment" 
-                                                                        id={`depois-camera-${item.id}`} 
-                                                                        style={{ display: 'none' }} 
-                                                                        onChange={(e) => handleBgPhotoUpload(e, item.id, 'depois')} 
-                                                                    />
                                                                     <button 
                                                                         className="btn-tool" 
                                                                         style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem' }}
-                                                                        onClick={() => document.getElementById(`depois-camera-${item.id}`).click()}
+                                                                        onClick={() => setCameraModal({ isOpen: true, itemId: item.id, type: 'depois' })}
                                                                         type="button"
                                                                     >
                                                                         <Camera size={11} /> Tirar Foto
@@ -3586,6 +3701,388 @@ export default function ChecklistHub() {
                                         Simular Manutenção de Ativo
                                     </button>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* TAB 8.1: AUDITORIA DE CHECKLIST */}
+                {activeTab === 'checklist_audit' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                            <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem' }}>
+                                Audite vistorias finalizadas, assinaturas, conformidades e evidências fotográficas dos checklists preenchidos.
+                            </p>
+                            <button className="btn-tool" onClick={() => setTab('menu')} style={{ padding: '0.4rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem' }}>
+                                <ArrowLeft size={13} /> Voltar ao Menu
+                            </button>
+                        </div>
+
+                        {/* Filtros de Auditoria */}
+                        <div className="chk-filter-row" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', background: 'rgba(30, 41, 59, 0.15)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1, minWidth: '150px' }}>
+                                <label style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'bold' }}>Setor</label>
+                                <select className="chk-filter-select" style={{ width: '100%', boxSizing: 'border-box' }} value={filterSector} onChange={(e) => setFilterSector(e.target.value)}>
+                                    <option value="TODOS">Todos os Setores</option>
+                                    {availableSectors.map(sec => (
+                                        <option key={sec.id} value={sec.name}>{sec.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1, minWidth: '150px' }}>
+                                <label style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'bold' }}>Colaborador</label>
+                                <select className="chk-filter-select" style={{ width: '100%', boxSizing: 'border-box' }} value={filterUser} onChange={(e) => setFilterUser(e.target.value)}>
+                                    <option value="TODOS">Todos os Colaboradores</option>
+                                    {appUsers.map(u => (
+                                        <option key={u.id} value={u.name}>{u.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', flex: 1, minWidth: '150px' }}>
+                                <label style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 'bold' }}>Resultado/Status</label>
+                                <select className="chk-filter-select" style={{ width: '100%', boxSizing: 'border-box' }} value={auditFilterStatus} onChange={(e) => setAuditFilterStatus(e.target.value)}>
+                                    <option value="TODOS">Todos os Status</option>
+                                    <option value="Aprovado">Aprovado (&gt;=80%)</option>
+                                    <option value="Reprovado">Reprovado (&lt;80%)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style={{ background: 'rgba(30, 41, 59, 0.15)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem' }}>
+                            {checklistExecutions.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>Nenhum checklist executado encontrado.</div>
+                            ) : (
+                                <div className="table-responsive">
+                                    <table className="products-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Checklist / Modelo</th>
+                                                <th>Setor</th>
+                                                <th>Executor</th>
+                                                <th>Data / Hora</th>
+                                                <th style={{ textAlign: 'center' }}>Conformidade</th>
+                                                <th style={{ textAlign: 'center' }}>Status</th>
+                                                <th style={{ textAlign: 'center' }}>Ações</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {checklistExecutions
+                                                .filter(ex => {
+                                                    if (filterSector !== 'TODOS' && ex.sector !== filterSector) return false;
+                                                    if (filterUser !== 'TODOS' && ex.executor !== filterUser) return false;
+                                                    if (auditFilterStatus === 'Aprovado' && ex.status !== 'Aprovado') return false;
+                                                    if (auditFilterStatus === 'Reprovado' && ex.status !== 'Reprovado') return false;
+                                                    return true;
+                                                })
+                                                .map((ex) => (
+                                                    <tr key={ex.id}>
+                                                        <td><strong>{ex.modelName || ex.name}</strong></td>
+                                                        <td><span style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px' }}>{ex.sector}</span></td>
+                                                        <td>{ex.executor}</td>
+                                                        <td>{new Date(ex.endTime).toLocaleString('pt-BR')}</td>
+                                                        <td style={{ textAlign: 'center', fontWeight: 'bold', color: ex.status === 'Aprovado' ? '#10b981' : '#ef4444' }}>
+                                                            {ex.conformity}%
+                                                        </td>
+                                                        <td style={{ textAlign: 'center' }}>
+                                                            <span style={{
+                                                                fontSize: '0.75rem',
+                                                                padding: '2px 8px',
+                                                                borderRadius: '12px',
+                                                                background: ex.status === 'Aprovado' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                                                color: ex.status === 'Aprovado' ? '#10b981' : '#ef4444',
+                                                                border: `1px solid ${ex.status === 'Aprovado' ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)'}`
+                                                            }}>
+                                                                {ex.status}
+                                                            </span>
+                                                        </td>
+                                                        <td style={{ textAlign: 'center' }}>
+                                                            <button 
+                                                                className="btn-tool" 
+                                                                style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', background: 'rgba(45, 212, 191, 0.15)', borderColor: 'rgba(45, 212, 191, 0.3)', color: '#2dd4bf' }}
+                                                                onClick={() => setActiveExecutionDetail(ex)}
+                                                            >
+                                                                Visualizar
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* TAB 8.2: PONTUAÇÃO E RANKING */}
+                {activeTab === 'score_ranking' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                            <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem' }}>
+                                Acompanhe os rankings de conformidade dos setores e a tabela de liderança de performance dos colaboradores.
+                            </p>
+                            <button className="btn-tool" onClick={() => setTab('menu')} style={{ padding: '0.4rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem' }}>
+                                <ArrowLeft size={13} /> Voltar ao Menu
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+                            {/* Ranking de Colaboradores */}
+                            <div style={{ background: 'rgba(30, 41, 59, 0.15)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Award size={18} style={{ color: '#eab308' }} /> Leaderboard de Colaboradores
+                                </h3>
+                                <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8' }}>Ordenado pela maior média de conformidade operacional.</p>
+                                
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+                                    {rankingData.userRanking.map((user, idx) => {
+                                        const isTop3 = idx < 3;
+                                        const medalColor = idx === 0 ? '#f59e0b' : (idx === 1 ? '#cbd5e1' : '#b45309');
+                                        return (
+                                            <div key={user.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                        <span style={{ 
+                                                            display: 'inline-flex', 
+                                                            alignItems: 'center', 
+                                                            justifyContent: 'center', 
+                                                            width: '24px', 
+                                                            height: '24px', 
+                                                            borderRadius: '50%', 
+                                                            background: isTop3 ? medalColor : 'rgba(255,255,255,0.08)',
+                                                            color: isTop3 ? '#000' : '#fff',
+                                                            fontWeight: 'bold',
+                                                            fontSize: '0.8rem'
+                                                        }}>
+                                                            {idx + 1}
+                                                        </span>
+                                                        <span style={{ fontWeight: 'bold', color: '#fff' }}>{user.name}</span>
+                                                    </div>
+                                                    <span style={{ fontWeight: 'bold', color: user.avgScore >= 80 ? '#10b981' : (user.avgScore >= 60 ? '#facc15' : '#ef4444'), fontSize: '0.95rem' }}>
+                                                        {user.avgScore}%
+                                                    </span>
+                                                </div>
+                                                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
+                                                    <div style={{ 
+                                                        width: `${user.avgScore}%`, 
+                                                        height: '100%', 
+                                                        background: user.avgScore >= 80 ? 'linear-gradient(90deg, #10b981, #34d399)' : (user.avgScore >= 60 ? 'linear-gradient(90deg, #f59e0b, #facc15)' : 'linear-gradient(90deg, #ef4444, #f87171)'),
+                                                        borderRadius: '4px' 
+                                                    }}></div>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#64748b' }}>
+                                                    <span>Performance Média</span>
+                                                    <span>{user.count} checklist(s) realizado(s)</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Ranking de Setores */}
+                            <div style={{ background: 'rgba(30, 41, 59, 0.15)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                                <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <TrendingUp size={18} style={{ color: '#2dd4bf' }} /> Conformidade por Setor
+                                </h3>
+                                <p style={{ margin: 0, fontSize: '0.78rem', color: '#94a3b8' }}>Média de conformidade dos checklists segmentada por setor do estabelecimento.</p>
+                                
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
+                                    {rankingData.sectorRanking.map((sector, idx) => {
+                                        return (
+                                            <div key={sector.name} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'rgba(255, 255, 255, 0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <span style={{ fontWeight: 'bold', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{sector.name}</span>
+                                                    <span style={{ fontWeight: 'bold', color: sector.avgScore >= 80 ? '#10b981' : (sector.avgScore >= 60 ? '#facc15' : '#ef4444'), fontSize: '0.95rem' }}>
+                                                        {sector.avgScore}%
+                                                    </span>
+                                                </div>
+                                                <div style={{ width: '100%', height: '8px', background: 'rgba(255,255,255,0.08)', borderRadius: '4px', overflow: 'hidden' }}>
+                                                    <div style={{ 
+                                                        width: `${sector.avgScore}%`, 
+                                                        height: '100%', 
+                                                        background: sector.avgScore >= 80 ? 'linear-gradient(90deg, #2dd4bf, #0d9488)' : (sector.avgScore >= 60 ? 'linear-gradient(90deg, #f59e0b, #facc15)' : 'linear-gradient(90deg, #ef4444, #f87171)'),
+                                                        borderRadius: '4px' 
+                                                    }}></div>
+                                                </div>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#64748b' }}>
+                                                    <span>Índice de Qualidade</span>
+                                                    <span>{sector.count} amostra(s) de vistoria</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* TAB 8.3: DIAGRAMA DE COLABORADORES (VÍNCULOS DRAG & DROP) */}
+                {activeTab === 'collaborator_diagram' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                            <p style={{ margin: 0, color: '#94a3b8', fontSize: '0.85rem' }}>
+                                Defina quais colaboradores são responsáveis por executar cada checklist operando o painel de arrastar e soltar (Drag & Drop).
+                            </p>
+                            <button className="btn-tool" onClick={() => setTab('menu')} style={{ padding: '0.4rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem' }}>
+                                <ArrowLeft size={13} /> Voltar ao Menu
+                            </button>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1.5rem', alignItems: 'start' }}>
+                            {/* Coluna Esquerda: Lista de Colaboradores */}
+                            <div style={{ background: 'rgba(30, 41, 59, 0.25)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', position: 'sticky', top: '100px', maxHeight: 'calc(100vh - 200px)', overflowY: 'auto' }}>
+                                <h3 style={{ margin: 0, fontSize: '0.95rem', color: '#fff', fontWeight: '800', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                    <Users size={16} style={{ color: '#2dd4bf' }} /> Colaboradores
+                                </h3>
+                                <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Arraste um colaborador para o checklist desejado.</span>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                    {appUsers.map(user => (
+                                        <div 
+                                            key={user.id}
+                                            draggable
+                                            onDragStart={(e) => {
+                                                e.dataTransfer.setData('text/plain', user.id);
+                                                e.dataTransfer.effectAllowed = 'copy';
+                                            }}
+                                            style={{ 
+                                                background: 'rgba(255,255,255,0.03)', 
+                                                border: '1px solid rgba(255,255,255,0.08)', 
+                                                borderRadius: '8px', 
+                                                padding: '0.75rem', 
+                                                cursor: 'grab', 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: '0.6rem',
+                                                transition: 'all 0.2s',
+                                                userSelect: 'none'
+                                            }}
+                                            onMouseEnter={e => {
+                                                e.currentTarget.style.borderColor = 'rgba(45, 212, 191, 0.3)';
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+                                            }}
+                                            onMouseLeave={e => {
+                                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                                                e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                                            }}
+                                        >
+                                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #2dd4bf, #0d9488)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.8rem' }}>
+                                                {user.name ? user.name.substring(0, 2).toUpperCase() : 'CO'}
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <span style={{ fontSize: '0.82rem', color: '#fff', fontWeight: 'bold' }}>{user.name}</span>
+                                                <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{user.role || 'Colaborador'}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Coluna Direita: Grid de Checklists (Zonas de Soltar) */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1.25rem' }}>
+                                {checklistModels.map(model => {
+                                    const assignedIds = checklistAssignments[model.id] || [];
+                                    
+                                    return (
+                                        <div 
+                                            key={model.id}
+                                            onDragOver={(e) => {
+                                                e.preventDefault();
+                                                e.currentTarget.style.borderColor = '#2dd4bf';
+                                                e.currentTarget.style.boxShadow = '0 0 12px rgba(45, 212, 191, 0.15)';
+                                            }}
+                                            onDragLeave={(e) => {
+                                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+                                                e.currentTarget.style.boxShadow = 'none';
+                                            }}
+                                            onDrop={(e) => {
+                                                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)';
+                                                e.currentTarget.style.boxShadow = 'none';
+                                                const userId = e.dataTransfer.getData('text/plain');
+                                                if (userId) {
+                                                    handleAddAssignment(model.id, userId);
+                                                }
+                                            }}
+                                            style={{ 
+                                                background: 'rgba(30, 41, 59, 0.15)', 
+                                                border: '2px dashed rgba(255,255,255,0.05)', 
+                                                borderRadius: '12px', 
+                                                padding: '1.25rem', 
+                                                display: 'flex', 
+                                                flexDirection: 'column', 
+                                                gap: '1rem',
+                                                transition: 'all 0.2s',
+                                                minHeight: '200px'
+                                            }}
+                                        >
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                                <div>
+                                                    <h4 style={{ margin: 0, fontSize: '0.98rem', color: '#fff', fontWeight: '800' }}>{model.name}</h4>
+                                                    <span style={{ fontSize: '0.72rem', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', color: '#cbd5e1', display: 'inline-block', marginTop: '0.25rem' }}>
+                                                        {model.sector || 'GERAL'}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* ZONA DE DROP VISUAL */}
+                                            <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(0,0,0,0.15)', border: '1px dashed rgba(255,255,255,0.05)', borderRadius: '8px', padding: '0.75rem', justifyContent: assignedIds.length === 0 ? 'center' : 'flex-start', alignItems: assignedIds.length === 0 ? 'center' : 'stretch', minHeight: '100px' }}>
+                                                {assignedIds.length === 0 ? (
+                                                    <span style={{ fontSize: '0.75rem', color: '#64748b', textAlign: 'center' }}>
+                                                        Arraste colaboradores aqui para vinculá-los
+                                                    </span>
+                                                ) : (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                                        <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 'bold' }}>Colaboradores Vinculados:</span>
+                                                        {assignedIds.map(userId => {
+                                                            const user = appUsers.find(u => String(u.id) === String(userId));
+                                                            if (!user) return null;
+                                                            return (
+                                                                <div 
+                                                                    key={userId}
+                                                                    style={{ 
+                                                                        display: 'flex', 
+                                                                        alignItems: 'center', 
+                                                                        justifyContent: 'space-between', 
+                                                                        background: 'rgba(45, 212, 191, 0.05)', 
+                                                                        border: '1px solid rgba(45, 212, 191, 0.15)', 
+                                                                        borderRadius: '6px', 
+                                                                        padding: '0.35rem 0.5rem',
+                                                                        color: '#cbd5e1'
+                                                                    }}
+                                                                >
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                                                                        <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#2dd4bf', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '0.65rem' }}>
+                                                                            {user.name ? user.name.substring(0, 2).toUpperCase() : 'CO'}
+                                                                        </div>
+                                                                        <span style={{ fontSize: '0.78rem', fontWeight: 600 }}>{user.name}</span>
+                                                                    </div>
+                                                                    <button 
+                                                                        type="button"
+                                                                        onClick={() => handleRemoveAssignment(model.id, userId)}
+                                                                        style={{ 
+                                                                            background: 'transparent', 
+                                                                            border: 'none', 
+                                                                            color: '#ef4444', 
+                                                                            cursor: 'pointer', 
+                                                                            display: 'flex', 
+                                                                            alignItems: 'center', 
+                                                                            padding: '0.2rem' 
+                                                                        }}
+                                                                        title="Remover Colaborador"
+                                                                    >
+                                                                        <X size={12} />
+                                                                    </button>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
@@ -3984,6 +4481,147 @@ export default function ChecklistHub() {
                 </div>
             )}
 
+            {/* CHECKLIST EXECUTION RESULT / SUCCESS REPORT MODAL */}
+            {execResultModal && (
+                <div className="modal-overlay" style={{ zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'rgba(5, 8, 16, 0.85)', backdropFilter: 'blur(8px)' }}>
+                    <div className="pin-modal-card" style={{ 
+                        background: '#0b1329', 
+                        border: execResultModal.status === 'Aprovado' ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid rgba(239, 68, 68, 0.3)', 
+                        borderRadius: '20px', 
+                        padding: '2.5rem 2rem', 
+                        maxWidth: '480px', 
+                        width: '100%', 
+                        textAlign: 'center', 
+                        boxShadow: execResultModal.status === 'Aprovado' 
+                            ? '0 0 40px rgba(16, 185, 129, 0.15)' 
+                            : '0 0 40px rgba(239, 68, 68, 0.15)',
+                        animation: 'modalSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                    }}>
+                        
+                        {/* Top Icon Badge */}
+                        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                            <div style={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                width: '70px', 
+                                height: '70px', 
+                                borderRadius: '50%', 
+                                background: execResultModal.status === 'Aprovado' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                border: `2px solid ${execResultModal.status === 'Aprovado' ? '#10b981' : '#ef4444'}`,
+                                boxShadow: execResultModal.status === 'Aprovado' ? '0 0 20px rgba(16, 185, 129, 0.2)' : '0 0 20px rgba(239, 68, 68, 0.2)'
+                            }}>
+                                {execResultModal.status === 'Aprovado' ? (
+                                    <CheckCircle2 size={36} style={{ color: '#10b981' }} />
+                                ) : (
+                                    <AlertTriangle size={36} style={{ color: '#ef4444' }} />
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Title */}
+                        <h2 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.5rem', fontWeight: 800, letterSpacing: '-0.5px' }}>
+                            {execResultModal.offline ? 'Vistoria Salva Offline!' : 'Vistoria Concluída!'}
+                        </h2>
+                        
+                        <p style={{ margin: '0 0 1.5rem 0', fontSize: '0.86rem', color: '#94a3b8' }}>
+                            Template: <strong style={{ color: '#e2e8f0' }}>{execResultModal.name}</strong>
+                        </p>
+
+                        {/* Conformity Percentage Circle / Card */}
+                        <div style={{ 
+                            background: 'rgba(255,255,255,0.02)', 
+                            border: '1px solid rgba(255,255,255,0.05)', 
+                            borderRadius: '16px', 
+                            padding: '1.25rem', 
+                            marginBottom: '1.75rem',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                        }}>
+                            <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                Grau de Conformidade
+                            </span>
+                            
+                            <div style={{ 
+                                fontSize: '2.5rem', 
+                                fontWeight: 900, 
+                                color: execResultModal.status === 'Aprovado' ? '#10b981' : '#ef4444',
+                                textShadow: execResultModal.status === 'Aprovado' ? '0 0 15px rgba(16, 185, 129, 0.3)' : '0 0 15px rgba(239, 68, 68, 0.3)'
+                            }}>
+                                {execResultModal.conformity}%
+                            </div>
+                            
+                            <div style={{ 
+                                display: 'inline-block',
+                                padding: '0.3rem 1rem', 
+                                borderRadius: '50px', 
+                                fontSize: '0.75rem', 
+                                fontWeight: 800,
+                                background: execResultModal.status === 'Aprovado' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                color: execResultModal.status === 'Aprovado' ? '#10b981' : '#ef4444',
+                                border: `1px solid ${execResultModal.status === 'Aprovado' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}`
+                            }}>
+                                {execResultModal.status.toUpperCase()}
+                            </div>
+                        </div>
+
+                        {/* Information Grid */}
+                        <div style={{ textAlign: 'left', fontSize: '0.85rem', color: '#cbd5e1', display: 'flex', flexDirection: 'column', gap: '0.6rem', marginBottom: '2rem', padding: '0 0.5rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '0.4rem' }}>
+                                <span style={{ color: '#64748b' }}>Sincronização:</span>
+                                <span style={{ fontWeight: 600, color: execResultModal.offline ? '#facc15' : '#2dd4bf' }}>
+                                    {execResultModal.offline ? 'Fila Local Offline' : 'Transmitido ao ERP'}
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.03)', paddingBottom: '0.4rem' }}>
+                                <span style={{ color: '#64748b' }}>Não Conformidades:</span>
+                                <span style={{ fontWeight: 600, color: execResultModal.ncCount > 0 ? '#facc15' : '#cbd5e1' }}>
+                                    {execResultModal.ncCount} ocorrência(s)
+                                </span>
+                            </div>
+                            {execResultModal.ncCount > 0 && (
+                                <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.75rem', color: '#eab308', lineHeight: '1.4' }}>
+                                    ⚠️ Não conformidades geradas exigem a criação de um plano de ação na aba "Não Conformidades".
+                                </p>
+                            )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                            {execResultModal.ncCount > 0 && (
+                                <button 
+                                    className="btn-send-aviso" 
+                                    style={{ 
+                                        width: '100%', 
+                                        padding: '0.75rem', 
+                                        fontSize: '0.88rem', 
+                                        background: 'rgba(234, 179, 8, 0.15)', 
+                                        borderColor: '#eab308', 
+                                        color: '#eab308',
+                                        fontWeight: '800'
+                                    }} 
+                                    onClick={() => {
+                                        setTab('nc');
+                                        setExecResultModal(null);
+                                    }}
+                                >
+                                    Tratar Não Conformidades
+                                </button>
+                            )}
+                            <button 
+                                className="btn-send-aviso" 
+                                style={{ width: '100%', padding: '0.75rem', fontSize: '0.88rem' }} 
+                                onClick={() => setExecResultModal(null)}
+                            >
+                                Ir para o Painel Geral
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* PREVIEW E IMPRESSÃO DO CARTÃO QR CODE */}
             {qrPrintModalOpen && qrPrintModel && (
                 <div id="qrcode-print-area-wrapper" className="modal-overlay" style={{ zIndex: 12000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(5px)' }}>
@@ -4128,6 +4766,109 @@ export default function ChecklistHub() {
                         >
                             <Printer size={16} /> Imprimir Cartão QR
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* WEBCAM CAMERA MODAL */}
+            {cameraModal.isOpen && (
+                <div className="modal-overlay" style={{ zIndex: 13000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'rgba(5, 8, 16, 0.9)', backdropFilter: 'blur(10px)' }}>
+                    <div className="pin-modal-card" style={{ 
+                        background: '#0b1329', 
+                        border: '1px solid rgba(0, 242, 254, 0.2)', 
+                        borderRadius: '20px', 
+                        padding: '2rem', 
+                        maxWidth: '640px', 
+                        width: '100%', 
+                        textAlign: 'center', 
+                        boxShadow: '0 0 50px rgba(0, 242, 254, 0.1)',
+                        animation: 'modalSlideIn 0.3s ease-out'
+                    }}>
+                        {/* Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.8rem', marginBottom: '1.25rem' }}>
+                            <h3 style={{ margin: 0, color: '#fff', fontSize: '1.15rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Camera size={18} style={{ color: '#06b6d4' }} />
+                                {cameraModal.type === 'antes' ? 'Tirar Foto (Antes)' : cameraModal.type === 'depois' ? 'Tirar Foto (Depois)' : 'Tirar Foto Evidência'}
+                            </h3>
+                            <button 
+                                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }} 
+                                onClick={closeCameraModal}
+                                type="button"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Camera Stream Window */}
+                        <div style={{ 
+                            position: 'relative', 
+                            background: '#000', 
+                            borderRadius: '12px', 
+                            border: '2px solid rgba(255,255,255,0.05)', 
+                            overflow: 'hidden', 
+                            aspectRatio: '16/9',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginBottom: '1.5rem'
+                        }}>
+                            {cameraLoading && (
+                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem', color: '#06b6d4', position: 'absolute', zIndex: 5 }}>
+                                    <RefreshCw className="spin-icon" size={36} style={{ animation: 'spin 1.5s linear infinite' }} />
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>Acessando câmera do dispositivo...</span>
+                                </div>
+                            )}
+                            
+                            <video 
+                                ref={videoRef} 
+                                autoPlay 
+                                playsInline 
+                                style={{ 
+                                    width: '100%', 
+                                    height: '100%', 
+                                    objectFit: 'cover',
+                                    display: cameraLoading ? 'none' : 'block'
+                                }} 
+                            />
+                        </div>
+
+                        {/* Capture Controls */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '2rem' }}>
+                            <button 
+                                className="btn-tool" 
+                                style={{ padding: '0.6rem 1.5rem', background: 'rgba(255,255,255,0.03)', color: '#94a3b8' }} 
+                                onClick={closeCameraModal}
+                                type="button"
+                            >
+                                Cancelar
+                            </button>
+                            
+                            <button 
+                                className="btn-send-aviso" 
+                                style={{ 
+                                    width: '64px', 
+                                    height: '64px', 
+                                    borderRadius: '50%', 
+                                    background: '#06b6d4', 
+                                    borderColor: '#06b6d4', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    color: '#000',
+                                    boxShadow: '0 0 15px rgba(6, 182, 212, 0.4)',
+                                    cursor: 'pointer',
+                                    transition: 'transform 0.2s',
+                                    border: 'none'
+                                }} 
+                                onClick={handleCapturePhoto}
+                                type="button"
+                                title="Tirar Foto"
+                            >
+                                <Camera size={28} />
+                            </button>
+                            
+                            <div style={{ width: '92px' }}></div> {/* Spacer to balance layout */}
+                        </div>
                     </div>
                 </div>
             )}
