@@ -94,11 +94,139 @@ export default function ChecklistHub() {
     const [filterPeriod, setFilterPeriod] = useState('TODOS'); // 'TODOS', 'HOJE', 'SEMANA', 'MES'
     const [filterUser, setFilterUser] = useState('TODOS');
 
+    // Filtros e estados específicos para o gráfico de evolução
+    const [chartPeriod, setChartPeriod] = useState('SEMANAL'); // 'SEMANAL' | 'MENSAL' | 'TRIMESTRAL' | 'SEMESTRAL' | 'ANUAL'
+    const [chartSector, setChartSector] = useState('GERAL');
+    const [chartUser, setChartUser] = useState('GERAL');
+
     // DB States
     const [nonConformities, setNonConformities] = useState([]);
     const [actionPlans, setActionPlans] = useState([]);
     const [auditLogs, setAuditLogs] = useState([]);
     const [notifications, setNotifications] = useState([]);
+
+    // Filtro e cálculo de pontos do gráfico de evolução de conformidades
+    const chartPoints = React.useMemo(() => {
+        // Mock data de fallback se não houver execuções
+        const mockSectors = ['COZINHA', 'SALÃO', 'ESTOQUE', 'ADMINISTRAÇÃO'];
+        const mockExecutors = ['Administrador', 'Gerente', 'Operador'];
+        const now = new Date();
+        
+        // Seed 365 dias de dados
+        const seedList = [];
+        for (let i = 365; i >= 0; i--) {
+            const seedValue = Math.sin(i / 10) * 8 + (365 - i) / 10 + 82; // wave + upward trend
+            const date = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i, 12, 0, 0);
+            const sector = mockSectors[i % mockSectors.length];
+            const executor = mockExecutors[i % mockExecutors.length];
+            const variance = ((i * 3 + 17) % 15) - 7;
+            const conformity = Math.max(55, Math.min(100, Math.round(seedValue + variance)));
+            
+            seedList.push({
+                id: `seed_exec_${i}`,
+                endTime: date.toISOString(),
+                sector,
+                executor,
+                conformity
+            });
+        }
+
+        // Combina execuções do Supabase/localStorage com o seed
+        const combined = [...checklistExecutions];
+        seedList.forEach(s => {
+            if (!combined.some(c => c.id === s.id)) {
+                combined.push(s);
+            }
+        });
+
+        // Aplica filtros de período, setor e usuário para o gráfico
+        let days = 7;
+        let numBuckets = 7;
+        if (chartPeriod === 'MENSAL') { days = 30; numBuckets = 10; }
+        else if (chartPeriod === 'TRIMESTRAL') { days = 90; numBuckets = 10; }
+        else if (chartPeriod === 'SEMESTRAL') { days = 180; numBuckets = 10; }
+        else if (chartPeriod === 'ANUAL') { days = 365; numBuckets = 12; }
+
+        const cutoffTime = now.getTime() - days * 24 * 60 * 60 * 1000;
+
+        const filtered = combined.filter(e => {
+            const time = new Date(e.endTime).getTime();
+            if (time < cutoffTime) return false;
+            if (chartSector !== 'GERAL' && e.sector !== chartSector) return false;
+            if (chartUser !== 'GERAL' && e.executor !== chartUser) return false;
+            return true;
+        });
+
+        // Agrupa em N buckets
+        const bucketDurationMs = (days * 24 * 60 * 60 * 1000) / numBuckets;
+        const buckets = Array.from({ length: numBuckets }, (_, idx) => {
+            const bucketStart = cutoffTime + idx * bucketDurationMs;
+            const bucketEnd = bucketStart + bucketDurationMs;
+            return {
+                start: bucketStart,
+                end: bucketEnd,
+                sum: 0,
+                count: 0,
+                label: ''
+            };
+        });
+
+        buckets.forEach((b, idx) => {
+            const startDate = new Date(b.start);
+            if (chartPeriod === 'SEMANAL') {
+                const daysOfWeek = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+                b.label = daysOfWeek[startDate.getDay()];
+            } else if (chartPeriod === 'MENSAL') {
+                b.label = `${String(startDate.getDate()).padStart(2, '0')}/${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+            } else if (chartPeriod === 'ANUAL') {
+                const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+                b.label = months[startDate.getMonth()];
+            } else {
+                b.label = `${String(startDate.getDate()).padStart(2, '0')}/${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+            }
+        });
+
+        filtered.forEach(e => {
+            const time = new Date(e.endTime).getTime();
+            const bucket = buckets.find(b => time >= b.start && time < b.end);
+            if (bucket) {
+                bucket.sum += e.conformity || 0;
+                bucket.count += 1;
+            }
+        });
+
+        const points = buckets.map(b => {
+            const avg = b.count > 0 ? Math.round(b.sum / b.count) : null;
+            return {
+                label: b.label,
+                value: avg
+            };
+        });
+
+        // Interpolador de dados nulos
+        for (let i = 0; i < points.length; i++) {
+            if (points[i].value === null) {
+                let leftVal = null;
+                for (let j = i - 1; j >= 0; j--) {
+                    if (points[j].value !== null) { leftVal = points[j].value; break; }
+                }
+                let rightVal = null;
+                for (let j = i + 1; j < points.length; j++) {
+                    if (points[j].value !== null) { rightVal = points[j].value; break; }
+                }
+                if (leftVal !== null && rightVal !== null) {
+                    points[i].value = Math.round((leftVal + rightVal) / 2);
+                } else if (leftVal !== null) {
+                    points[i].value = leftVal;
+                } else if (rightVal !== null) {
+                    points[i].value = rightVal;
+                } else {
+                    points[i].value = 85;
+                }
+            }
+        }
+        return points;
+    }, [checklistExecutions, chartPeriod, chartSector, chartUser]);
 
     // Construtor (Builder) Local States
     const [builderId, setBuilderId] = useState(null);
@@ -129,6 +257,7 @@ export default function ChecklistHub() {
     const [drawingImageModalOpen, setDrawingImageModalOpen] = useState(false);
     const [activeDrawItemInfo, setActiveDrawItemInfo] = useState(null); // { itemId, type: 'antes' | 'depois' }
     const [activeBrushColor, setActiveBrushColor] = useState('#ef4444'); // Vermelho padrão para 'antes'
+    const [modalHasYellowStroke, setModalHasYellowStroke] = useState(false);
     const [builderStartTime, setBuilderStartTime] = useState('08:00');
     const [builderEndTime, setBuilderEndTime] = useState('18:00');
     
@@ -213,6 +342,38 @@ export default function ChecklistHub() {
             }
         }
     }, [checklistModels, currentUser]);
+
+    // Escuta o evento customizado de voltar disparado pelo cabeçalho
+    useEffect(() => {
+        const handleBackEvent = () => {
+            if (activeExecution) {
+                const hasAnswers = Object.values(execAnswers).some(
+                    ans => ans.answer || ans.photo || ans.comment || ans.barcode || ans.signature
+                );
+
+                if (hasAnswers) {
+                    showSystemConfirm(
+                        'Tem certeza que deseja voltar? Suas respostas do checklist atual serão perdidas.',
+                        () => {
+                            setActiveExecution(null);
+                            setTab('run_checklist');
+                        },
+                        null,
+                        'Voltar',
+                        'warning'
+                    );
+                } else {
+                    setActiveExecution(null);
+                    setTab('run_checklist');
+                }
+            }
+        };
+
+        window.addEventListener('corellux-checklist-back', handleBackEvent);
+        return () => {
+            window.removeEventListener('corellux-checklist-back', handleBackEvent);
+        };
+    }, [activeExecution, execAnswers]);
 
     // Sincronização automática quando voltar Online
     useEffect(() => {
@@ -368,7 +529,13 @@ export default function ChecklistHub() {
             } else {
                 setExecAnswers({
                     ...execAnswers,
-                    [itemId]: { ...curAns, bgPhotoDepois: dataUrl, photoDepois: '' }
+                    [itemId]: { 
+                        ...curAns, 
+                        bgPhotoDepois: dataUrl, 
+                        photoDepois: '',
+                        statusDepois: '#10b981',
+                        hasYellowStroke: false
+                    }
                 });
             }
         };
@@ -385,7 +552,13 @@ export default function ChecklistHub() {
         } else {
             setExecAnswers({
                 ...execAnswers,
-                [itemId]: { ...curAns, bgPhotoDepois: '', photoDepois: '' }
+                [itemId]: { 
+                    ...curAns, 
+                    bgPhotoDepois: '', 
+                    photoDepois: '',
+                    statusDepois: '#10b981',
+                    hasYellowStroke: false
+                }
             });
         }
     };
@@ -899,6 +1072,12 @@ export default function ChecklistHub() {
     const drawDrawing = (e) => {
         if (!isDrawingDrawing.current) return;
         if (e.cancelable) e.preventDefault();
+
+        // Se estiver desenhando com a cor amarela no depois, marca que a imagem tem traço amarelo
+        if (activeDrawItemInfo && activeDrawItemInfo.type === 'depois' && activeBrushColor === '#eab308') {
+            setModalHasYellowStroke(true);
+        }
+
         const canvas = drawingCanvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -1001,6 +1180,7 @@ export default function ChecklistHub() {
                         setActiveBrushColor('#ef4444');
                     } else {
                         setActiveBrushColor(ans.statusDepois || '#10b981');
+                        setModalHasYellowStroke(ans.hasYellowStroke || false);
                     }
                 }
             }, 100);
@@ -1019,9 +1199,15 @@ export default function ChecklistHub() {
                     [itemId]: { ...curAns, photoAntes: dataUrl }
                 });
             } else {
+                const statusDepois = modalHasYellowStroke ? '#eab308' : '#10b981';
                 setExecAnswers({
                     ...execAnswers,
-                    [itemId]: { ...curAns, photoDepois: dataUrl, statusDepois: activeBrushColor }
+                    [itemId]: { 
+                        ...curAns, 
+                        photoDepois: dataUrl, 
+                        statusDepois: statusDepois,
+                        hasYellowStroke: modalHasYellowStroke
+                    }
                 });
             }
         }
@@ -1046,6 +1232,9 @@ export default function ChecklistHub() {
                 img.src = bgPhoto;
             } else {
                 drawEquipmentOutline(ctx, canvas.width, canvas.height, type);
+            }
+            if (type === 'depois') {
+                setModalHasYellowStroke(false);
             }
         }
     };
@@ -2169,68 +2358,157 @@ export default function ChecklistHub() {
                         </div>
 
                         {/* Gráficos Interativos SVG */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '2rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', marginBottom: '2rem' }}>
                             {/* SVG Trend Chart */}
-                            <div style={{ background: 'rgba(30, 41, 59, 0.15)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem' }}>
-                                <h3 style={{ margin: '0 0 1.25rem 0', fontSize: '1rem', color: '#fff' }}>Evolução de Conformidade (Últimos Dias)</h3>
-                                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                    <svg width="100%" height="200" viewBox="0 0 400 200" style={{ overflow: 'visible' }}>
-                                        <g stroke="#ffffff" strokeOpacity="0.05" strokeWidth="1">
-                                            <line x1="0" y1="50" x2="400" y2="50" />
-                                            <line x1="0" y1="100" x2="400" y2="100" />
-                                            <line x1="0" y1="150" x2="400" y2="150" />
+                            <div style={{ background: 'rgba(30, 41, 59, 0.15)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.75rem', width: '100%', boxSizing: 'border-box' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+                                    <div>
+                                        <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#fff', fontWeight: 800 }}>Evolução de Conformidade Operacional</h3>
+                                        <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>Percentual médio de conformidade dos checklists por período e filtros.</p>
+                                    </div>
+                                    
+                                    {/* Filtros Internos do Gráfico */}
+                                    <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                        <select 
+                                            className="chk-filter-select" 
+                                            value={chartPeriod} 
+                                            onChange={(e) => setChartPeriod(e.target.value)}
+                                            style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', color: '#fff', padding: '0.4rem 0.8rem', fontSize: '0.78rem' }}
+                                        >
+                                            <option value="SEMANAL">Período: Semanal</option>
+                                            <option value="MENSAL">Período: Mensal</option>
+                                            <option value="TRIMESTRAL">Período: Trimestral</option>
+                                            <option value="SEMESTRAL">Período: Semestral</option>
+                                            <option value="ANUAL">Período: Anual</option>
+                                        </select>
+                                        
+                                        <select 
+                                            className="chk-filter-select" 
+                                            value={chartSector} 
+                                            onChange={(e) => setChartSector(e.target.value)}
+                                            style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', color: '#fff', padding: '0.4rem 0.8rem', fontSize: '0.78rem' }}
+                                        >
+                                            <option value="GERAL">Setor: Geral</option>
+                                            <option value="COZINHA">Setor: Cozinha</option>
+                                            <option value="SALÃO">Setor: Salão</option>
+                                            <option value="ESTOQUE">Setor: Estoque</option>
+                                            <option value="ADMINISTRAÇÃO">Setor: Administração</option>
+                                        </select>
+
+                                        <select 
+                                            className="chk-filter-select" 
+                                            value={chartUser} 
+                                            onChange={(e) => setChartUser(e.target.value)}
+                                            style={{ background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '6px', color: '#fff', padding: '0.4rem 0.8rem', fontSize: '0.78rem' }}
+                                        >
+                                            <option value="GERAL">Colaborador: Geral</option>
+                                            {appUsers.map(u => (
+                                                <option key={u.id} value={u.name}>{u.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                                    <svg width="100%" height="260" viewBox="0 0 650 320" style={{ overflow: 'visible' }}>
+                                        <defs>
+                                            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#2dd4bf" stopOpacity="0.25" />
+                                                <stop offset="100%" stopColor="#2dd4bf" stopOpacity="0.0" />
+                                            </linearGradient>
+                                        </defs>
+
+                                        {/* Grid lines horizontal */}
+                                        <g stroke="rgba(255, 255, 255, 0.05)" strokeWidth="1">
+                                            <line x1="50" y1="40" x2="620" y2="40" />
+                                            <line x1="50" y1="97.5" x2="620" y2="97.5" />
+                                            <line x1="50" y1="155" x2="620" y2="155" />
+                                            <line x1="50" y1="212.5" x2="620" y2="212.5" />
+                                            <line x1="50" y1="270" x2="620" y2="270" />
                                         </g>
-                                        {/* Line plot */}
+
+                                        {/* Y Axis Labels */}
+                                        <g fill="#94a3b8" fontSize="10" textAnchor="end">
+                                            <text x="40" y="43">100%</text>
+                                            <text x="40" y="100.5">75%</text>
+                                            <text x="40" y="158">50%</text>
+                                            <text x="40" y="215.5">25%</text>
+                                            <text x="40" y="273">0%</text>
+                                        </g>
+
+                                        {/* X Axis Labels */}
+                                        <g fill="#94a3b8" fontSize="10" textAnchor="middle">
+                                            {chartPoints.map((p, idx) => {
+                                                const x = 50 + idx * (570 / (chartPoints.length - 1));
+                                                return (
+                                                    <text key={idx} x={x} y="295">{p.label}</text>
+                                                );
+                                            })}
+                                        </g>
+
+                                        {/* Gradient Fill under line */}
+                                        <polygon 
+                                            points={`50,270 ` + chartPoints.map((p, idx) => {
+                                                const x = 50 + idx * (570 / (chartPoints.length - 1));
+                                                const y = 270 - (p.value / 100) * 230;
+                                                return `${x},${y}`;
+                                            }).join(' ') + ` 620,270`} 
+                                            fill="url(#chartGradient)" 
+                                        />
+
+                                        {/* The Trend Line */}
                                         <polyline
                                             fill="none"
                                             stroke="#2dd4bf"
                                             strokeWidth="3"
-                                            points="20,130 80,90 140,110 200,60 260,80 320,40 380,50"
+                                            points={chartPoints.map((p, idx) => {
+                                                const x = 50 + idx * (570 / (chartPoints.length - 1));
+                                                const y = 270 - (p.value / 100) * 230;
+                                                return `${x},${y}`;
+                                            }).join(' ')}
                                         />
-                                        {/* Dots */}
-                                        <circle cx="20" cy="130" r="4" fill="#2dd4bf" />
-                                        <circle cx="80" cy="90" r="4" fill="#2dd4bf" />
-                                        <circle cx="140" cy="110" r="4" fill="#2dd4bf" />
-                                        <circle cx="200" cy="60" r="4" fill="#2dd4bf" />
-                                        <circle cx="260" cy="80" r="4" fill="#2dd4bf" />
-                                        <circle cx="320" cy="40" r="4" fill="#2dd4bf" />
-                                        <circle cx="380" cy="50" r="4" fill="#2dd4bf" />
-                                        
-                                        {/* Text values */}
-                                        <text x="20" y="120" fill="#fff" fontSize="8" textAnchor="middle">65%</text>
-                                        <text x="80" y="80" fill="#fff" fontSize="8" textAnchor="middle">85%</text>
-                                        <text x="140" y="100" fill="#fff" fontSize="8" textAnchor="middle">75%</text>
-                                        <text x="200" y="50" fill="#fff" fontSize="8" textAnchor="middle">92%</text>
-                                        <text x="260" y="70" fill="#fff" fontSize="8" textAnchor="middle">88%</text>
-                                        <text x="320" y="30" fill="#fff" fontSize="8" textAnchor="middle">98%</text>
-                                        <text x="380" y="40" fill="#fff" fontSize="8" textAnchor="middle">95%</text>
+
+                                        {/* Dots & Tooltip Badges */}
+                                        {chartPoints.map((p, idx) => {
+                                            const x = 50 + idx * (570 / (chartPoints.length - 1));
+                                            const y = 270 - (p.value / 100) * 230;
+                                            return (
+                                                <g key={idx}>
+                                                    <circle cx={x} cy={y} r="5" fill="#2dd4bf" stroke="#0f172a" strokeWidth="2" />
+                                                    <rect x={x - 16} y={y - 23} width="32" height="15" rx="3" fill="#1e293b" stroke="rgba(45, 212, 191, 0.4)" strokeWidth="1" />
+                                                    <text x={x} y={y - 12} fill="#2dd4bf" fontSize="8" textAnchor="middle" fontWeight="bold">{p.value}%</text>
+                                                </g>
+                                            );
+                                        })}
                                     </svg>
                                 </div>
                             </div>
 
-                            {/* SVG Bar Chart Occurrences by Sector */}
-                            <div style={{ background: 'rgba(30, 41, 59, 0.15)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem' }}>
-                                <h3 style={{ margin: '0 0 1.25rem 0', fontSize: '1rem', color: '#fff' }}>Não Conformidades por Setor</h3>
-                                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                                    <svg width="100%" height="200" viewBox="0 0 400 200" style={{ overflow: 'visible' }}>
-                                        {/* Bars */}
-                                        <rect x="30" y="50" width="40" height="120" fill="#ef4444" rx="4" />
-                                        <rect x="120" y="90" width="40" height="80" fill="#38bdf8" rx="4" />
-                                        <rect x="210" y="120" width="40" height="50" fill="#facc15" rx="4" />
-                                        <rect x="300" y="140" width="40" height="30" fill="#10b981" rx="4" />
+                            {/* Row for lower charts */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+                                {/* SVG Bar Chart Occurrences by Sector */}
+                                <div style={{ background: 'rgba(30, 41, 59, 0.15)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '1.5rem' }}>
+                                    <h3 style={{ margin: '0 0 1.25rem 0', fontSize: '1rem', color: '#fff' }}>Não Conformidades por Setor</h3>
+                                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                        <svg width="100%" height="200" viewBox="0 0 400 200" style={{ overflow: 'visible' }}>
+                                            {/* Bars */}
+                                            <rect x="30" y="50" width="40" height="120" fill="#ef4444" rx="4" />
+                                            <rect x="120" y="90" width="40" height="80" fill="#38bdf8" rx="4" />
+                                            <rect x="210" y="120" width="40" height="50" fill="#facc15" rx="4" />
+                                            <rect x="300" y="140" width="40" height="30" fill="#10b981" rx="4" />
 
-                                        {/* Text Labels */}
-                                        <text x="50" y="185" fill="#cbd5e1" fontSize="10" textAnchor="middle">COZINHA</text>
-                                        <text x="140" y="185" fill="#cbd5e1" fontSize="10" textAnchor="middle">SALÃO</text>
-                                        <text x="230" y="185" fill="#cbd5e1" fontSize="10" textAnchor="middle">ESTOQUE</text>
-                                        <text x="320" y="185" fill="#cbd5e1" fontSize="10" textAnchor="middle">ADMIN</text>
+                                            {/* Text Labels */}
+                                            <text x="50" y="185" fill="#cbd5e1" fontSize="10" textAnchor="middle">COZINHA</text>
+                                            <text x="140" y="185" fill="#cbd5e1" fontSize="10" textAnchor="middle">SALÃO</text>
+                                            <text x="230" y="185" fill="#cbd5e1" fontSize="10" textAnchor="middle">ESTOQUE</text>
+                                            <text x="320" y="185" fill="#cbd5e1" fontSize="10" textAnchor="middle">ADMIN</text>
 
-                                        {/* Values on top of bars */}
-                                        <text x="50" y="42" fill="#fff" fontSize="10" textAnchor="middle" fontWeight="bold">12 NCs</text>
-                                        <text x="140" y="82" fill="#fff" fontSize="10" textAnchor="middle">8 NCs</text>
-                                        <text x="230" y="112" fill="#fff" fontSize="10" textAnchor="middle">5 NCs</text>
-                                        <text x="320" y="132" fill="#fff" fontSize="10" textAnchor="middle">3 NCs</text>
-                                    </svg>
+                                            {/* Values on top of bars */}
+                                            <text x="50" y="42" fill="#fff" fontSize="10" textAnchor="middle" fontWeight="bold">12 NCs</text>
+                                            <text x="140" y="82" fill="#fff" fontSize="10" textAnchor="middle">8 NCs</text>
+                                            <text x="230" y="112" fill="#fff" fontSize="10" textAnchor="middle">5 NCs</text>
+                                            <text x="320" y="132" fill="#fff" fontSize="10" textAnchor="middle">3 NCs</text>
+                                        </svg>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2905,13 +3183,6 @@ export default function ChecklistHub() {
                                                     <input 
                                                         type="file" 
                                                         accept="image/*" 
-                                                        id={`file-upload-${item.id}`} 
-                                                        style={{ display: 'none' }} 
-                                                        onChange={(e) => handlePhotoUpload(e, item.id)} 
-                                                    />
-                                                    <input 
-                                                        type="file" 
-                                                        accept="image/*" 
                                                         capture="environment" 
                                                         id={`camera-capture-${item.id}`} 
                                                         style={{ display: 'none' }} 
@@ -2920,26 +3191,10 @@ export default function ChecklistHub() {
                                                     <button 
                                                         className="btn-tool"
                                                         onClick={() => document.getElementById(`camera-capture-${item.id}`).click()}
-                                                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
+                                                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', background: 'var(--accent-orange)', color: '#fff', borderColor: 'var(--accent-orange)' }}
                                                         type="button"
                                                     >
                                                         <Camera size={13} /> Tirar Foto (Câmera)
-                                                    </button>
-                                                    <button 
-                                                        className="btn-tool"
-                                                        onClick={() => document.getElementById(`file-upload-${item.id}`).click()}
-                                                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem' }}
-                                                        type="button"
-                                                    >
-                                                        <Upload size={13} /> Upload Imagem
-                                                    </button>
-                                                    <button 
-                                                        className="btn-tool"
-                                                        onClick={() => setCameraModal({ isOpen: true, itemId: item.id, type: 'foto' })}
-                                                        style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.5rem 1rem', borderColor: 'rgba(6, 182, 212, 0.4)' }}
-                                                        type="button"
-                                                    >
-                                                        <Camera size={13} style={{ color: '#06b6d4' }} /> Usar Mock (Câmera)
                                                     </button>
                                                 </div>
                                                 {ans.photo && (
@@ -2980,7 +3235,7 @@ export default function ChecklistHub() {
                                                             </div>
                                                         ) : (
                                                             <div style={{ width: '220px', height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', color: '#64748b', fontSize: '0.78rem', textAlign: 'center', padding: '0.5rem' }}>
-                                                                Sem foto de fundo.<br />Tire uma foto ou use o diagrama.
+                                                                Sem foto de fundo.<br />Tire uma foto ou faça upload.
                                                             </div>
                                                         )}
 
@@ -3017,25 +3272,6 @@ export default function ChecklistHub() {
                                                                         type="button"
                                                                     >
                                                                         <Upload size={11} /> Upload
-                                                                    </button>
-                                                                    <button 
-                                                                        className="btn-tool" 
-                                                                        style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem', borderColor: 'rgba(6, 182, 212, 0.4)' }}
-                                                                        onClick={() => setCameraModal({ isOpen: true, itemId: item.id, type: 'antes' })}
-                                                                        type="button"
-                                                                    >
-                                                                        <Camera size={11} style={{ color: '#06b6d4' }} /> Mock Câmera
-                                                                    </button>
-                                                                    <button 
-                                                                        className="btn-tool" 
-                                                                        style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem', background: 'rgba(255,255,255,0.05)' }}
-                                                                        onClick={() => {
-                                                                            setActiveDrawItemInfo({ itemId: item.id, type: 'antes' });
-                                                                            setDrawingImageModalOpen(true);
-                                                                        }}
-                                                                        type="button"
-                                                                    >
-                                                                        Usar Diagrama
                                                                     </button>
                                                                 </>
                                                             ) : (
@@ -3081,7 +3317,7 @@ export default function ChecklistHub() {
                                                             </div>
                                                         ) : (
                                                             <div style={{ width: '220px', height: '110px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: '6px', color: '#64748b', fontSize: '0.78rem', textAlign: 'center', padding: '0.5rem' }}>
-                                                                Sem foto de fundo.<br />Tire uma foto ou use o diagrama.
+                                                                Sem foto de fundo.<br />Tire uma foto ou faça upload.
                                                             </div>
                                                         )}
 
@@ -3118,25 +3354,6 @@ export default function ChecklistHub() {
                                                                         type="button"
                                                                     >
                                                                         <Upload size={11} /> Upload
-                                                                    </button>
-                                                                    <button 
-                                                                        className="btn-tool" 
-                                                                        style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem', borderColor: 'rgba(6, 182, 212, 0.4)' }}
-                                                                        onClick={() => setCameraModal({ isOpen: true, itemId: item.id, type: 'depois' })}
-                                                                        type="button"
-                                                                    >
-                                                                        <Camera size={11} style={{ color: '#06b6d4' }} /> Mock Câmera
-                                                                    </button>
-                                                                    <button 
-                                                                        className="btn-tool" 
-                                                                        style={{ fontSize: '0.72rem', padding: '0.3rem 0.6rem', background: 'rgba(255,255,255,0.05)' }}
-                                                                        onClick={() => {
-                                                                            setActiveDrawItemInfo({ itemId: item.id, type: 'depois' });
-                                                                            setDrawingImageModalOpen(true);
-                                                                        }}
-                                                                        type="button"
-                                                                    >
-                                                                        Usar Diagrama
                                                                     </button>
                                                                 </>
                                                             ) : (
