@@ -3724,13 +3724,13 @@ export default function ChecklistHub() {
             {/* DETAIL MODAL: EXECUÇÃO DETALHADA */}
             {activeExecutionDetail && (
                 <div className="modal-overlay" style={{ zIndex: 11000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto' }}>
-                    <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '600px', width: '100%', maxHeight: '80vh', overflowY: 'auto' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.8rem', marginBottom: '1.25rem' }}>
+                    <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '600px', width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.8rem', marginBottom: '1.25rem', flexShrink: 0 }}>
                             <h3 style={{ margin: 0, color: '#fff', fontSize: '1.1rem' }}>Detalhes da Vistoria</h3>
                             <button style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }} onClick={() => setActiveExecutionDetail(null)}><X size={18} /></button>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.88rem' }}>
+                        <div className="modal-scrollable-content" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', fontSize: '0.88rem', overflowY: 'auto', flex: 1, paddingRight: '0.5rem' }}>
                             <div>
                                 <strong>Modelo Checklist:</strong> {activeExecutionDetail.modelName}<br />
                                 <strong>Setor:</strong> {activeExecutionDetail.sector}<br />
