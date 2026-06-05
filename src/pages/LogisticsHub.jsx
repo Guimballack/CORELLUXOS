@@ -290,6 +290,7 @@ export default function LogisticsHub() {
     const [wmsViewZoneId, setWmsViewZoneId] = useState('');
     const [wmsViewAisle, setWmsViewAisle] = useState('');
     const [wmsViewRow, setWmsViewRow] = useState('A');
+    const [selectedCellDetail, setSelectedCellDetail] = useState(null);
 
     // Cascading selection sync for WMS Visual Map
     useEffect(() => {
@@ -3243,10 +3244,29 @@ export default function LogisticsHub() {
                                                                                         ? 'var(--accent-green)'
                                                                                         : 'var(--text-secondary)';
 
+                                                                                const visibleBatches = cellBatches.slice(0, 2);
+                                                                                const remainingCount = cellBatches.length - 2;
+
+                                                                                const tooltipItemsText = cellBatches.length > 0 
+                                                                                    ? `\n\nLotes estocados:\n` + cellBatches.map(b => {
+                                                                                        const prod = products.find(p => p.sku === b.itemSku);
+                                                                                        return `• ${prod?.name || b.itemSku} (Lote: ${b.lot} | Qtd: ${b.quantity} ${prod?.unit || b.unit})`;
+                                                                                      }).join('\n')
+                                                                                    : '\n\nStatus: Vazio/Livre';
+                                                                                
+                                                                                const hoverTitle = `Endereço WMS: ${formattedAddress}\nStatus: ${loc.status}${tooltipItemsText}\n\nClique para abrir detalhes completos.`;
+
                                                                                 return (
                                                                                     <div 
                                                                                         key={loc.id}
-                                                                                        title={`${formattedAddress} · status: ${loc.status}`}
+                                                                                        title={hoverTitle}
+                                                                                        onClick={() => setSelectedCellDetail({ 
+                                                                                            address: formattedAddress, 
+                                                                                            batches: cellBatches, 
+                                                                                            location: loc,
+                                                                                            warehouse: selectedWh,
+                                                                                            zone: selectedZ
+                                                                                        })}
                                                                                         style={{
                                                                                             padding: '4px 6px',
                                                                                             borderRadius: '6px',
@@ -3255,7 +3275,19 @@ export default function LogisticsHub() {
                                                                                             display: 'flex',
                                                                                             flexDirection: 'column',
                                                                                             gap: '2px',
-                                                                                            transition: 'all 0.15s'
+                                                                                            transition: 'all 0.15s',
+                                                                                            cursor: 'pointer',
+                                                                                            userSelect: 'none'
+                                                                                        }}
+                                                                                        onMouseEnter={e => {
+                                                                                            e.currentTarget.style.transform = 'translateY(-1px)';
+                                                                                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+                                                                                            e.currentTarget.style.background = isOcupado ? 'rgba(34, 197, 94, 0.12)' : (!isAtivo ? 'rgba(239, 68, 68, 0.12)' : 'rgba(255, 255, 255, 0.03)');
+                                                                                        }}
+                                                                                        onMouseLeave={e => {
+                                                                                            e.currentTarget.style.transform = 'none';
+                                                                                            e.currentTarget.style.boxShadow = 'none';
+                                                                                            e.currentTarget.style.background = bgStyle;
                                                                                         }}
                                                                                     >
                                                                                         {/* Linha superior: Posição + Status */}
@@ -3277,19 +3309,36 @@ export default function LogisticsHub() {
                                                                                                 {cellBatches.length === 0 ? (
                                                                                                     <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' }}>Livre</span>
                                                                                                 ) : (
-                                                                                                    cellBatches.map(b => {
-                                                                                                        const prod = products.find(p => p.sku === b.itemSku);
-                                                                                                        return (
-                                                                                                            <div key={b.id} style={{ display: 'flex', flexDirection: 'column', fontSize: '0.62rem', borderLeft: '1.5px solid var(--accent-green)', paddingLeft: '4px', margin: '1px 0' }}>
-                                                                                                                <span style={{ fontWeight: '700', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={prod?.name || b.itemSku}>
-                                                                                                                    {prod?.name || b.itemSku}
-                                                                                                                </span>
-                                                                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.58rem' }}>
-                                                                                                                    Lote: {b.lot} &middot; Qtd: <strong style={{ color: '#fff' }}>{b.quantity} {prod?.unit || b.unit}</strong>
-                                                                                                                </span>
+                                                                                                    <>
+                                                                                                        {visibleBatches.map(b => {
+                                                                                                            const prod = products.find(p => p.sku === b.itemSku);
+                                                                                                            return (
+                                                                                                                <div key={b.id} style={{ display: 'flex', flexDirection: 'column', fontSize: '0.62rem', borderLeft: '1.5px solid var(--accent-green)', paddingLeft: '4px', margin: '1px 0' }}>
+                                                                                                                    <span style={{ fontWeight: '700', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={prod?.name || b.itemSku}>
+                                                                                                                        {prod?.name || b.itemSku}
+                                                                                                                    </span>
+                                                                                                                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.58rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                                                                        Lote: {b.lot} &middot; Qtd: <strong style={{ color: '#fff' }}>{b.quantity} {prod?.unit || b.unit}</strong>
+                                                                                                                    </span>
+                                                                                                                </div>
+                                                                                                            );
+                                                                                                        })}
+                                                                                                        {remainingCount > 0 && (
+                                                                                                            <div style={{ 
+                                                                                                                fontSize: '0.58rem', 
+                                                                                                                fontWeight: '700', 
+                                                                                                                color: 'var(--accent-purple)', 
+                                                                                                                background: 'rgba(168, 85, 247, 0.15)', 
+                                                                                                                border: '1px dashed rgba(168, 85, 247, 0.3)',
+                                                                                                                padding: '2px 4px', 
+                                                                                                                borderRadius: '4px',
+                                                                                                                textAlign: 'center',
+                                                                                                                marginTop: '2px'
+                                                                                                            }}>
+                                                                                                                + {remainingCount} lote{remainingCount > 1 ? 's' : ''} (Clique/Passe)
                                                                                                             </div>
-                                                                                                        );
-                                                                                                    })
+                                                                                                        )}
+                                                                                                    </>
                                                                                                 )}
                                                                                             </div>
                                                                                         )}
@@ -5281,6 +5330,133 @@ export default function LogisticsHub() {
                                     }}
                                 >
                                     {systemDialog.type === 'confirm' ? 'OK' : 'ENTENDIDO'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                        , document.body)}
+            {/* =============================================
+                MODAL: WMS CELL DETAIL DIALOG
+            ============================================= */}
+            {selectedCellDetail && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 15000 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '500px', width: '90%', padding: '2rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.8rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--accent-purple)' }}>
+                                    <Warehouse size={24} />
+                                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '800' }}>Detalhes do Endereço</h3>
+                                </div>
+                                <button 
+                                    className="btn-close-modal" 
+                                    onClick={() => setSelectedCellDetail(null)} 
+                                    title="Fechar"
+                                    style={{ position: 'static', background: 'none', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer' }}
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', background: 'rgba(0,0,0,0.25)', padding: '1rem', borderRadius: '10px', border: '1px solid var(--border-color)' }}>
+                                <div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: '700' }}>Endereço WMS</div>
+                                    <div style={{ fontSize: '0.9rem', color: '#fff', fontWeight: '700' }}>{selectedCellDetail.address}</div>
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: '700' }}>Status da Posição</div>
+                                    <span style={{ 
+                                        fontSize: '0.75rem', 
+                                        fontWeight: '800', 
+                                        color: selectedCellDetail.location?.status === 'Ativo' ? 'var(--accent-green)' : 'var(--accent-red)',
+                                        background: selectedCellDetail.location?.status === 'Ativo' ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                                        padding: '2px 6px',
+                                        borderRadius: '4px',
+                                        border: selectedCellDetail.location?.status === 'Ativo' ? '1px solid rgba(34, 197, 94, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)'
+                                    }}>
+                                        {selectedCellDetail.location?.status === 'Ativo' ? 'ATIVO' : 'BLOQUEADO'}
+                                    </span>
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: '700' }}>Armazém / Zona</div>
+                                    <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+                                        {selectedCellDetail.warehouse?.name || 'N/A'} &middot; {selectedCellDetail.zone?.name || 'N/A'}
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: '700' }}>Estrutura Física</div>
+                                    <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+                                        Rua {selectedCellDetail.location?.aisle || '—'} &middot; Lado {selectedCellDetail.location?.row || '—'} &middot; Prat. {selectedCellDetail.location?.shelf || '—'} &middot; Pos. {selectedCellDetail.location?.position || '—'}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <h4 style={{ margin: '0 0 0.8rem 0', color: 'var(--text-primary)', fontSize: '0.95rem', fontWeight: '700' }}>
+                                    Lotes Armazenados ({selectedCellDetail.batches?.length || 0})
+                                </h4>
+                                {selectedCellDetail.batches?.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--border-color)', borderRadius: '10px', fontSize: '0.85rem' }}>
+                                        Nenhum lote estocado nesta posição.
+                                    </div>
+                                ) : (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '250px', overflowY: 'auto', paddingRight: '4px' }}>
+                                        {selectedCellDetail.batches.map((b) => {
+                                            const prod = products.find(p => p.sku === b.itemSku);
+                                            const expStatus = b.expiryDate || b.expDate ? getBatchExpiryStatus(b.expiryDate || b.expDate) : null;
+                                            return (
+                                                <div key={b.id} style={{
+                                                    background: 'rgba(255,255,255,0.02)',
+                                                    border: '1px solid var(--border-color)',
+                                                    borderRadius: '8px',
+                                                    padding: '0.8rem',
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    gap: '0.3rem'
+                                                }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                                                        <span style={{ fontWeight: '800', color: '#fff', fontSize: '0.85rem', textTransform: 'uppercase' }}>
+                                                            {prod?.name || b.itemSku}
+                                                        </span>
+                                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                                                            SKU: {b.itemSku}
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                                                        <span>Lote: <strong style={{ color: 'var(--text-primary)' }}>{b.lot}</strong></span>
+                                                        <span>Qtd: <strong style={{ color: 'var(--accent-green)' }}>{b.quantity} {prod?.unit || b.unit}</strong></span>
+                                                    </div>
+                                                    {expStatus && (
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '2px', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '4px' }}>
+                                                            <span>Vencimento: <strong>{b.expiryDate || b.expDate}</strong></span>
+                                                            <span className={expStatus.className} style={{ fontSize: '0.62rem', fontWeight: '800', padding: '1px 4px', borderRadius: '3px' }}>
+                                                                {expStatus.label} ({expStatus.days}d)
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border-color)', paddingTop: '1rem', marginTop: '0.5rem' }}>
+                                <button 
+                                    className="btn-confirm-modal"
+                                    style={{ 
+                                        background: 'var(--accent-purple)', 
+                                        color: '#ffffff',
+                                        fontWeight: '800',
+                                        height: '38px',
+                                        padding: '0 1.5rem',
+                                        borderRadius: '8px',
+                                        border: 'none',
+                                        cursor: 'pointer'
+                                    }} 
+                                    onClick={() => setSelectedCellDetail(null)}
+                                >
+                                    FECHAR
                                 </button>
                             </div>
                         </div>
