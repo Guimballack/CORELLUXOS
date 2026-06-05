@@ -1,6 +1,6 @@
 export const DEFAULT_AVATAR = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23ff5a00'/><clipPath id='circle-clip'><circle cx='50' cy='50' r='38'/></clipPath><circle cx='50' cy='50' r='38' fill='%2300205b'/><g clip-path='url(%23circle-clip)'><circle cx='50' cy='42' r='13' fill='none' stroke='%23ffffff' stroke-width='3.5' stroke-linecap='round'/><path d='M41,53.5 L41,60' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round'/><path d='M59,53.5 L59,60' fill='none' stroke='%23ffffff' stroke-width='3' stroke-linecap='round'/><path d='M22,70 C22,60 30,58 40.5,58 L40.5,62 L50,69 L59.5,62 L59.5,58 C70,58 78,60 78,70' fill='none' stroke='%23ff5a00' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'/></g></svg>";
 export const getUserAvatar = (img) => {
-    if (!img || img === 'profile/default-avatar.png' || img.includes('default-avatar')) {
+    if (!img || typeof img !== 'string' || img === 'profile/default-avatar.png' || !img.includes || img.includes('default-avatar')) {
         return DEFAULT_AVATAR;
     }
     return img;

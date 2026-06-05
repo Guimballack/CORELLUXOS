@@ -3097,7 +3097,7 @@ export default function ChecklistHub() {
                                                                     style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)' }}
                                                                 >
                                                                     <option value="">-- Selecione o Item --</option>
-                                                                    {patrimonyItems.filter(i => i.status === 'Ativo').map(item => (
+                                                                    {(Array.isArray(patrimonyItems) ? patrimonyItems : []).filter(i => i && i.status === 'Ativo').map(item => (
                                                                         <option key={item.id} value={item.code}>{item.name} ({item.code})</option>
                                                                     ))}
                                                                 </select>

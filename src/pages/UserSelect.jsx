@@ -19,7 +19,7 @@ export default function UserSelect() {
         loadUsers().finally(() => setLoading(false));
     }, []);
 
-    const activeUsers = (state.appUsers || []).filter(u => u.status === 'Ativo');
+    const activeUsers = (state.appUsers || []).filter(u => u && u.status === 'Ativo');
 
     const handleSelectUser = (user) => {
         updatePartial({

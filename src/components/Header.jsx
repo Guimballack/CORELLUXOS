@@ -46,7 +46,7 @@ export default function Header() {
         return () => clearInterval(timer);
     }, []);
 
-    const isUserLoggedIn = state.currentUser !== null;
+    const isUserLoggedIn = !!state.currentUser;
     const isHeaderVisible = state.workstationAuthenticated && state.currentScreen !== 'login' && state.currentScreen !== 'user-select';
 
     if (!isHeaderVisible) return null;
@@ -141,7 +141,7 @@ export default function Header() {
     const notifications = state.notifications || [];
 
     const canUserSeeNotification = (n) => {
-        if (!state.currentUser) return false;
+        if (!n || !state.currentUser) return false;
         const isAdmin = state.currentUser.accessLevel === 'Administrador';
         if (n.sender === state.currentUser.name) return true;
         if (n.targetUsers && Array.isArray(n.targetUsers) && n.targetUsers.length > 0) {
@@ -164,10 +164,14 @@ export default function Header() {
         return role === sector;
     };
 
-    const unreadCount = notifications.filter(n => {
+    const unreadCount = (Array.isArray(notifications) ? notifications : []).filter(n => {
+        if (!n) return false;
         if (!canUserSeeNotification(n)) return false;
-        const isReadByMe = n.readBy && n.readBy[state.currentUser.id];
-        return !isReadByMe && n.sender !== state.currentUser.name;
+        const userId = state.currentUser ? state.currentUser.id : null;
+        if (!userId) return false;
+        const isReadByMe = n.readBy && n.readBy[userId];
+        const currentUserName = state.currentUser ? state.currentUser.name : '';
+        return !isReadByMe && n.sender !== currentUserName;
     }).length;
 
     const handleNotificationClick = () => {
@@ -193,7 +197,7 @@ export default function Header() {
                 </div>
             </div>
 
-            {isUserLoggedIn && (
+            {isUserLoggedIn && state.currentUser && (
                 <div className="user-info-area" id="header-user-info">
                     <div className="header-avatar-container">
                         <img 
