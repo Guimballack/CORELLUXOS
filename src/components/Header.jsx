@@ -150,10 +150,10 @@ export default function Header() {
         if (isAdmin) return true;
         if (n.type === 'sistema' && !n.targetSector) return true;
 
-        const targetSector = (n.targetSector || 'Todos').trim();
+        const targetSector = String(n.targetSector || 'Todos').trim();
         if (targetSector === 'Todos') return true;
 
-        const role = (state.currentUser.role || '').toLowerCase();
+        const role = String(state.currentUser.role || '').toLowerCase();
         const sector = targetSector.toLowerCase();
 
         if (sector === 'cozinha' && (role === 'cozinha' || role === 'chef' || role === 'cozinheiro' || role === 'produção')) return true;
