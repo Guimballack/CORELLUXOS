@@ -3150,7 +3150,7 @@ export default function LogisticsHub() {
                                                     {/* Spacer for columns header */}
                                                     <div style={{ height: '28px' }} />
                                                     {(hasHeights ? heightLetters : ['—']).map(h => (
-                                                        <div key={h} style={{ height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '8px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--accent-purple)', minWidth: '45px' }}>
+                                                        <div key={h} style={{ height: '125px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '8px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--accent-purple)', minWidth: '45px' }}>
                                                             Alt. {h}
                                                         </div>
                                                     ))}
@@ -3185,7 +3185,7 @@ export default function LogisticsHub() {
                                                                         style={{
                                                                             flex: 1,
                                                                             minWidth: '160px',
-                                                                            height: '100px',
+                                                                            height: '125px',
                                                                             borderRadius: '8px',
                                                                             border: cellLocs.length === 0 
                                                                                 ? '1px dashed rgba(255,255,255,0.05)'
@@ -3200,7 +3200,7 @@ export default function LogisticsHub() {
                                                                             display: 'flex',
                                                                             flexDirection: 'column',
                                                                             gap: '4px',
-                                                                            overflowY: 'auto'
+                                                                            overflow: 'hidden'
                                                                         }}
                                                                     >
                                                                         {cellLocs.length === 0 ? (
