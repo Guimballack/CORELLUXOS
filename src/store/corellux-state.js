@@ -53,7 +53,16 @@ const DEFAULTS = {
     currentSectorId: null,
 
     // WMS Batches
-    stockBatches: []
+    stockBatches: [],
+
+    // Patrimonio e Materiais Operacionais
+    patrimonioActiveTab: 'menu',
+    patrimonyItems: [],
+    patrimonyCategories: [],
+    patrimonyMovements: [],
+    patrimonyResponsibilities: [],
+    patrimonyInventories: [],
+    patrimonyAudits: []
 };
 
 // Instância única do estado na memória

@@ -16,13 +16,20 @@ import {
     Gavel, 
     Database,
     ChevronRight,
-    Lock
+    Lock,
+    Boxes
 } from 'lucide-react';
 
 export default function Dashboard() {
     const [state, setKey] = useCorelluxState(['currentScreen']);
 
     const handleModuleClick = (screenName) => {
+        if (screenName === 'central-hub') {
+            setKey('centralActiveTab', 'menu');
+        }
+        if (screenName === 'patrimonio-hub') {
+            setKey('patrimonioActiveTab', 'menu');
+        }
         setKey('currentScreen', screenName);
     };
 
@@ -53,6 +60,19 @@ export default function Dashboard() {
                     <div className="card-content">
                         <h3>GESTÃO OPERACIONAL</h3>
                         <p>Comunicação interna, avisos e checklists operacionais.</p>
+                    </div>
+                    <ChevronRight className="chevron" size={20} />
+                </button>
+
+                <button 
+                    id="btn-nav-patrimonio" 
+                    className="menu-card teal" 
+                    onClick={() => handleModuleClick('patrimonio-hub')}
+                >
+                    <div className="card-icon"><Boxes size={24} /></div>
+                    <div className="card-content">
+                        <h3>PATRIMÔNIO e MATERIAIS</h3>
+                        <p>Controle de utensílios, tecnologia, móveis e cautela de itens.</p>
                     </div>
                     <ChevronRight className="chevron" size={20} />
                 </button>

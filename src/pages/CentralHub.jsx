@@ -101,7 +101,9 @@ export default function CentralHub() {
         DbService.getSectors().then(data => setSectors(data));
         DbService.getAreas().then(data => setAreas(data));
 
-        setKey('centralActiveTab', 'menu');
+        if (state.centralActiveTab !== 'feed') {
+            setKey('centralActiveTab', 'menu');
+        }
     }, []);
 
     const currentUser = state.currentUser || { name: 'Sistema', id: 0, role: 'Gerente', permissions: {} };

@@ -114,6 +114,7 @@ export default function ChecklistHub() {
     const [actionPlans, setActionPlans] = useState([]);
     const [auditLogs, setAuditLogs] = useState([]);
     const [notifications, setNotifications] = useState([]);
+    const [patrimonyItems, setPatrimonyItems] = useState([]);
 
     // Filtro e cálculo de pontos do gráfico de evolução de conformidades
     const chartPoints = React.useMemo(() => {
@@ -673,6 +674,14 @@ export default function ChecklistHub() {
         // Audit Logs
         const logs = await DbService.getChecklistAuditLogs();
         setAuditLogs(logs);
+
+        // Patrimony items loading
+        try {
+            const pItems = await DbService.getPatrimonyItems();
+            setPatrimonyItems(pItems || []);
+        } catch (patrimonyErr) {
+            console.warn('[ChecklistHub] Falha ao carregar itens de patrimônio:', patrimonyErr);
+        }
 
         // Sectors loading
         try {
@@ -1539,6 +1548,21 @@ export default function ChecklistHub() {
                                 status: 'Aberto'
                             };
                             await DbService.saveChecklistNonConformity(ncObj);
+                        }
+
+                        // Integração Patrimônio: se houver vínculo, gera a ocorrência automaticamente
+                        if (item.linkPatrimony && item.linkedPatrimonySku && item.patrimonyRuleAction) {
+                            try {
+                                await DbService.createPatrimonyMovementFromChecklist(
+                                    item.linkedPatrimonySku,
+                                    'Saída',
+                                    1,
+                                    item.patrimonyRuleAction,
+                                    currentUser.name || 'Checklist'
+                                );
+                            } catch (patrimonyErr) {
+                                console.error('[ChecklistHub] Falha ao gerar ocorrência de patrimônio:', patrimonyErr);
+                            }
                         }
                     }
                 }
@@ -3039,6 +3063,58 @@ export default function ChecklistHub() {
                                                                 </label>
                                                             );
                                                         })}
+                                                    </div>
+                                                </div>
+
+                                                {/* Vincular a Patrimônio */}
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', borderLeft: '1px solid rgba(255,255,255,0.08)', paddingLeft: '1rem', marginLeft: '0.5rem' }}>
+                                                    <span style={{ fontSize: '0.75rem', color: '#2dd4bf', fontWeight: 'bold' }}>Vínculo com Patrimônio:</span>
+                                                    <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                        <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.75rem', cursor: 'pointer' }}>
+                                                            <input 
+                                                                type="checkbox" 
+                                                                checked={!!q.linkPatrimony} 
+                                                                onChange={(e) => {
+                                                                    handleUpdateBuilderQuestion(q.id, 'linkPatrimony', e.target.checked);
+                                                                    if (!e.target.checked) {
+                                                                        handleUpdateBuilderQuestion(q.id, 'linkedPatrimonySku', '');
+                                                                        handleUpdateBuilderQuestion(q.id, 'patrimonyRuleAction', '');
+                                                                    } else {
+                                                                        handleUpdateBuilderQuestion(q.id, 'patrimonyRuleAction', 'Quebra');
+                                                                    }
+                                                                }} 
+                                                                style={{ accentColor: '#2dd4bf' }} 
+                                                            />
+                                                            Vincular Item
+                                                        </label>
+
+                                                        {q.linkPatrimony && (
+                                                            <>
+                                                                <select
+                                                                    value={q.linkedPatrimonySku || ''}
+                                                                    onChange={(e) => handleUpdateBuilderQuestion(q.id, 'linkedPatrimonySku', e.target.value)}
+                                                                    className="chk-filter-select"
+                                                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)' }}
+                                                                >
+                                                                    <option value="">-- Selecione o Item --</option>
+                                                                    {patrimonyItems.filter(i => i.status === 'Ativo').map(item => (
+                                                                        <option key={item.id} value={item.code}>{item.name} ({item.code})</option>
+                                                                    ))}
+                                                                </select>
+
+                                                                <select
+                                                                    value={q.patrimonyRuleAction || 'Quebra'}
+                                                                    onChange={(e) => handleUpdateBuilderQuestion(q.id, 'patrimonyRuleAction', e.target.value)}
+                                                                    className="chk-filter-select"
+                                                                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)' }}
+                                                                >
+                                                                    <option value="Quebra">Registrar Quebra</option>
+                                                                    <option value="Perda">Registrar Perda</option>
+                                                                    <option value="Item Faltante">Registrar Item Faltante</option>
+                                                                    <option value="Item Danificado">Registrar Item Danificado</option>
+                                                                </select>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>

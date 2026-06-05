@@ -2383,30 +2383,528 @@ export const DbService = {
             if (error) throw error;
             const savedList = toCamelCase(data);
 
-            // Sincroniza local (remove antigos daquela zona e insere os novos)
             const local = localStorage.getItem('corellux_wms_locations');
             let list = local ? JSON.parse(local) : [];
-            let filteredList = list.filter(l => String(l.zoneId) !== String(zoneId));
-            savedList.forEach(saved => {
-                filteredList.push(saved);
-            });
+            const filteredList = list.filter(l => String(l.zoneId) !== String(zoneId));
+            filteredList.push(...savedList);
             localStorage.setItem('corellux_wms_locations', JSON.stringify(filteredList));
             return { success: true, data: savedList };
         } catch (e) {
             console.warn('[DbService] Erro ao salvar endereços em lote no Supabase. Gravando localmente:', e.message || e);
-            const local = localStorage.getItem('corellux_wms_locations');
-            let list = local ? JSON.parse(local) : [];
-            let filteredList = list.filter(l => String(l.zoneId) !== String(zoneId));
             const savedList = locations.map(l => ({
                 ...l,
                 zoneId,
-                id: l.id || Date.now() + Math.floor(Math.random() * 100000) + Math.floor(Math.random() * 1000)
+                id: l.id || Date.now() + Math.floor(Math.random() * 10000)
             }));
-            savedList.forEach(newLoc => {
-                filteredList.push(newLoc);
-            });
+            const local = localStorage.getItem('corellux_wms_locations');
+            let list = local ? JSON.parse(local) : [];
+            const filteredList = list.filter(l => String(l.zoneId) !== String(zoneId));
+            filteredList.push(...savedList);
             localStorage.setItem('corellux_wms_locations', JSON.stringify(filteredList));
             return { success: true, data: savedList };
+        }
+    },
+
+    // ====================================================
+    // MÓDULO DE PATRIMÔNIO E MATERIAIS OPERACIONAIS
+    // ====================================================
+
+    async getPatrimonyCategories() {
+        try {
+            console.log('[DbService] Carregando categorias de patrimônio...');
+            const { data, error } = await supabase
+                .from('patrimonio_categories')
+                .select('*')
+                .order('name', { ascending: true });
+
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_patrimony_categories');
+                if (local) return JSON.parse(local);
+                
+                const defaults = [
+                    { id: 1, name: 'Utensílios', icon: 'fa-utensils', color: 'color-teal', status: 'Ativo' },
+                    { id: 2, name: 'Equipamentos', icon: 'fa-tools', color: 'color-orange', status: 'Ativo' },
+                    { id: 3, name: 'Móveis', icon: 'fa-couch', color: 'color-purple', status: 'Ativo' },
+                    { id: 4, name: 'Tecnologia', icon: 'fa-laptop', color: 'color-blue', status: 'Ativo' },
+                    { id: 5, name: 'Uniformes', icon: 'fa-tshirt', color: 'color-green', status: 'Ativo' },
+                    { id: 6, name: 'Ferramentas', icon: 'fa-wrench', color: 'color-red', status: 'Ativo' }
+                ];
+                localStorage.setItem('corellux_patrimony_categories', JSON.stringify(defaults));
+                return defaults;
+            }
+            const camelData = toCamelCase(data);
+            localStorage.setItem('corellux_patrimony_categories', JSON.stringify(camelData));
+            return camelData;
+        } catch (e) {
+            console.error('[DbService] Erro ao carregar categorias de patrimônio. Fallback local:', e);
+            const local = localStorage.getItem('corellux_patrimony_categories');
+            if (local) return JSON.parse(local);
+            
+            const defaults = [
+                { id: 1, name: 'Utensílios', icon: 'fa-utensils', color: 'color-teal', status: 'Ativo' },
+                { id: 2, name: 'Equipamentos', icon: 'fa-tools', color: 'color-orange', status: 'Ativo' },
+                { id: 3, name: 'Móveis', icon: 'fa-couch', color: 'color-purple', status: 'Ativo' },
+                { id: 4, name: 'Tecnologia', icon: 'fa-laptop', color: 'color-blue', status: 'Ativo' },
+                { id: 5, name: 'Uniformes', icon: 'fa-tshirt', color: 'color-green', status: 'Ativo' },
+                { id: 6, name: 'Ferramentas', icon: 'fa-wrench', color: 'color-red', status: 'Ativo' }
+            ];
+            localStorage.setItem('corellux_patrimony_categories', JSON.stringify(defaults));
+            return defaults;
+        }
+    },
+
+    async savePatrimonyCategory(category) {
+        try {
+            const snakeObj = toSnakeCase(category);
+            let result;
+            if (category.id && typeof category.id !== 'string') {
+                result = await supabase
+                    .from('patrimonio_categories')
+                    .update(snakeObj)
+                    .eq('id', category.id)
+                    .select();
+            } else {
+                delete snakeObj.id;
+                result = await supabase
+                    .from('patrimonio_categories')
+                    .insert([snakeObj])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            const saved = toCamelCase(result.data[0]);
+
+            // Sync local
+            const local = localStorage.getItem('corellux_patrimony_categories');
+            let list = local ? JSON.parse(local) : [];
+            const idx = list.findIndex(c => String(c.id) === String(saved.id));
+            if (idx !== -1) list[idx] = saved;
+            else list.push(saved);
+            localStorage.setItem('corellux_patrimony_categories', JSON.stringify(list));
+
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar categoria de patrimônio no Supabase. Salvando localmente:', e);
+            const saved = { ...category, id: category.id || 'cat_' + Date.now() };
+            const local = localStorage.getItem('corellux_patrimony_categories');
+            let list = local ? JSON.parse(local) : [];
+            const idx = list.findIndex(c => String(c.id) === String(saved.id));
+            if (idx !== -1) list[idx] = saved;
+            else list.push(saved);
+            localStorage.setItem('corellux_patrimony_categories', JSON.stringify(list));
+            return { success: true, data: saved };
+        }
+    },
+
+    async deletePatrimonyCategory(id) {
+        try {
+            const { error } = await supabase
+                .from('patrimonio_categories')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
+        } catch (e) {
+            console.warn('[DbService] Erro ao excluir categoria de patrimônio no Supabase:', e);
+        }
+        const local = localStorage.getItem('corellux_patrimony_categories');
+        if (local) {
+            const list = JSON.parse(local).filter(c => String(c.id) !== String(id));
+            localStorage.setItem('corellux_patrimony_categories', JSON.stringify(list));
+        }
+        return { success: true };
+    },
+
+    async getPatrimonyItems() {
+        try {
+            console.log('[DbService] Carregando itens de patrimônio...');
+            const { data, error } = await supabase
+                .from('patrimonio_items')
+                .select('*')
+                .order('name', { ascending: true });
+
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_patrimony_items');
+                if (local) return JSON.parse(local);
+
+                const defaults = [
+                    { id: 1, code: 'PRT-001', name: 'Prato Raso Porcelana', category: 'Utensílios', subcategory: 'Pratos', unit: 'Unidade', qtyActual: 120, qtyMin: 50, valueUnit: 15.00, valueTotal: 1800.00, sectorActual: 'Salão', location: 'Armário A', acquisitionDate: '2025-01-15', supplier: 'Porcelanas Real', notes: 'Pratos de porcelana branca para serviço.', status: 'Ativo' },
+                    { id: 2, code: 'FAC-002', name: 'Faca de Churrasco Tramontina', category: 'Utensílios', subcategory: 'Talheres', unit: 'Unidade', qtyActual: 150, qtyMin: 60, valueUnit: 8.50, valueTotal: 1275.00, sectorActual: 'Salão', location: 'Gaveta 2', acquisitionDate: '2025-01-20', supplier: 'Tramontina S/A', notes: 'Faca cabo de madeira resistente.', status: 'Ativo' },
+                    { id: 3, code: 'COP-003', name: 'Copo Long Drink 300ml', category: 'Utensílios', subcategory: 'Copos', unit: 'Unidade', qtyActual: 200, qtyMin: 80, valueUnit: 5.00, valueTotal: 1000.00, sectorActual: 'Bar', location: 'Prateleira 1', acquisitionDate: '2025-02-10', supplier: 'Nadir Figueiredo', notes: 'Copos de vidro transparente.', status: 'Ativo' },
+                    { id: 4, code: 'TAB-004', name: 'Tablet Samsung Galaxy A8', category: 'Tecnologia', subcategory: 'Tablets', unit: 'Unidade', qtyActual: 8, qtyMin: 2, valueUnit: 1200.00, valueTotal: 9600.00, sectorActual: 'Salão', location: 'Suporte Caixa', acquisitionDate: '2025-03-05', supplier: 'Magazine Luiza', notes: 'Utilizados para comandas eletrônicas.', status: 'Ativo' },
+                    { id: 5, code: 'IMP-005', name: 'Impressora Térmica Bematech', category: 'Tecnologia', subcategory: 'Impressoras', unit: 'Unidade', qtyActual: 5, qtyMin: 1, valueUnit: 650.00, valueTotal: 3250.00, sectorActual: 'Cozinha', location: 'Balcão Expedição', acquisitionDate: '2025-02-05', supplier: 'Kabum', notes: 'Impressora de pedidos de cozinha.', status: 'Ativo' },
+                    { id: 6, code: 'PAN-006', name: 'Panela de Pressão Industrial 20L', category: 'Equipamentos', subcategory: 'Panelas', unit: 'Unidade', qtyActual: 3, qtyMin: 1, valueUnit: 450.00, valueTotal: 1350.00, sectorActual: 'Cozinha', location: 'Fogão Central', acquisitionDate: '2025-01-10', supplier: 'Metalúrgica Alumínio', notes: 'Panela de pressão profissional reforçada.', status: 'Ativo' },
+                    { id: 7, code: 'UNF-007', name: 'Camisa Polo Uniforme M', category: 'Uniformes', subcategory: 'Camisas', unit: 'Unidade', qtyActual: 30, qtyMin: 10, valueUnit: 45.00, valueTotal: 1350.00, sectorActual: 'Almoxarifado', location: 'Armário RH', acquisitionDate: '2025-04-12', supplier: 'Uniformes & Cia', notes: 'Camisas polo pretas com logo bordado.', status: 'Ativo' }
+                ];
+                localStorage.setItem('corellux_patrimony_items', JSON.stringify(defaults));
+                return defaults;
+            }
+            const camelData = toCamelCase(data);
+            localStorage.setItem('corellux_patrimony_items', JSON.stringify(camelData));
+            return camelData;
+        } catch (e) {
+            console.error('[DbService] Erro ao carregar itens de patrimônio. Fallback local:', e);
+            const local = localStorage.getItem('corellux_patrimony_items');
+            if (local) return JSON.parse(local);
+            
+            const defaults = [
+                { id: 1, code: 'PRT-001', name: 'Prato Raso Porcelana', category: 'Utensílios', subcategory: 'Pratos', unit: 'Unidade', qtyActual: 120, qtyMin: 50, valueUnit: 15.00, valueTotal: 1800.00, sectorActual: 'Salão', location: 'Armário A', acquisitionDate: '2025-01-15', supplier: 'Porcelanas Real', notes: 'Pratos de porcelana branca para serviço.', status: 'Ativo' },
+                { id: 2, code: 'FAC-002', name: 'Faca de Churrasco Tramontina', category: 'Utensílios', subcategory: 'Talheres', unit: 'Unidade', qtyActual: 150, qtyMin: 60, valueUnit: 8.50, valueTotal: 1275.00, sectorActual: 'Salão', location: 'Gaveta 2', acquisitionDate: '2025-01-20', supplier: 'Tramontina S/A', notes: 'Faca cabo de madeira resistente.', status: 'Ativo' },
+                { id: 3, code: 'COP-003', name: 'Copo Long Drink 300ml', category: 'Utensílios', subcategory: 'Copos', unit: 'Unidade', qtyActual: 200, qtyMin: 80, valueUnit: 5.00, valueTotal: 1000.00, sectorActual: 'Bar', location: 'Prateleira 1', acquisitionDate: '2025-02-10', supplier: 'Nadir Figueiredo', notes: 'Copos de vidro transparente.', status: 'Ativo' },
+                { id: 4, code: 'TAB-004', name: 'Tablet Samsung Galaxy A8', category: 'Tecnologia', subcategory: 'Tablets', unit: 'Unidade', qtyActual: 8, qtyMin: 2, valueUnit: 1200.00, valueTotal: 9600.00, sectorActual: 'Salão', location: 'Suporte Caixa', acquisitionDate: '2025-03-05', supplier: 'Magazine Luiza', notes: 'Utilizados para comandas eletrônicas.', status: 'Ativo' },
+                { id: 5, code: 'IMP-005', name: 'Impressora Térmica Bematech', category: 'Tecnologia', subcategory: 'Impressoras', unit: 'Unidade', qtyActual: 5, qtyMin: 1, valueUnit: 650.00, valueTotal: 3250.00, sectorActual: 'Cozinha', location: 'Balcão Expedição', acquisitionDate: '2025-02-05', supplier: 'Kabum', notes: 'Impressora de pedidos de cozinha.', status: 'Ativo' },
+                { id: 6, code: 'PAN-006', name: 'Panela de Pressão Industrial 20L', category: 'Equipamentos', subcategory: 'Panelas', unit: 'Unidade', qtyActual: 3, qtyMin: 1, valueUnit: 450.00, valueTotal: 1350.00, sectorActual: 'Cozinha', location: 'Fogão Central', acquisitionDate: '2025-01-10', supplier: 'Metalúrgica Alumínio', notes: 'Panela de pressão profissional reforçada.', status: 'Ativo' },
+                { id: 7, code: 'UNF-007', name: 'Camisa Polo Uniforme M', category: 'Uniformes', subcategory: 'Camisas', unit: 'Unidade', qtyActual: 30, qtyMin: 10, valueUnit: 45.00, valueTotal: 1350.00, sectorActual: 'Almoxarifado', location: 'Armário RH', acquisitionDate: '2025-04-12', supplier: 'Uniformes & Cia', notes: 'Camisas polo pretas com logo bordado.', status: 'Ativo' }
+            ];
+            localStorage.setItem('corellux_patrimony_items', JSON.stringify(defaults));
+            return defaults;
+        }
+    },
+
+    async savePatrimonyItem(item) {
+        const cleanItem = {
+            ...item,
+            qtyActual: parseInt(item.qtyActual) || 0,
+            valueUnit: parseFloat(item.valueUnit) || 0.00,
+        };
+        cleanItem.valueTotal = cleanItem.qtyActual * cleanItem.valueUnit;
+
+        try {
+            const snakeObj = toSnakeCase(cleanItem);
+            let result;
+            if (cleanItem.id && typeof cleanItem.id !== 'string') {
+                result = await supabase
+                    .from('patrimonio_items')
+                    .update(snakeObj)
+                    .eq('id', cleanItem.id)
+                    .select();
+            } else {
+                delete snakeObj.id;
+                result = await supabase
+                    .from('patrimonio_items')
+                    .insert([snakeObj])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            const saved = toCamelCase(result.data[0]);
+
+            // Sync local
+            const local = localStorage.getItem('corellux_patrimony_items');
+            let list = local ? JSON.parse(local) : [];
+            const idx = list.findIndex(i => String(i.id) === String(saved.id));
+            if (idx !== -1) list[idx] = saved;
+            else list.push(saved);
+            localStorage.setItem('corellux_patrimony_items', JSON.stringify(list));
+
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar item de patrimônio no Supabase. Gravando localmente:', e);
+            const saved = { ...cleanItem, id: cleanItem.id || 'item_' + Date.now() };
+            const local = localStorage.getItem('corellux_patrimony_items');
+            let list = local ? JSON.parse(local) : [];
+            const idx = list.findIndex(i => String(i.id) === String(saved.id));
+            if (idx !== -1) list[idx] = saved;
+            else list.push(saved);
+            localStorage.setItem('corellux_patrimony_items', JSON.stringify(list));
+            return { success: true, data: saved };
+        }
+    },
+
+    async deletePatrimonyItem(id) {
+        try {
+            const { error } = await supabase
+                .from('patrimonio_items')
+                .delete()
+                .eq('id', id);
+            if (error) throw error;
+        } catch (e) {
+            console.warn('[DbService] Erro ao excluir item de patrimônio no Supabase:', e);
+        }
+        const local = localStorage.getItem('corellux_patrimony_items');
+        if (local) {
+            const list = JSON.parse(local).filter(i => String(i.id) !== String(id));
+            localStorage.setItem('corellux_patrimony_items', JSON.stringify(list));
+        }
+        return { success: true };
+    },
+
+    async getPatrimonyMovements() {
+        try {
+            const { data, error } = await supabase
+                .from('patrimonio_movements')
+                .select('*')
+                .order('timestamp', { ascending: false });
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_patrimony_movements');
+                return local ? JSON.parse(local) : [];
+            }
+            return toCamelCase(data);
+        } catch (e) {
+            console.warn('[DbService] Erro ao buscar movimentações. Fallback local:', e);
+            const local = localStorage.getItem('corellux_patrimony_movements');
+            return local ? JSON.parse(local) : [];
+        }
+    },
+
+    async savePatrimonyMovement(mov) {
+        try {
+            const snakeObj = toSnakeCase(mov);
+            if (snakeObj.id && typeof snakeObj.id === 'string' && snakeObj.id.startsWith('mov_')) {
+                delete snakeObj.id;
+            }
+            const { data, error } = await supabase
+                .from('patrimonio_movements')
+                .insert([snakeObj])
+                .select();
+            if (error) throw error;
+            const saved = toCamelCase(data[0]);
+
+            // Sync local
+            const local = localStorage.getItem('corellux_patrimony_movements');
+            let list = local ? JSON.parse(local) : [];
+            list.unshift(saved);
+            localStorage.setItem('corellux_patrimony_movements', JSON.stringify(list));
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar movimentação no Supabase. Gravando localmente:', e);
+            const saved = { ...mov, id: mov.id || 'mov_' + Date.now() };
+            const local = localStorage.getItem('corellux_patrimony_movements');
+            let list = local ? JSON.parse(local) : [];
+            list.unshift(saved);
+            localStorage.setItem('corellux_patrimony_movements', JSON.stringify(list));
+            return { success: true, data: saved };
+        }
+    },
+
+    async getPatrimonyResponsibilities() {
+        try {
+            const { data, error } = await supabase
+                .from('patrimonio_responsibility')
+                .select('*')
+                .order('delivery_date', { ascending: false });
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_patrimony_responsibility');
+                if (local) return JSON.parse(local);
+                
+                const defaults = [
+                    { id: 1, employeeId: 4, employeeName: 'João', itemSku: 'TAB-004', itemName: 'Tablet Samsung Galaxy A8', qty: 1, deliveryDate: '2025-05-10', returnDate: null, signature: 'João Silva', status: 'Pendente', notes: 'Para uso em atendimento nas mesas.' }
+                ];
+                localStorage.setItem('corellux_patrimony_responsibility', JSON.stringify(defaults));
+                return defaults;
+            }
+            return toCamelCase(data);
+        } catch (e) {
+            console.warn('[DbService] Erro ao buscar responsabilidades. Fallback local:', e);
+            const local = localStorage.getItem('corellux_patrimony_responsibility');
+            if (local) return JSON.parse(local);
+            
+            const defaults = [
+                { id: 1, employeeId: 4, employeeName: 'João', itemSku: 'TAB-004', itemName: 'Tablet Samsung Galaxy A8', qty: 1, deliveryDate: '2025-05-10', returnDate: null, signature: 'João Silva', status: 'Pendente', notes: 'Para uso em atendimento nas mesas.' }
+            ];
+            localStorage.setItem('corellux_patrimony_responsibility', JSON.stringify(defaults));
+            return defaults;
+        }
+    },
+
+    async savePatrimonyResponsibility(resp) {
+        try {
+            const snakeObj = toSnakeCase(resp);
+            let result;
+            if (resp.id && typeof resp.id !== 'string') {
+                result = await supabase
+                    .from('patrimonio_responsibility')
+                    .update(snakeObj)
+                    .eq('id', resp.id)
+                    .select();
+            } else {
+                delete snakeObj.id;
+                result = await supabase
+                    .from('patrimonio_responsibility')
+                    .insert([snakeObj])
+                    .select();
+            }
+            if (result.error) throw result.error;
+            const saved = toCamelCase(result.data[0]);
+
+            // Sync local
+            const local = localStorage.getItem('corellux_patrimony_responsibility');
+            let list = local ? JSON.parse(local) : [];
+            const idx = list.findIndex(r => String(r.id) === String(saved.id));
+            if (idx !== -1) list[idx] = saved;
+            else list.push(saved);
+            localStorage.setItem('corellux_patrimony_responsibility', JSON.stringify(list));
+
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar cautela no Supabase. Gravando localmente:', e);
+            const saved = { ...resp, id: resp.id || 'resp_' + Date.now() };
+            const local = localStorage.getItem('corellux_patrimony_responsibility');
+            let list = local ? JSON.parse(local) : [];
+            const idx = list.findIndex(r => String(r.id) === String(saved.id));
+            if (idx !== -1) list[idx] = saved;
+            else list.push(saved);
+            localStorage.setItem('corellux_patrimony_responsibility', JSON.stringify(list));
+            return { success: true, data: saved };
+        }
+    },
+
+    async getPatrimonyInventories() {
+        try {
+            const { data, error } = await supabase
+                .from('patrimonio_inventories')
+                .select('*')
+                .order('date', { ascending: false });
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_patrimony_inventories');
+                return local ? JSON.parse(local) : [];
+            }
+            return toCamelCase(data);
+        } catch (e) {
+            console.warn('[DbService] Erro ao buscar inventários. Fallback local:', e);
+            const local = localStorage.getItem('corellux_patrimony_inventories');
+            return local ? JSON.parse(local) : [];
+        }
+    },
+
+    async savePatrimonyInventory(inv) {
+        try {
+            const snakeObj = toSnakeCase(inv);
+            if (snakeObj.id && typeof snakeObj.id === 'string' && snakeObj.id.startsWith('inv_')) {
+                delete snakeObj.id;
+            }
+            const { data, error } = await supabase
+                .from('patrimonio_inventories')
+                .insert([snakeObj])
+                .select();
+            if (error) throw error;
+            const saved = toCamelCase(data[0]);
+
+            // Sync local
+            const local = localStorage.getItem('corellux_patrimony_inventories');
+            let list = local ? JSON.parse(local) : [];
+            list.unshift(saved);
+            localStorage.setItem('corellux_patrimony_inventories', JSON.stringify(list));
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar inventário no Supabase. Gravando localmente:', e);
+            const saved = { ...inv, id: inv.id || 'inv_' + Date.now() };
+            const local = localStorage.getItem('corellux_patrimony_inventories');
+            let list = local ? JSON.parse(local) : [];
+            list.unshift(saved);
+            localStorage.setItem('corellux_patrimony_inventories', JSON.stringify(list));
+            return { success: true, data: saved };
+        }
+    },
+
+    async getPatrimonyAudits() {
+        try {
+            const { data, error } = await supabase
+                .from('patrimonio_audits')
+                .select('*')
+                .order('timestamp', { ascending: false });
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_patrimony_audits');
+                return local ? JSON.parse(local) : [];
+            }
+            return toCamelCase(data);
+        } catch (e) {
+            console.warn('[DbService] Erro ao buscar logs de auditoria. Fallback local:', e);
+            const local = localStorage.getItem('corellux_patrimony_audits');
+            return local ? JSON.parse(local) : [];
+        }
+    },
+
+    async savePatrimonyAudit(audit) {
+        try {
+            const snakeObj = toSnakeCase(audit);
+            if (snakeObj.id && typeof snakeObj.id === 'string' && snakeObj.id.startsWith('aud_')) {
+                delete snakeObj.id;
+            }
+            const { data, error } = await supabase
+                .from('patrimonio_audits')
+                .insert([snakeObj])
+                .select();
+            if (error) throw error;
+            const saved = toCamelCase(data[0]);
+
+            // Sync local
+            const local = localStorage.getItem('corellux_patrimony_audits');
+            let list = local ? JSON.parse(local) : [];
+            list.unshift(saved);
+            localStorage.setItem('corellux_patrimony_audits', JSON.stringify(list));
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar log de auditoria no Supabase. Gravando localmente:', e);
+            const saved = { ...audit, id: audit.id || 'aud_' + Date.now() };
+            const local = localStorage.getItem('corellux_patrimony_audits');
+            let list = local ? JSON.parse(local) : [];
+            list.unshift(saved);
+            localStorage.setItem('corellux_patrimony_audits', JSON.stringify(list));
+            return { success: true, data: saved };
+        }
+    },
+
+    async createPatrimonyMovementFromChecklist(sku, type, qty, reason, user) {
+        try {
+            const items = await this.getPatrimonyItems();
+            const item = items.find(i => i.code === sku);
+            if (!item) {
+                console.warn(`[DbService] Item de patrimônio com SKU ${sku} não encontrado.`);
+                return { success: false, error: 'Item não encontrado' };
+            }
+
+            const oldQty = item.qtyActual;
+            let newQty = oldQty;
+
+            if (type === 'Saída') {
+                newQty = Math.max(0, oldQty - qty);
+            } else {
+                newQty = oldQty + qty;
+            }
+
+            item.qtyActual = newQty;
+            item.valueTotal = newQty * item.valueUnit;
+            if (newQty === 0) {
+                item.status = reason === 'Quebra' ? 'Quebrado' : (reason === 'Perda' ? 'Perdido' : 'Baixado');
+            }
+            await this.savePatrimonyItem(item);
+
+            const newMov = {
+                id: 'mov_' + Date.now(),
+                itemSku: sku,
+                itemName: item.name,
+                type: type,
+                subtype: reason, 
+                qty: qty,
+                responsible: user,
+                reason: `Ocorrência automática gerada por Checklist: ${reason}`,
+                notes: `Saldo atualizado de ${oldQty} para ${newQty}.`,
+                date: new Date().toISOString().split('T')[0],
+                time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+                timestamp: new Date().toISOString()
+            };
+            await this.savePatrimonyMovement(newMov);
+
+            const auditLog = {
+                id: 'aud_' + Date.now(),
+                responsible: user,
+                operation: `Ocorrência de Checklist (${reason})`,
+                itemSku: sku,
+                field: 'qtyActual',
+                oldValue: String(oldQty),
+                newValue: String(newQty),
+                timestamp: new Date().toISOString()
+            };
+            await this.savePatrimonyAudit(auditLog);
+
+            return { success: true };
+        } catch (e) {
+            console.error('[DbService] Falha ao registrar ocorrência automática de checklist:', e);
+            return { success: false, error: e };
         }
     }
 };

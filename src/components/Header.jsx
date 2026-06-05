@@ -7,6 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { useCorelluxState, isAuthenticated } from '../store/corellux-state';
 import { getUserAvatar } from '../utils/initial-data';
 import { Home, Bell, UserCheck, LogOut, ShieldAlert, ArrowLeft, Search, FileText } from 'lucide-react';
+import DbService from '../services/db-service';
 
 export default function Header() {
     const [state, setKey, updatePartial] = useCorelluxState([
@@ -20,7 +21,9 @@ export default function Header() {
         'logisticsActiveTab',
         'logisticsFlowType',
         'logisticsFlowStep',
-        'inventorySearch'
+        'inventorySearch',
+        'notifications',
+        'patrimonioActiveTab'
     ]);
     const [time, setTime] = useState('');
     const [date, setDate] = useState('');
@@ -99,6 +102,12 @@ export default function Header() {
             } else {
                 setKey('logisticsActiveTab', 'menu');
             }
+        } else if (state.currentScreen === 'patrimonio-hub') {
+            if (state.patrimonioActiveTab === 'menu') {
+                setKey('currentScreen', 'dashboard');
+            } else {
+                setKey('patrimonioActiveTab', 'menu');
+            }
         } else if (state.currentScreen !== 'dashboard') {
             setKey('currentScreen', 'dashboard');
         }
@@ -121,8 +130,51 @@ export default function Header() {
         });
     };
 
+    useEffect(() => {
+        if (isUserLoggedIn) {
+            DbService.getNotifications().then(data => {
+                setKey('notifications', data);
+            });
+        }
+    }, [isUserLoggedIn]);
+
+    const notifications = state.notifications || [];
+
+    const canUserSeeNotification = (n) => {
+        if (!state.currentUser) return false;
+        const isAdmin = state.currentUser.accessLevel === 'Administrador';
+        if (n.sender === state.currentUser.name) return true;
+        if (n.targetUsers && Array.isArray(n.targetUsers) && n.targetUsers.length > 0) {
+            return n.targetUsers.includes(state.currentUser.id) || isAdmin;
+        }
+        if (isAdmin) return true;
+        if (n.type === 'sistema' && !n.targetSector) return true;
+
+        const targetSector = (n.targetSector || 'Todos').trim();
+        if (targetSector === 'Todos') return true;
+
+        const role = (state.currentUser.role || '').toLowerCase();
+        const sector = targetSector.toLowerCase();
+
+        if (sector === 'cozinha' && (role === 'cozinha' || role === 'chef' || role === 'cozinheiro' || role === 'produção')) return true;
+        if (sector === 'estoque' && (role === 'estoque' || role === 'estoquista' || role === 'almoxarife')) return true;
+        if (sector === 'salão' && (role === 'salão' || role === 'garçom' || role === 'atendente' || role === 'caixa')) return true;
+        if (sector === 'administração' && (role === 'administração' || role === 'gerente' || role === 'supervisor' || role === 'administrador')) return true;
+
+        return role === sector;
+    };
+
+    const unreadCount = notifications.filter(n => {
+        if (!canUserSeeNotification(n)) return false;
+        const isReadByMe = n.readBy && n.readBy[state.currentUser.id];
+        return !isReadByMe && n.sender !== state.currentUser.name;
+    }).length;
+
     const handleNotificationClick = () => {
-        setKey('currentScreen', 'central-view'); // or similar
+        updatePartial({
+            currentScreen: 'central-hub',
+            centralActiveTab: 'feed'
+        });
     };
 
     return (
@@ -207,7 +259,9 @@ export default function Header() {
                 )}
                 <div className="header-notification-bell" onClick={handleNotificationClick}>
                     <Bell size={18} />
-                    <span className="notification-badge" id="header-notif-count">0</span>
+                    <span className="notification-badge" id="header-notif-count" style={{ display: unreadCount > 0 ? 'flex' : 'none' }}>
+                        {unreadCount}
+                    </span>
                 </div>
                 <button className="btn-logout-header orange-lock" onClick={handleLogout} id="btn-logout">
                     <UserCheck size={16} /> Logout
