@@ -56,7 +56,7 @@ export default function PatrimonioHub() {
     ]);
 
     // Local UI states
-    const activeTab = state.patrimonioActiveTab || 'menu';
+    const activeTab = state.patrimonioActiveTab || 'dashboard';
     const setActiveTab = (tab) => setKey('patrimonioActiveTab', tab);
 
     const [loading, setLoading] = useState(false);
@@ -1090,9 +1090,6 @@ export default function PatrimonioHub() {
                 </div>
 
                 <div style={{ flex: 1 }}>
-                    <button className={`pat-sidebar-btn ${activeTab === 'menu' ? 'active' : ''}`} onClick={() => setActiveTab('menu')}>
-                        <Settings size={18} /> Menu Geral
-                    </button>
                     <button className={`pat-sidebar-btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
                         <PieChart size={18} /> Dashboard
                     </button>
@@ -1125,47 +1122,6 @@ export default function PatrimonioHub() {
 
             {/* MAIN CONTENT AREA */}
             <main className="pat-main-container">
-
-                {/* TAB 0: MENU */}
-                {activeTab === 'menu' && (
-                    <div className="dashboard-menu" style={{ marginTop: '1rem' }}>
-                        <button className="menu-card dark-blue" onClick={() => setActiveTab('dashboard')}>
-                            <div className="card-icon"><PieChart size={24} /></div>
-                            <div className="card-content">
-                                <h3>DASHBOARD E VISÃO GERAL</h3>
-                                <p>Veja painéis estatísticos, totais, valores, alertas mínimos e movimentações.</p>
-                            </div>
-                            <ChevronRight className="chevron" size={20} />
-                        </button>
-                        
-                        <button className="menu-card blue" onClick={() => setActiveTab('cadastro')}>
-                            <div className="card-icon"><Boxes size={24} /></div>
-                            <div className="card-content">
-                                <h3>CADASTRO DE MATERIAIS</h3>
-                                <p>Gerencie bens operacionais, pratos, panelas, uniformes e computadores.</p>
-                            </div>
-                            <ChevronRight className="chevron" size={20} />
-                        </button>
-
-                        <button className="menu-card purple" onClick={() => setActiveTab('responsabilidade')}>
-                            <div className="card-icon"><UserCheck size={24} /></div>
-                            <div className="card-content">
-                                <h3>RESPONSABILIDADE E CAUTELA</h3>
-                                <p>Distribua bens para termos de uso assinados por colaboradores.</p>
-                            </div>
-                            <ChevronRight className="chevron" size={20} />
-                        </button>
-
-                        <button className="menu-card teal" onClick={() => setActiveTab('inventario')}>
-                            <div className="card-icon"><ClipboardList size={24} /></div>
-                            <div className="card-content">
-                                <h3>INVENTÁRIO E AUDITORIA FÍSICA</h3>
-                                <p>Abra auditoria de contagem, analise divergências de saldo e ajuste estoques.</p>
-                            </div>
-                            <ChevronRight className="chevron" size={20} />
-                        </button>
-                    </div>
-                )}
 
                 {/* TAB 1: DASHBOARD */}
                 {activeTab === 'dashboard' && (

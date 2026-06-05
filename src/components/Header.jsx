@@ -111,10 +111,10 @@ export default function Header() {
                 setKey('logisticsActiveTab', 'menu');
             }
         } else if (state.currentScreen === 'patrimonio-hub') {
-            if (state.patrimonioActiveTab === 'menu') {
+            if (state.patrimonioActiveTab === 'dashboard') {
                 setKey('currentScreen', 'dashboard');
             } else {
-                setKey('patrimonioActiveTab', 'menu');
+                setKey('patrimonioActiveTab', 'dashboard');
             }
         } else if (state.currentScreen !== 'dashboard') {
             setKey('currentScreen', 'dashboard');

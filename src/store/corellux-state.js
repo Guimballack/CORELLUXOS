@@ -56,7 +56,7 @@ const DEFAULTS = {
     stockBatches: [],
 
     // Patrimonio e Materiais Operacionais
-    patrimonioActiveTab: 'menu',
+    patrimonioActiveTab: 'dashboard',
     patrimonyItems: [],
     patrimonyCategories: [],
     patrimonyMovements: [],

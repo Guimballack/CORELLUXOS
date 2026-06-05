@@ -28,7 +28,7 @@ export default function Dashboard() {
             setKey('centralActiveTab', 'menu');
         }
         if (screenName === 'patrimonio-hub') {
-            setKey('patrimonioActiveTab', 'menu');
+            setKey('patrimonioActiveTab', 'dashboard');
         }
         setKey('currentScreen', screenName);
     };
