@@ -47,6 +47,14 @@ export default function Header() {
     }, []);
 
     const isUserLoggedIn = !!state.currentUser;
+
+    useEffect(() => {
+        if (isUserLoggedIn) {
+            DbService.getNotifications().then(data => {
+                setKey('notifications', data);
+            });
+        }
+    }, [isUserLoggedIn]);
     const isHeaderVisible = state.workstationAuthenticated && state.currentScreen !== 'login' && state.currentScreen !== 'user-select';
 
     if (!isHeaderVisible) return null;
@@ -130,13 +138,7 @@ export default function Header() {
         });
     };
 
-    useEffect(() => {
-        if (isUserLoggedIn) {
-            DbService.getNotifications().then(data => {
-                setKey('notifications', data);
-            });
-        }
-    }, [isUserLoggedIn]);
+
 
     const notifications = state.notifications || [];
 
