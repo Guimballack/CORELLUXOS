@@ -28,6 +28,7 @@ import {
     XCircle, 
     PlusCircle, 
     ArrowRightLeft, 
+    ChevronRight,
     LogOut, 
     ArrowRight, 
     Lock, 
