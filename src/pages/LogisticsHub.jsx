@@ -42,8 +42,11 @@ import {
     Package,
     AlertCircle,
     RefreshCw,
-    Barcode
+    Barcode,
+    Lock,
+    Map
 } from 'lucide-react';
+
 
 
 const indirectEval = eval;
@@ -281,6 +284,53 @@ export default function LogisticsHub() {
     const [barcodePackageType, setBarcodePackageType] = useState('unidade'); // 'unidade', 'fardo', 'caixa', 'pallet'
     const [barcodePackageQty, setBarcodePackageQty] = useState(1);
     const [barcodeConversionFactor, setBarcodeConversionFactor] = useState(1);
+
+    // WMS Visual Map States (Logistics tab)
+    const [wmsViewWarehouseId, setWmsViewWarehouseId] = useState('');
+    const [wmsViewZoneId, setWmsViewZoneId] = useState('');
+    const [wmsViewAisle, setWmsViewAisle] = useState('');
+    const [wmsViewRow, setWmsViewRow] = useState('A');
+
+    // Cascading selection sync for WMS Visual Map
+    useEffect(() => {
+        if (!wmsViewWarehouseId && wmsWarehouses.length > 0) {
+            setWmsViewWarehouseId(String(wmsWarehouses[0].id));
+        }
+    }, [wmsWarehouses, wmsViewWarehouseId]);
+
+    useEffect(() => {
+        if (wmsViewWarehouseId && wmsZones.length > 0) {
+            const whZones = wmsZones.filter(z => String(z.warehouseId) === String(wmsViewWarehouseId));
+            if (whZones.length > 0) {
+                const currentZoneIsValid = whZones.some(z => String(z.id) === String(wmsViewZoneId));
+                if (!currentZoneIsValid) {
+                    setWmsViewZoneId(String(whZones[0].id));
+                }
+            } else {
+                setWmsViewZoneId('');
+            }
+        }
+    }, [wmsViewWarehouseId, wmsZones, wmsViewZoneId]);
+
+    useEffect(() => {
+        if (wmsViewZoneId && wmsLocations.length > 0) {
+            const zoneLocs = wmsLocations.filter(l => String(l.zoneId) === String(wmsViewZoneId));
+            if (zoneLocs.length > 0) {
+                const aisles = [...new Set(zoneLocs.map(l => l.aisle))].sort((a,b) => {
+                    const numA = parseInt(a, 10);
+                    const numB = parseInt(b, 10);
+                    if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                    return a.localeCompare(b);
+                });
+                const currentAisleIsValid = aisles.includes(wmsViewAisle);
+                if (!currentAisleIsValid && aisles.length > 0) {
+                    setWmsViewAisle(aisles[0]);
+                }
+            } else {
+                setWmsViewAisle('');
+            }
+        }
+    }, [wmsViewZoneId, wmsLocations, wmsViewAisle]);
 
     const toggleExpandItem = (sku) => {
         setExpandedItems(prev => {
@@ -2911,25 +2961,354 @@ export default function LogisticsHub() {
                         )}
 
                         {/* TAB: WMS */}
-                        {activeTab === 'wms' && (
-                            <div className="products-container">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                                    <div>
-                                        <h2 style={{ margin: 0, color: 'var(--accent-purple)', fontSize: '1.3rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                            <Warehouse size={20} /> WMS — Warehouse Management System
-                                        </h2>
-                                        <p style={{ margin: '0.3rem 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                                            Módulo em desenvolvimento. Funcionalidades serão adicionadas em breve.
-                                        </p>
+                        {activeTab === 'wms' && (() => {
+                            // Encontrar armazém selecionado
+                            const selectedWh = wmsWarehouses.find(w => String(w.id) === String(wmsViewWarehouseId));
+                            // Zonas do armazém selecionado
+                            const whZones = wmsZones.filter(z => String(z.warehouseId) === String(wmsViewWarehouseId));
+                            const selectedZ = wmsZones.find(z => String(z.id) === String(wmsViewZoneId));
+
+                            // Filtrar localizações da zona selecionada
+                            const zoneLocs = wmsLocations.filter(l => String(l.zoneId) === String(wmsViewZoneId));
+
+                            // Ruas (Corredores) disponíveis
+                            const availableAisles = [...new Set(zoneLocs.map(l => l.aisle))].sort((a, b) => {
+                                const numA = parseInt(a, 10);
+                                const numB = parseInt(b, 10);
+                                if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+                                return a.localeCompare(b);
+                            });
+
+                            // Endereços filtrados pela Rua e Fileira (Lado)
+                            const filteredLocs = zoneLocs.filter(l => 
+                                l.aisle === wmsViewAisle && 
+                                l.row === wmsViewRow
+                            );
+
+                            const parseShelf = (shelfCode) => {
+                                const match = String(shelfCode).match(/^(\d+)([A-Z]?)$/);
+                                if (match) return { num: parseInt(match[1], 10), height: match[2] || '' };
+                                return { num: NaN, height: '' };
+                            };
+
+                            // Prateleiras ordenadas
+                            const shelfNums = [...new Set(filteredLocs.map(l => parseShelf(l.shelf).num))]
+                                .filter(n => !isNaN(n))
+                                .sort((a, b) => a - b);
+
+                            // Alturas ordenadas (D > C > B > A)
+                            const heightLetters = [...new Set(filteredLocs.map(l => parseShelf(l.shelf).height))]
+                                .filter(h => h !== '')
+                                .sort((a, b) => b.localeCompare(a));
+
+                            const hasHeights = heightLetters.length > 0;
+
+                            return (
+                                <div className="products-container" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                                    {/* Header */}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div>
+                                            <h2 style={{ margin: 0, color: 'var(--accent-purple)', fontSize: '1.3rem', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <Warehouse size={20} /> WMS &mdash; Mapa 2D de Armazenamento
+                                            </h2>
+                                            <p style={{ margin: '0.3rem 0 0', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                                                Visualização em tempo real das posições físicas e lotes estocados no armazém.
+                                            </p>
+                                        </div>
                                     </div>
+
+                                    {/* Selectors Bar */}
+                                    <div style={{ 
+                                        background: 'rgba(30, 41, 59, 0.25)', 
+                                        border: '1px solid rgba(255, 255, 255, 0.05)', 
+                                        borderRadius: '12px', 
+                                        padding: '1.25rem', 
+                                        display: 'flex', 
+                                        flexWrap: 'wrap', 
+                                        gap: '1.5rem', 
+                                        alignItems: 'center',
+                                        backdropFilter: 'blur(10px)'
+                                    }}>
+                                        {/* Armazém */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Armazém:</span>
+                                            <select 
+                                                value={wmsViewWarehouseId} 
+                                                onChange={e => setWmsViewWarehouseId(e.target.value)}
+                                                style={{ padding: '0.5rem 0.8rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '0.85rem' }}
+                                            >
+                                                {wmsWarehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                                            </select>
+                                        </div>
+
+                                        {/* Zona */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Zona:</span>
+                                            <select 
+                                                value={wmsViewZoneId} 
+                                                onChange={e => setWmsViewZoneId(e.target.value)}
+                                                style={{ padding: '0.5rem 0.8rem', background: 'var(--bg-input)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', fontSize: '0.85rem' }}
+                                            >
+                                                {whZones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
+                                            </select>
+                                        </div>
+
+                                        {/* Rua (Corredor) */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Rua (Corredor):</span>
+                                            <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                                                {availableAisles.length === 0 ? (
+                                                    <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>Nenhuma rua configurada</span>
+                                                ) : (
+                                                    availableAisles.map(aisle => (
+                                                        <button
+                                                            key={aisle}
+                                                            onClick={() => setWmsViewAisle(aisle)}
+                                                            style={{
+                                                                padding: '0.35rem 0.75rem',
+                                                                borderRadius: '6px',
+                                                                border: wmsViewAisle === aisle ? '1px solid var(--accent-purple)' : '1px solid var(--border-color)',
+                                                                background: wmsViewAisle === aisle ? 'rgba(168, 85, 247, 0.2)' : 'rgba(0,0,0,0.2)',
+                                                                color: wmsViewAisle === aisle ? 'white' : 'var(--text-secondary)',
+                                                                fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.15s'
+                                                            }}
+                                                        >
+                                                            Rua {aisle}
+                                                        </button>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Fileira (Lado) */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: '600' }}>Fileira (Lado):</span>
+                                            <div style={{ display: 'flex', gap: '0.3rem' }}>
+                                                {['A', 'B'].map(row => (
+                                                    <button
+                                                        key={row}
+                                                        onClick={() => setWmsViewRow(row)}
+                                                        style={{
+                                                            padding: '0.35rem 0.9rem',
+                                                            borderRadius: '6px',
+                                                            border: wmsViewRow === row ? '1px solid var(--accent-purple)' : '1px solid var(--border-color)',
+                                                            background: wmsViewRow === row ? 'rgba(168, 85, 247, 0.2)' : 'rgba(0,0,0,0.2)',
+                                                            color: wmsViewRow === row ? 'white' : 'var(--text-secondary)',
+                                                            fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.15s'
+                                                        }}
+                                                    >
+                                                        {row === 'A' ? '← Lado A (Esquerdo)' : 'Lado B (Direito) →'}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Grid Visual Map */}
+                                    {wmsLocations.length === 0 ? (
+                                        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
+                                            Nenhum endereço cadastrado nesta zona.
+                                        </div>
+                                    ) : !wmsViewAisle ? (
+                                        <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.01)', border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
+                                            Selecione uma rua e lado para visualizar o mapa.
+                                        </div>
+                                    ) : (
+                                        <div style={{ 
+                                            background: 'rgba(0,0,0,0.25)', 
+                                            padding: '1.25rem', 
+                                            borderRadius: '12px', 
+                                            border: '1px solid var(--border-color)', 
+                                            overflowX: 'auto',
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            gap: '0.75rem'
+                                        }}>
+                                            {/* Subtitle / Legend */}
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                                                <span style={{ fontSize: '0.82rem', fontWeight: '800', textTransform: 'uppercase', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    <Map size={14} /> Corredor: Rua {wmsViewAisle} &mdash; Lado {wmsViewRow === 'A' ? 'A (Esquerdo)' : 'B (Direito)'}
+                                                </span>
+                                                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(34,197,94,0.12)', border: '1px solid var(--accent-green)' }} /> Ocupado</span>
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.1)' }} /> Livre</span>
+                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><span style={{ width: '8px', height: '8px', borderRadius: '2px', background: 'rgba(239,68,68,0.12)', border: '1px solid var(--accent-red)' }} /> Bloqueado</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Axis labels guide */}
+                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
+                                                <span>↕ Altura (topo = mais alto)</span>
+                                                <span>Prateleiras 1 &rarr; N (esquerda para a direita) &rarr;</span>
+                                            </div>
+
+                                            {/* Grid layout */}
+                                            <div style={{ display: 'flex', gap: '8px' }}>
+                                                {/* Y-axis (height letters column) */}
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                                    {/* Spacer for columns header */}
+                                                    <div style={{ height: '28px' }} />
+                                                    {(hasHeights ? heightLetters : ['—']).map(h => (
+                                                        <div key={h} style={{ height: '100px', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', paddingRight: '8px', fontSize: '0.75rem', fontWeight: '700', color: 'var(--accent-purple)', minWidth: '45px' }}>
+                                                            Alt. {h}
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                {/* Main Grid content */}
+                                                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '8px', minWidth: 0 }}>
+                                                    {/* X-axis (shelf numbers) */}
+                                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                                        {shelfNums.map(num => (
+                                                            <div key={num} style={{ flex: 1, height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: '800', color: 'var(--accent-purple)', background: 'rgba(168, 85, 247, 0.08)', borderRadius: '6px', minWidth: '160px' }}>
+                                                                Prat. {num}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+
+                                                    {/* Grid Rows */}
+                                                    {(hasHeights ? heightLetters : ['']).map(h => (
+                                                        <div key={h} style={{ display: 'flex', gap: '8px' }}>
+                                                            {shelfNums.map(num => {
+                                                                const shelfCode = hasHeights ? `${num}${h}` : String(num);
+                                                                // Localizações correspondentes a esta prateleira
+                                                                const cellLocs = filteredLocs
+                                                                    .filter(l => l.shelf === shelfCode)
+                                                                    .sort((a, b) => (a.position || '').localeCompare(b.position || ''));
+
+                                                                const allBloq = cellLocs.length > 0 && cellLocs.every(l => l.status === 'Bloqueado');
+
+                                                                return (
+                                                                    <div 
+                                                                        key={num}
+                                                                        style={{
+                                                                            flex: 1,
+                                                                            minWidth: '160px',
+                                                                            height: '100px',
+                                                                            borderRadius: '8px',
+                                                                            border: cellLocs.length === 0 
+                                                                                ? '1px dashed rgba(255,255,255,0.05)'
+                                                                                : allBloq 
+                                                                                    ? '1px solid rgba(239,68,68,0.35)' 
+                                                                                    : '1px solid rgba(255,255,255,0.08)',
+                                                                            background: cellLocs.length === 0 
+                                                                                ? 'rgba(255,255,255,0.005)' 
+                                                                                : 'rgba(15,23,42,0.3)',
+                                                                            padding: '6px',
+                                                                            boxSizing: 'border-box',
+                                                                            display: 'flex',
+                                                                            flexDirection: 'column',
+                                                                            gap: '4px',
+                                                                            overflowY: 'auto'
+                                                                        }}
+                                                                    >
+                                                                        {cellLocs.length === 0 ? (
+                                                                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                                <span style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.1)' }}>—</span>
+                                                                            </div>
+                                                                        ) : (
+                                                                            cellLocs.map(loc => {
+                                                                                // Endereço completo formatado
+                                                                                const whAcronym = (selectedWh?.acronym || 'AC').substring(0, 2).toUpperCase();
+                                                                                const zoneName = (selectedZ?.name || 'ESA').substring(0, 3).toUpperCase();
+                                                                                const parts = [`${whAcronym}-${zoneName}`];
+                                                                                if (loc.aisle || loc.row) {
+                                                                                    parts.push(`${loc.aisle || ''}${loc.row || ''}`);
+                                                                                }
+                                                                                if (loc.shelf) parts.push(loc.shelf);
+                                                                                if (loc.position) parts.push(loc.position);
+                                                                                const formattedAddress = parts.join('-');
+
+                                                                                // Filtrar lotes no endereço
+                                                                                const cellBatches = stockBatches.filter(b => b.address === formattedAddress && (parseFloat(b.quantity) || 0) > 0);
+                                                                                const isAtivo = loc.status === 'Ativo';
+                                                                                const isOcupado = cellBatches.length > 0;
+
+                                                                                // Cores e bordas da subdivisão (posição)
+                                                                                const bgStyle = !isAtivo 
+                                                                                    ? 'rgba(239, 68, 68, 0.08)' // Bloqueado
+                                                                                    : isOcupado 
+                                                                                        ? 'rgba(34, 197, 94, 0.08)' // Ocupado
+                                                                                        : 'rgba(255, 255, 255, 0.01)'; // Livre
+
+                                                                                const borderStyle = !isAtivo
+                                                                                    ? '1px solid rgba(239, 68, 68, 0.25)'
+                                                                                    : isOcupado
+                                                                                        ? '1px solid rgba(34, 197, 94, 0.25)'
+                                                                                        : '1px solid rgba(255,255,255,0.05)';
+
+                                                                                const badgeColor = !isAtivo
+                                                                                    ? 'var(--accent-red)'
+                                                                                    : isOcupado
+                                                                                        ? 'var(--accent-green)'
+                                                                                        : 'var(--text-secondary)';
+
+                                                                                return (
+                                                                                    <div 
+                                                                                        key={loc.id}
+                                                                                        title={`${formattedAddress} · status: ${loc.status}`}
+                                                                                        style={{
+                                                                                            padding: '4px 6px',
+                                                                                            borderRadius: '6px',
+                                                                                            background: bgStyle,
+                                                                                            border: borderStyle,
+                                                                                            display: 'flex',
+                                                                                            flexDirection: 'column',
+                                                                                            gap: '2px',
+                                                                                            transition: 'all 0.15s'
+                                                                                        }}
+                                                                                    >
+                                                                                        {/* Linha superior: Posição + Status */}
+                                                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                                            <span style={{ fontSize: '0.68rem', fontWeight: '800', color: badgeColor }}>
+                                                                                                Pos. {loc.position || '—'}
+                                                                                            </span>
+                                                                                            {!isAtivo && (
+                                                                                                <Lock size={8} style={{ color: 'var(--accent-red)' }} />
+                                                                                            )}
+                                                                                            {isAtivo && isOcupado && (
+                                                                                                <span style={{ fontSize: '0.58rem', fontWeight: '700', color: 'var(--accent-green)', background: 'rgba(34, 197, 94, 0.15)', padding: '1px 4px', borderRadius: '3px' }}>OCUPADO</span>
+                                                                                            )}
+                                                                                        </div>
+
+                                                                                        {/* Lotes/Itens */}
+                                                                                        {isAtivo && (
+                                                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '2px' }}>
+                                                                                                {cellBatches.length === 0 ? (
+                                                                                                    <span style={{ fontSize: '0.62rem', color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' }}>Livre</span>
+                                                                                                ) : (
+                                                                                                    cellBatches.map(b => {
+                                                                                                        const prod = products.find(p => p.sku === b.itemSku);
+                                                                                                        return (
+                                                                                                            <div key={b.id} style={{ display: 'flex', flexDirection: 'column', fontSize: '0.62rem', borderLeft: '1.5px solid var(--accent-green)', paddingLeft: '4px', margin: '1px 0' }}>
+                                                                                                                <span style={{ fontWeight: '700', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={prod?.name || b.itemSku}>
+                                                                                                                    {prod?.name || b.itemSku}
+                                                                                                                </span>
+                                                                                                                <span style={{ color: 'var(--text-secondary)', fontSize: '0.58rem' }}>
+                                                                                                                    Lote: {b.lot} &middot; Qtd: <strong style={{ color: '#fff' }}>{b.quantity} {prod?.unit || b.unit}</strong>
+                                                                                                                </span>
+                                                                                                            </div>
+                                                                                                        );
+                                                                                                    })
+                                                                                                )}
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                );
+                                                                            })
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px', gap: '1rem', color: 'var(--text-secondary)', background: 'rgba(168, 85, 247, 0.04)', border: '1px dashed rgba(168, 85, 247, 0.3)', borderRadius: '16px', padding: '3rem' }}>
-                                    <Warehouse size={48} style={{ color: 'rgba(168, 85, 247, 0.4)' }} />
-                                    <p style={{ fontSize: '1rem', fontWeight: '600', color: 'var(--text-secondary)', margin: 0 }}>Nenhum conteúdo disponível ainda.</p>
-                                    <p style={{ fontSize: '0.85rem', margin: 0 }}>Este módulo está reservado para o sistema de gerenciamento de armazém.</p>
-                                </div>
-                            </div>
-                        )}
+                            );
+                        })()}
 
                         {/* TAB: WIP */}
                         {activeTab === 'wip' && (
