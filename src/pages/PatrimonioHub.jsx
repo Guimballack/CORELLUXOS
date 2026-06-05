@@ -914,7 +914,7 @@ export default function PatrimonioHub() {
     };
 
     return (
-        <div className="screen active with-header" style={{ display: 'flex', background: '#090d16', color: '#f3f4f6', height: '100%', overflowY: 'hidden', padding: 0 }}>
+        <div className="screen active with-header" style={{ display: 'flex', flexDirection: 'row', background: '#090d16', color: '#f3f4f6', height: '100%', overflowY: 'hidden', padding: 0 }}>
             {/* CSS SaaS Premium Styling */}
             <style dangerouslySetInnerHTML={{__html: `
                 .pat-sidebar {
