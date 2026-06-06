@@ -1675,7 +1675,7 @@ export default function LogisticsHub() {
             setSelectedRequisitionSector('');
             setShowCartModal(false);
             showSystemAlert('Solicitação de insumos enviada com sucesso!', 'Sucesso');
-            setActiveTab('estoque');
+            setActiveTab('menu');
         });
     };
 

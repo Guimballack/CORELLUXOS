@@ -730,18 +730,23 @@ export default function CentralHub() {
                                                     onClick={() => handleSelectByArea(area.id)} 
                                                     style={{ 
                                                         minHeight: '115px', 
-                                                        justifyContent: 'center', 
-                                                        padding: '0.85rem 0.6rem',
+                                                        justifyContent: 'flex-start',
+                                                        alignItems: 'center',
+                                                        flexDirection: 'column',
+                                                        display: 'flex',
+                                                        padding: '0.75rem 0.5rem',
+                                                        textAlign: 'center',
+                                                        overflow: 'hidden',
                                                         background: isSelected ? 'rgba(243, 107, 29, 0.1)' : 'var(--bg-card)',
                                                         border: isSelected ? '1px solid var(--accent-orange)' : '1px solid var(--border-color)'
                                                     }}
                                                 >
-                                                    <div className={`area-icon-badge ${colorClass}`} style={{ width: '42px', height: '42px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem', marginBottom: '0.6rem', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                                    <div className={`area-icon-badge ${colorClass}`} style={{ width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', marginBottom: '0.5rem', flexShrink: 0, background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.1)' }}>
                                                         <i className="fas fa-layer-group"></i>
                                                     </div>
-                                                    <h4 style={{ margin: 0, fontSize: '0.8rem', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }} title={area.name}>{area.name}</h4>
-                                                    <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '0.1rem 0.4rem', borderRadius: '4px', marginTop: '0.2rem', textTransform: 'uppercase' }}>{parentSector.name}</span>
-                                                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.68rem', color: 'var(--text-secondary)' }}>{areaUsersFiltered.length} colab.</p>
+                                                    <h4 style={{ margin: 0, fontSize: '0.75rem', fontWeight: 'bold', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%', textAlign: 'center' }} title={area.name}>{area.name}</h4>
+                                                    <span style={{ fontSize: '0.6rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '0.1rem 0.35rem', borderRadius: '4px', marginTop: '0.2rem', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '100%', display: 'block' }}>{parentSector.name}</span>
+                                                    <p style={{ margin: '0.2rem 0 0', fontSize: '0.65rem', color: 'var(--text-secondary)' }}>{areaUsersFiltered.length} colab.</p>
                                                 </div>
                                             );
                                         })

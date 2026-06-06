@@ -2142,50 +2142,7 @@ export default function ChecklistHub() {
             {/* Container de Conteúdo Principal */}
             <div className="chk-main-container">
                 
-                {/* Cabeçalho superior do Hub */}
-                <div className="chk-header-bar">
-                    <div>
-                        <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Corellux OS / Módulos</span>
-                        <h1 style={{ margin: '0.2rem 0 0 0', fontSize: '1.6rem', fontWeight: 800, color: '#fff' }}>
-                            {activeTab === 'menu' && 'Central de Checklists & Conformidade'}
-                            {activeTab === 'run_checklist' && 'Iniciar Nova Vistoria'}
-                            {activeTab === 'dashboard' && 'Painel de Indicadores'}
-                            {activeTab === 'templates' && 'Templates & Modelos'}
-                            {activeTab === 'builder' && 'Editor de Checklist'}
-                            {activeTab === 'execution' && 'Executando Checklist'}
-                            {activeTab === 'nc' && 'Gerenciamento de Não Conformidades'}
-                            {activeTab === 'action_plans' && 'Plano de Ação Corretiva'}
-                            {activeTab === 'integrations' && 'Motor de Integrações ERP'}
-                            {activeTab === 'checklist_audit' && 'Auditoria de Checklists Realizados'}
-                            {activeTab === 'score_ranking' && 'Pontuação, Performance & Rankings'}
-                            {activeTab === 'audit' && 'Logs e Trilhas de Auditoria'}
-                            {activeTab === 'permissions' && 'Acessos e Permissões Granulares'}
-                            {activeTab === 'collaborator_diagram' && 'Diagrama de Vínculo de Colaboradores'}
-                        </h1>
-                    </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        {/* Conexão Badge */}
-                        <div 
-                            className={`chk-badge-btn ${offlineMode ? 'offline' : 'online'}`}
-                            onClick={toggleOfflineMode}
-                            title="Clique para alternar conectividade manual"
-                        >
-                            {offlineMode ? <WifiOff size={14} /> : <Wifi size={14} />}
-                            {offlineMode ? 'MODO OFFLINE' : 'SISTEMA ONLINE'}
-                        </div>
-
-                        {offlineQueue.length > 0 && (
-                            <button 
-                                className="btn-send-aviso" 
-                                onClick={syncOfflineQueue}
-                                style={{ padding: '0.4rem 1rem', fontSize: '0.78rem', background: '#eab308', borderColor: '#facc15', color: '#000', fontWeight: '800' }}
-                            >
-                                Sincronizar ({offlineQueue.length})
-                            </button>
-                        )}
-                    </div>
-                </div>
 
                 {/* Notificações de Integração Contextual */}
                 {notifications.length > 0 && (
@@ -2371,7 +2328,7 @@ export default function ChecklistHub() {
                                 <p style={{ margin: 0, fontSize: '0.88rem' }}>Crie e ative um modelo de checklist na área de "Modelos de Checklist" para começar.</p>
                             </div>
                         ) : (
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.25rem', marginBottom: '2rem' }}>
                                 {checklistModels.filter(m => m.status === 'Ativo').map(m => {
                                     const isDueToday = (() => {
                                         const today = new Date();
@@ -2392,65 +2349,126 @@ export default function ChecklistHub() {
                                         return true;
                                     })();
 
+                                    const assignedIds = checklistAssignments[m.id] || [];
+                                    const assignedUsers = assignedIds.map(id => appUsers.find(u => String(u.id) === String(id))).filter(Boolean);
+                                    const itemCount = (m.items || []).length;
+                                    const freqColor = m.frequency === 'Diário' ? '#2dd4bf' : m.frequency === 'Semanal' ? '#60a5fa' : '#a855f7';
+
                                     return (
-                                        <div 
-                                            key={m.id} 
-                                            className="chk-kpi-card" 
-                                            style={{ 
-                                                background: 'rgba(30, 41, 59, 0.25)', 
-                                                border: '1px solid rgba(255,255,255,0.05)', 
-                                                borderRadius: '12px', 
-                                                padding: '1.25rem 1.5rem', 
-                                                display: 'flex', 
-                                                alignItems: 'center', 
-                                                justifyContent: 'space-between', 
-                                                gap: '1.5rem',
-                                                transition: 'border-color 0.2s',
-                                                cursor: 'default'
+                                        <div
+                                            key={m.id}
+                                            style={{
+                                                background: 'rgba(15, 23, 42, 0.6)',
+                                                border: `1px solid ${isDueToday ? 'rgba(45,212,191,0.25)' : 'rgba(255,255,255,0.06)'}`,
+                                                borderRadius: '16px',
+                                                overflow: 'hidden',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                transition: 'all 0.25s ease',
+                                                cursor: 'pointer',
+                                                backdropFilter: 'blur(10px)',
+                                                boxShadow: isDueToday ? '0 0 20px rgba(45,212,191,0.06)' : 'none',
+                                                position: 'relative',
                                             }}
-                                            onMouseEnter={e => e.currentTarget.style.borderColor = 'rgba(45, 212, 191, 0.2)'}
-                                            onMouseLeave={e => e.currentTarget.style.borderColor = 'rgba(255,255,255,0.05)'}
+                                            onMouseEnter={e => {
+                                                e.currentTarget.style.transform = 'translateY(-3px)';
+                                                e.currentTarget.style.borderColor = 'rgba(45,212,191,0.4)';
+                                                e.currentTarget.style.boxShadow = '0 8px 32px rgba(45,212,191,0.12)';
+                                            }}
+                                            onMouseLeave={e => {
+                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                e.currentTarget.style.borderColor = isDueToday ? 'rgba(45,212,191,0.25)' : 'rgba(255,255,255,0.06)';
+                                                e.currentTarget.style.boxShadow = isDueToday ? '0 0 20px rgba(45,212,191,0.06)' : 'none';
+                                            }}
                                         >
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flexGrow: 1 }}>
-                                                <h3 style={{ fontSize: '1.05rem', color: '#fff', margin: 0, fontWeight: '800', lineHeight: '1.3' }}>{m.name}</h3>
-                                                {(() => {
-                                                    const assignedIds = checklistAssignments[m.id] || [];
-                                                    if (assignedIds.length === 0) return null;
-                                                    return (
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', flexWrap: 'wrap', marginTop: '0.2rem' }}>
-                                                            <span style={{ fontSize: '0.68rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase' }}>Designados:</span>
-                                                            {assignedIds.map(userId => {
-                                                                const user = appUsers.find(u => String(u.id) === String(userId));
-                                                                if (!user) return null;
-                                                                return (
-                                                                    <span key={userId} style={{ fontSize: '0.7rem', background: 'rgba(45, 212, 191, 0.08)', border: '1px solid rgba(45, 212, 191, 0.15)', color: '#2dd4bf', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>
-                                                                        {user.name}
-                                                                    </span>
-                                                                );
-                                                            })}
+                                            {/* Barra de cor no topo */}
+                                            <div style={{ height: '3px', background: `linear-gradient(90deg, ${freqColor}, ${freqColor}44)` }} />
+
+                                            {/* Badge Hoje */}
+                                            {isDueToday && (
+                                                <div style={{
+                                                    position: 'absolute', top: '12px', right: '12px',
+                                                    background: 'rgba(45,212,191,0.15)', border: '1px solid rgba(45,212,191,0.35)',
+                                                    color: '#2dd4bf', fontSize: '0.6rem', fontWeight: 800,
+                                                    padding: '2px 8px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '0.5px'
+                                                }}>● Hoje</div>
+                                            )}
+
+                                            {/* Corpo */}
+                                            <div style={{ padding: '1.25rem 1.25rem 0.75rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                                                {/* Ícone + título */}
+                                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.85rem' }}>
+                                                    <div style={{
+                                                        width: 44, height: 44, borderRadius: '12px', flexShrink: 0,
+                                                        background: 'rgba(45,212,191,0.1)', border: '1px solid rgba(45,212,191,0.2)',
+                                                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                    }}>
+                                                        <ClipboardList size={20} style={{ color: '#2dd4bf' }} />
+                                                    </div>
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#fff', lineHeight: 1.3, paddingRight: isDueToday ? '3.5rem' : 0 }}>{m.name}</h3>
+                                                        {m.sector && <span style={{ fontSize: '0.7rem', color: '#64748b', display: 'block', marginTop: '2px' }}>{m.sector}</span>}
+                                                    </div>
+                                                </div>
+
+                                                {/* Métricas */}
+                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                                    <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.5rem 0.75rem', border: '1px solid rgba(255,255,255,0.04)' }}>
+                                                        <div style={{ fontSize: '0.6rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Frequência</div>
+                                                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: freqColor }}>{m.frequency || '—'}</div>
+                                                    </div>
+                                                    <div style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.5rem 0.75rem', border: '1px solid rgba(255,255,255,0.04)' }}>
+                                                        <div style={{ fontSize: '0.6rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '2px' }}>Itens</div>
+                                                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#fff' }}>{itemCount} <span style={{ color: '#64748b', fontWeight: 400, fontSize: '0.7rem' }}>perguntas</span></div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Designados */}
+                                                {assignedUsers.length > 0 && (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                                        <span style={{ fontSize: '0.62rem', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Designados:</span>
+                                                        <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                                                            {assignedUsers.slice(0, 3).map(user => (
+                                                                <span key={user.id} style={{
+                                                                    fontSize: '0.68rem', background: 'rgba(45,212,191,0.08)',
+                                                                    border: '1px solid rgba(45,212,191,0.15)', color: '#2dd4bf',
+                                                                    padding: '1px 6px', borderRadius: '4px', fontWeight: 600
+                                                                }}>{user.name}</span>
+                                                            ))}
+                                                            {assignedUsers.length > 3 && (
+                                                                <span style={{ fontSize: '0.68rem', color: '#64748b', padding: '1px 4px' }}>+{assignedUsers.length - 3}</span>
+                                                            )}
                                                         </div>
-                                                    );
-                                                })()}
+                                                    </div>
+                                                )}
                                             </div>
-                                            
-                                            <button 
-                                                className="btn-send-aviso" 
-                                                onClick={() => handleStartExecution(m)} 
-                                                style={{ 
-                                                    padding: '0.45rem 1.25rem', 
-                                                    fontSize: '0.78rem', 
-                                                    display: 'flex', 
-                                                    alignItems: 'center', 
-                                                    gap: '0.4rem', 
-                                                    background: 'var(--accent-orange)', 
-                                                    borderColor: 'var(--accent-orange)', 
-                                                    color: '#fff',
-                                                    fontWeight: '800',
-                                                    flexShrink: 0
-                                                }}
-                                            >
-                                                <Play size={12} fill="currentColor" /> Iniciar
-                                            </button>
+
+                                            {/* Rodapé */}
+                                            <div style={{
+                                                padding: '0.75rem 1.25rem',
+                                                borderTop: '1px solid rgba(255,255,255,0.04)',
+                                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                                background: 'rgba(0,0,0,0.15)'
+                                            }}>
+                                                <span style={{ fontSize: '0.68rem', color: '#475569' }}>
+                                                    {m.frequencyDay ? `📅 ${m.frequencyDay}` : '📋 Sob demanda'}
+                                                </span>
+                                                <button
+                                                    onClick={() => handleStartExecution(m)}
+                                                    style={{
+                                                        display: 'flex', alignItems: 'center', gap: '0.4rem',
+                                                        padding: '0.45rem 1.1rem', borderRadius: '8px', border: 'none',
+                                                        background: 'linear-gradient(135deg, #2dd4bf, #0891b2)',
+                                                        color: '#fff', fontWeight: 800, fontSize: '0.78rem',
+                                                        cursor: 'pointer', transition: 'all 0.2s ease',
+                                                        boxShadow: '0 4px 12px rgba(45,212,191,0.25)'
+                                                    }}
+                                                    onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 6px 18px rgba(45,212,191,0.4)'; }}
+                                                    onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(45,212,191,0.25)'; }}
+                                                >
+                                                    <Play size={13} fill="currentColor" /> Iniciar
+                                                </button>
+                                            </div>
                                         </div>
                                     );
                                 })}
