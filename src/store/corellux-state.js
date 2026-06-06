@@ -62,7 +62,10 @@ const DEFAULTS = {
     patrimonyMovements: [],
     patrimonyResponsibilities: [],
     patrimonyInventories: [],
-    patrimonyAudits: []
+    patrimonyAudits: [],
+
+    // Sub-Produtos (Semi-Acabados)
+    subprodutosActiveTab: 'dashboard'
 };
 
 // Instância única do estado na memória

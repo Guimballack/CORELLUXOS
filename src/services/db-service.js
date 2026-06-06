@@ -2906,6 +2906,113 @@ export const DbService = {
             console.error('[DbService] Falha ao registrar ocorrência automática de checklist:', e);
             return { success: false, error: e };
         }
+    },
+
+    // =============================================
+    // SUB-PRODUTOS E ORDENS DE PRODUÇÃO
+    // =============================================
+
+    async getProductionOrders() {
+        try {
+            const { data, error } = await supabase
+                .from('production_orders')
+                .select('*')
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_production_orders');
+                return local ? JSON.parse(local) : [];
+            }
+            return toCamelCase(data);
+        } catch (e) {
+            console.warn('[DbService] Erro ao buscar ordens de produção. Fallback local:', e);
+            const local = localStorage.getItem('corellux_production_orders');
+            return local ? JSON.parse(local) : [];
+        }
+    },
+
+    async saveProductionOrder(order) {
+        try {
+            const snakeObj = toSnakeCase({ ...order });
+            if (snakeObj.id && String(snakeObj.id).startsWith('ord_')) delete snakeObj.id;
+
+            let data, error;
+            if (order.id && !String(order.id).startsWith('ord_')) {
+                ({ data, error } = await supabase
+                    .from('production_orders')
+                    .update(snakeObj)
+                    .eq('id', order.id)
+                    .select());
+            } else {
+                ({ data, error } = await supabase
+                    .from('production_orders')
+                    .insert([snakeObj])
+                    .select());
+            }
+            if (error) throw error;
+            const saved = toCamelCase(data[0]);
+
+            const local = localStorage.getItem('corellux_production_orders');
+            let list = local ? JSON.parse(local) : [];
+            const idx = list.findIndex(o => o.id === saved.id);
+            if (idx >= 0) list[idx] = saved; else list.unshift(saved);
+            localStorage.setItem('corellux_production_orders', JSON.stringify(list));
+            return { success: true, data: saved };
+        } catch (e) {
+            console.warn('[DbService] Erro ao salvar ordem de produção. Gravando localmente:', e);
+            const saved = { ...order, id: order.id || 'ord_' + Date.now(), createdAt: order.createdAt || new Date().toISOString() };
+            const local = localStorage.getItem('corellux_production_orders');
+            let list = local ? JSON.parse(local) : [];
+            const idx = list.findIndex(o => o.id === saved.id);
+            if (idx >= 0) list[idx] = saved; else list.unshift(saved);
+            localStorage.setItem('corellux_production_orders', JSON.stringify(list));
+            return { success: true, data: saved };
+        }
+    },
+
+    async deleteProductionOrder(id) {
+        try {
+            const { error } = await supabase.from('production_orders').delete().eq('id', id);
+            if (error) throw error;
+        } catch (e) {
+            console.warn('[DbService] Erro ao excluir ordem de produção. Removendo localmente:', e);
+        }
+        const local = localStorage.getItem('corellux_production_orders');
+        let list = local ? JSON.parse(local) : [];
+        list = list.filter(o => o.id !== id);
+        localStorage.setItem('corellux_production_orders', JSON.stringify(list));
+        return { success: true };
+    },
+
+    // Executa a ordem: debita insumos, credita subproduto
+    async executeProductionOrder(order, products) {
+        try {
+            const subProd = products.find(p => p.sku === order.subProductSku);
+            if (!subProd) return { success: false, error: 'Sub-produto não encontrado.' };
+
+            const recipe = subProd.recipe || [];
+            const batchesQty = parseFloat(order.qtyBatches) || 1;
+            const yieldPerBatch = parseFloat(subProd.yieldPerBatch) || 1;
+
+            // Debit each ingredient
+            for (const ing of recipe) {
+                const ingProd = products.find(p => p.sku === ing.ingredientSku);
+                if (!ingProd) continue;
+                const needed = parseFloat(ing.quantity) * batchesQty;
+                const newStock = Math.max(0, (parseFloat(ingProd.stock) || 0) - needed);
+                await this.updateProductStock(ing.ingredientSku, newStock);
+            }
+
+            // Credit subproduct stock
+            const qtyProduced = batchesQty * yieldPerBatch;
+            const newSubStock = (parseFloat(subProd.stock) || 0) + qtyProduced;
+            await this.updateProductStock(order.subProductSku, newSubStock);
+
+            return { success: true, qtyProduced };
+        } catch (e) {
+            console.error('[DbService] Erro ao executar ordem de produção:', e);
+            return { success: false, error: e.message };
+        }
     }
 };
 

@@ -14,6 +14,7 @@ import SettingsHub from './pages/SettingsHub';
 import CentralHub from './pages/CentralHub';
 import ChecklistHub from './pages/ChecklistHub';
 import PatrimonioHub from './pages/PatrimonioHub';
+import SubprodutosHub from './pages/SubprodutosHub';
 import { ArrowLeft } from 'lucide-react';
 
 // Componente Placeholder para módulos em desenvolvimento
@@ -108,6 +109,8 @@ export default function App() {
                 return <ChecklistHub />;
             case 'patrimonio-hub':
                 return <PatrimonioHub />;
+            case 'subprodutos-hub':
+                return <SubprodutosHub />;
             case 'financeiro-hub':
                 return <PlaceholderModule name="FINANCEIRO" description="Controle de fluxo de caixa, contas, faturamento e DRE em migração para React." />;
             case 'ged-hub':

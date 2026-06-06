@@ -17,7 +17,8 @@ import {
     Database,
     ChevronRight,
     Lock,
-    Boxes
+    Boxes,
+    FlaskConical
 } from 'lucide-react';
 
 export default function Dashboard() {
@@ -29,6 +30,9 @@ export default function Dashboard() {
         }
         if (screenName === 'patrimonio-hub') {
             setKey('patrimonioActiveTab', 'dashboard');
+        }
+        if (screenName === 'subprodutos-hub') {
+            setKey('subprodutosActiveTab', 'dashboard');
         }
         setKey('currentScreen', screenName);
     };
@@ -177,6 +181,19 @@ export default function Dashboard() {
                     <div className="card-content">
                         <h3>JURÍDICO</h3>
                         <p>Contratos, compliance, processos judiciais, certidões e IA jurídica.</p>
+                    </div>
+                    <ChevronRight className="chevron" size={20} />
+                </button>
+
+                <button 
+                    id="btn-nav-subprodutos" 
+                    className="menu-card orange" 
+                    onClick={() => handleModuleClick('subprodutos-hub')}
+                >
+                    <div className="card-icon"><FlaskConical size={24} /></div>
+                    <div className="card-content">
+                        <h3>SUB-PRODUTOS</h3>
+                        <p>Fichas técnicas, ordens de produção e estoque de semi-acabados.</p>
                     </div>
                     <ChevronRight className="chevron" size={20} />
                 </button>
