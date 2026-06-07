@@ -353,6 +353,24 @@ export default function LogisticsHub() {
     const [flowType, setFlowType] = useState('entrada'); // 'entrada', 'saida', 'perdas', 'solicitacao'
     const [flowStep, setFlowStep] = useState('category'); // 'category', 'product'
     const [currentCategory, setCurrentCategory] = useState(null);
+
+    // Stock Flow Log state
+    const [movements, setMovements] = useState([]);
+    const [movSearchQuery, setMovSearchQuery] = useState('');
+    const [movFilterType, setMovFilterType] = useState('todos');
+    const [isLoadingMovements, setIsLoadingMovements] = useState(false);
+
+    const loadStockMovements = async () => {
+        setIsLoadingMovements(true);
+        try {
+            const list = await DbService.getStockMovements();
+            setMovements(list || []);
+        } catch (e) {
+            console.error('[LogisticsHub] Erro ao buscar movimentações:', e);
+        } finally {
+            setIsLoadingMovements(false);
+        }
+    };
     
     // Numpad Modal States
     const [showNumpad, setShowNumpad] = useState(false);
@@ -1448,6 +1466,20 @@ export default function LogisticsHub() {
             };
             saveLossRecord(lossEntry);
 
+            // Registrar log de movimentação de descarte
+            try {
+                await DbService.saveStockMovement({
+                    sku: sku,
+                    productName: pendingProduct.name,
+                    type: 'Perda',
+                    quantity: pendingQty,
+                    userName: state.currentUser ? state.currentUser.name : 'Operador',
+                    details: `Descarte: ${reason === 'Outros' ? (customReasonText.trim() || 'Outros') : reason}. Setor: ${selectedLossSector || 'Cozinha'}. Tipo Material: ${lossMaterialType}.`
+                });
+            } catch (err) {
+                console.error('[Logistics] Erro ao registrar movimentação de descarte:', err);
+            }
+
             if (lossMaterialType === 'estoque') {
                 const productBatches = stockBatches.filter(b => b.itemSku === sku);
                 if (productBatches.length > 0) {
@@ -1534,6 +1566,23 @@ export default function LogisticsHub() {
 
             await recalculateProductStockFromBatches();
 
+            if (allSuccess || savedLots.length > 0) {
+                // Registrar log de movimentação de entrada
+                try {
+                    const lotsStr = entryBatches.map(b => `Lote: ${b.lot} (Qtd: ${b.quantity} ${pendingProduct.unit}, Forn: ${b.supplier || 'Não informado'})`).join('; ');
+                    await DbService.saveStockMovement({
+                        sku: sku,
+                        productName: pendingProduct.name,
+                        type: 'Entrada',
+                        quantity: pendingQty,
+                        userName: state.currentUser ? state.currentUser.name : 'Operador',
+                        details: `Entrada de Lote(s): ${lotsStr}`
+                    });
+                } catch (err) {
+                    console.error('[Logistics] Erro ao registrar movimentação de entrada:', err);
+                }
+            }
+
             if (allSuccess) {
                 showSystemAlert(`Entrada registrada com sucesso! ${entryBatches.length} lote(s) cadastrado(s): ${savedLots.join(', ')}.`, 'Sucesso');
             } else if (savedLots.length > 0) {
@@ -1563,6 +1612,20 @@ export default function LogisticsHub() {
                     setProducts(prev => prev.map(p => p.sku === sku ? { ...p, stock: newStock } : p));
                     showSystemAlert(`[Aviso] Salvo localmente: estoque de ${pendingProduct.name} alterado para ${newStock}.`, 'Salvo Localmente');
                 }
+            }
+
+            // Registrar log de movimentação de saída
+            try {
+                await DbService.saveStockMovement({
+                    sku: sku,
+                    productName: pendingProduct.name,
+                    type: 'Saída',
+                    quantity: pendingQty,
+                    userName: state.currentUser ? state.currentUser.name : 'Operador',
+                    details: 'Retirada para WMS / consumo operacional interno.'
+                });
+            } catch (err) {
+                console.error('[Logistics] Erro ao registrar movimentação de saída:', err);
             }
         }
 
@@ -1728,6 +1791,20 @@ export default function LogisticsHub() {
             } : r);
 
             saveRequests(updatedRequests);
+
+            // Registrar log de movimentação de saída para requisição aprovada
+            try {
+                await DbService.saveStockMovement({
+                    sku: req.itemSku,
+                    productName: req.itemName,
+                    type: 'Saída',
+                    quantity: req.quantity,
+                    userName: state.currentUser ? state.currentUser.name : 'Supervisor',
+                    details: `Requisição Aprovada. Destino: ${req.destinationSector || 'Não informado'}. Solic: ${req.userName}.`
+                });
+            } catch (err) {
+                console.error('[Logistics] Erro ao registrar movimentação de requisição:', err);
+            }
 
             // Log transaction to movement logs
             try {
@@ -2349,6 +2426,21 @@ export default function LogisticsHub() {
                                     </div>
                                     <ChevronRight className="chevron" size={20} />
                                 </button>
+
+                                <button 
+                                    className="menu-card blue" 
+                                    onClick={() => {
+                                        setFlowType('historico');
+                                        loadStockMovements();
+                                    }}
+                                >
+                                    <div className="card-icon"><ClipboardList size={24} /></div>
+                                    <div className="card-content">
+                                        <h3>HISTÓRICO LOG</h3>
+                                        <p>Visualizar logs completos de todas as movimentações de estoque (entradas, saídas, perdas).</p>
+                                    </div>
+                                    <ChevronRight className="chevron" size={20} />
+                                </button>
                             </div>
                         )}
 
@@ -2356,7 +2448,7 @@ export default function LogisticsHub() {
                         {((activeTab === 'movimentar' && flowType) || activeTab === 'solicitacao') && (
                             <div className="flow-container" style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                 
-                                {activeTab === 'movimentar' && flowType && (
+                                {activeTab === 'movimentar' && flowType && flowType !== 'historico' && (
                                     <div style={{
                                         background: 'var(--bg-card)',
                                         padding: '1.2rem 1.5rem',
@@ -2418,7 +2510,7 @@ export default function LogisticsHub() {
                                 )}
 
                                 {/* FLOW STEP 1: CATEGORY SELECTION */}
-                                {flowStep === 'category' && (
+                                {flowStep === 'category' && flowType !== 'historico' && (
                                     <div style={{ background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
                                         {activeTab === 'solicitacao' && (
                                             <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: '1rem' }}>
@@ -2482,7 +2574,7 @@ export default function LogisticsHub() {
                                 )}
 
                                 {/* FLOW STEP 2: PRODUCT SELECTION & QUANTITY INPUT */}
-                                {flowStep === 'product' && currentCategory && (
+                                {flowStep === 'product' && currentCategory && flowType !== 'historico' && (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                                         {/* Products Table inside Category */}
                                         <div className="table-responsive">
@@ -2648,6 +2740,210 @@ export default function LogisticsHub() {
                                                 <button className="btn-clear-modal" onClick={() => setCart([])}>LIMPAR TUDO</button>
                                                 <button className="btn-confirm-modal" onClick={handleSubmitRequests}>ENVIAR SOLICITAÇÃO</button>
                                             </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* WMS STOCK FLOW LOG (HISTÓRICO) */}
+                                {flowType === 'historico' && (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                        {/* Cabeçalho Local do Histórico */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+                                            <button 
+                                                onClick={() => setFlowType(null)}
+                                                style={{
+                                                    background: 'rgba(255,255,255,0.05)',
+                                                    border: '1px solid var(--border-color)',
+                                                    color: 'var(--text-primary)',
+                                                    padding: '0.5rem 1rem',
+                                                    borderRadius: '8px',
+                                                    fontSize: '0.85rem',
+                                                    fontWeight: '700',
+                                                    cursor: 'pointer',
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '0.5rem',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                            >
+                                                <ArrowLeft size={16} /> Voltar ao Menu
+                                            </button>
+                                            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: '800', color: '#fff' }}>HISTÓRICO DE MOVIMENTAÇÕES (STOCK FLOW LOG)</h3>
+                                        </div>
+
+                                        {/* Filtros e Barra de Pesquisa */}
+                                        <div style={{
+                                            background: 'var(--bg-card)',
+                                            padding: '1.25rem',
+                                            borderRadius: '12px',
+                                            border: '1px solid var(--border-color)',
+                                            boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                                            display: 'flex',
+                                            flexWrap: 'wrap',
+                                            gap: '1rem',
+                                            alignItems: 'center',
+                                            justifyContent: 'space-between'
+                                        }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, minWidth: '280px' }}>
+                                                <div style={{ position: 'relative', flex: 1 }}>
+                                                    <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-secondary)' }} />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Buscar por SKU, Produto ou Operador..."
+                                                        value={movSearchQuery}
+                                                        onChange={(e) => setMovSearchQuery(e.target.value)}
+                                                        style={{
+                                                            width: '100%',
+                                                            padding: '0.65rem 1rem 0.65rem 2.2rem',
+                                                            borderRadius: '8px',
+                                                            border: '1px solid var(--border-color)',
+                                                            background: 'var(--bg-input)',
+                                                            color: 'var(--text-primary)',
+                                                            fontSize: '0.85rem',
+                                                            fontWeight: '600',
+                                                            outline: 'none'
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-secondary)' }}>Filtro:</span>
+                                                {['todos', 'entrada', 'saida', 'perda'].map(type => (
+                                                    <button
+                                                        key={type}
+                                                        onClick={() => setMovFilterType(type)}
+                                                        style={{
+                                                            padding: '0.5rem 1rem',
+                                                            borderRadius: '6px',
+                                                            background: movFilterType === type ? 'var(--accent-orange)' : 'rgba(255,255,255,0.03)',
+                                                            border: '1px solid ' + (movFilterType === type ? 'var(--accent-orange)' : 'var(--border-color)'),
+                                                            color: movFilterType === type ? '#ffffff' : 'var(--text-secondary)',
+                                                            fontSize: '0.78rem',
+                                                            fontWeight: '700',
+                                                            cursor: 'pointer',
+                                                            textTransform: 'uppercase',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                    >
+                                                        {type === 'todos' ? 'Todos' : type === 'saida' ? 'Saídas' : type === 'perda' ? 'Perdas' : 'Entradas'}
+                                                    </button>
+                                                ))}
+                                                
+                                                <button
+                                                    onClick={loadStockMovements}
+                                                    style={{
+                                                        display: 'inline-flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        padding: '0.5rem 0.75rem',
+                                                        borderRadius: '6px',
+                                                        background: 'rgba(255,255,255,0.03)',
+                                                        border: '1px solid var(--border-color)',
+                                                        color: 'var(--text-primary)',
+                                                        cursor: 'pointer',
+                                                        marginLeft: '0.5rem'
+                                                    }}
+                                                    title="Atualizar Logs"
+                                                >
+                                                    <RefreshCw size={16} className={isLoadingMovements ? 'spin' : ''} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Tabela de Logs */}
+                                        <div className="table-responsive" style={{ background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border-color)', overflow: 'hidden' }}>
+                                            {isLoadingMovements ? (
+                                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem', color: 'var(--text-secondary)' }}>
+                                                    <RefreshCw size={36} className="spin" style={{ marginBottom: '1rem', color: 'var(--accent-orange)' }} />
+                                                    <p style={{ fontWeight: '600' }}>Carregando histórico do estoque...</p>
+                                                </div>
+                                            ) : (() => {
+                                                const filtered = movements.filter(m => {
+                                                    const query = movSearchQuery.toLowerCase().trim();
+                                                    const matchText = (m.sku || '').toLowerCase().includes(query) || 
+                                                                      (m.productName || '').toLowerCase().includes(query) || 
+                                                                      (m.userName || '').toLowerCase().includes(query);
+                                                    if (!matchText) return false;
+                                                    if (movFilterType !== 'todos') {
+                                                        const normalizedType = m.type === 'Saída' ? 'saida' : (m.type || '').toLowerCase();
+                                                        return normalizedType === movFilterType;
+                                                    }
+                                                    return true;
+                                                });
+
+                                                if (filtered.length === 0) {
+                                                    return (
+                                                        <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-secondary)' }}>
+                                                            <ClipboardList size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                                                            <p style={{ fontWeight: '600' }}>Nenhuma movimentação de estoque encontrada.</p>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                return (
+                                                    <table className="products-table" style={{ width: '100%' }}>
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Data/Hora</th>
+                                                                <th>SKU</th>
+                                                                <th>Produto</th>
+                                                                <th style={{ textAlign: 'center' }}>Tipo</th>
+                                                                <th style={{ textAlign: 'right' }}>Qtd</th>
+                                                                <th>Operador</th>
+                                                                <th>Detalhes</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {filtered.map((m, idx) => {
+                                                                const typeColor = m.type === 'Entrada' ? 'var(--accent-green)' : m.type === 'Saída' ? 'var(--accent-red)' : 'var(--accent-yellow)';
+                                                                const typeBg = m.type === 'Entrada' ? 'rgba(46,212,191,0.08)' : m.type === 'Saída' ? 'rgba(239,68,68,0.08)' : 'rgba(234,179,8,0.08)';
+                                                                
+                                                                const formattedDate = m.date ? new Date(m.date + 'T00:00:00').toLocaleDateString('pt-BR') : '';
+                                                                const formattedTime = m.time ? m.time.slice(0, 5) : '';
+
+                                                                return (
+                                                                    <tr key={m.id || idx}>
+                                                                        <td style={{ whiteSpace: 'nowrap' }}>
+                                                                            <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>{formattedDate}</span>
+                                                                            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginLeft: '6px' }}>{formattedTime}</span>
+                                                                        </td>
+                                                                        <td>
+                                                                            <code style={{ background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.78rem', fontWeight: '800' }}>{m.sku}</code>
+                                                                        </td>
+                                                                        <td>
+                                                                            <span style={{ fontWeight: '700' }}>{m.productName}</span>
+                                                                        </td>
+                                                                        <td style={{ textAlign: 'center' }}>
+                                                                            <span style={{
+                                                                                display: 'inline-block',
+                                                                                padding: '3px 8px',
+                                                                                borderRadius: '12px',
+                                                                                fontSize: '0.72rem',
+                                                                                fontWeight: '800',
+                                                                                color: typeColor,
+                                                                                background: typeBg,
+                                                                                border: `1px solid ${typeColor}20`
+                                                                            }}>
+                                                                                {m.type.toUpperCase()}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td style={{ textAlign: 'right', fontWeight: '800', color: typeColor }}>
+                                                                            {m.type === 'Entrada' ? '+' : '-'}{m.quantity}
+                                                                        </td>
+                                                                        <td>
+                                                                            <span style={{ fontSize: '0.82rem', fontWeight: '600' }}>{m.userName}</span>
+                                                                        </td>
+                                                                        <td>
+                                                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{m.details || '—'}</span>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                 )}

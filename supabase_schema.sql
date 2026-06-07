@@ -152,36 +152,99 @@ CREATE TABLE stock_batches (
 -- INSERIR DADOS INICIAIS (SEED)
 -- =============================================
 
--- Inserir usuários/colaboradores padrão
+-- 1. Inserir usuários/colaboradores padrão (30 Funcionários)
 INSERT INTO app_users (name, display_name, role, img, avatar_fallback, status, access_level, pin, password, phone, email, permissions) VALUES
-('ADMINISTRADOR', 'Admin', 'Administrador', 'profile/default-avatar.png', 'A', 'Ativo', 'Administrador', '0000', 'admin', '', '', '{"entrada": true, "saida": true, "perdas": true, "editar": true, "relatorios": true, "config": true, "excluir": true, "sendMsg": true, "sendNotif": true, "receiveNotif": true, "sendAlert": true, "approveRequests": true, "requestItems": true, "sendDocs": true, "viewDocs": true, "supplierView": true, "supplierCreate": true, "supplierEdit": true, "supplierBlock": true, "supplierDelete": true, "chkCreate": true, "chkAnswer": true, "chkApprove": true, "chkReports": true}'),
-('Rafael', 'Rafael', 'Gerente', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80', 'R', 'Ativo', 'Colaborador', '1234', '', '', '', '{"entrada": true, "saida": true, "perdas": true, "editar": true, "relatorios": true, "config": true, "excluir": true, "sendMsg": true, "sendNotif": true, "receiveNotif": true, "sendAlert": true, "approveRequests": true, "requestItems": true, "sendDocs": true, "viewDocs": false, "supplierView": true, "supplierCreate": true, "supplierEdit": true, "supplierBlock": true, "supplierDelete": true, "chkCreate": true, "chkAnswer": true, "chkApprove": true, "chkReports": true}'),
-('Carlos', 'Carlos', 'Estoquista', 'profile/default-avatar.png', 'C', 'Ativo', 'Colaborador', '1234', '', '', '', '{"entrada": true, "saida": true, "perdas": true, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": true, "sendDocs": true, "viewDocs": false, "supplierView": true, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
-('Fernanda', 'Fernanda', 'Cozinha', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80', 'F', 'Ativo', 'Colaborador', '1234', '', '', '', '{"entrada": false, "saida": true, "perdas": true, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": true, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}');
+('ADMINISTRADOR', 'Admin', 'Administrador', 'profile/default-avatar.png', 'A', 'Ativo', 'Administrador', '0000', 'admin', '', 'admin@bellaitalia.com.br', '{"entrada": true, "saida": true, "perdas": true, "editar": true, "relatorios": true, "config": true, "excluir": true, "sendMsg": true, "sendNotif": true, "receiveNotif": true, "sendAlert": true, "approveRequests": true, "requestItems": true, "sendDocs": true, "viewDocs": true, "supplierView": true, "supplierCreate": true, "supplierEdit": true, "supplierBlock": true, "supplierDelete": true, "chkCreate": true, "chkAnswer": true, "chkApprove": true, "chkReports": true}'),
+('Rafael Mendes', 'Rafael', 'Gerente de Pizzaria', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&h=150&q=80', 'R', 'Ativo', 'Colaborador', '1001', '', '(11) 98765-1111', 'rafael@bellaitalia.com.br', '{"entrada": true, "saida": true, "perdas": true, "editar": true, "relatorios": true, "config": true, "excluir": true, "sendMsg": true, "sendNotif": true, "receiveNotif": true, "sendAlert": true, "approveRequests": true, "requestItems": true, "sendDocs": true, "viewDocs": true, "supplierView": true, "supplierCreate": true, "supplierEdit": true, "supplierBlock": true, "supplierDelete": true, "chkCreate": true, "chkAnswer": true, "chkApprove": true, "chkReports": true}'),
+('Gustavo Santos', 'Gustavo', 'Gerente de Pizzaria', 'profile/default-avatar.png', 'G', 'Ativo', 'Colaborador', '1002', '', '(11) 98765-2222', 'gustavo@bellaitalia.com.br', '{"entrada": true, "saida": true, "perdas": true, "editar": true, "relatorios": true, "config": true, "excluir": true, "sendMsg": true, "sendNotif": true, "receiveNotif": true, "sendAlert": true, "approveRequests": true, "requestItems": true, "sendDocs": true, "viewDocs": true, "supplierView": true, "supplierCreate": true, "supplierEdit": true, "supplierBlock": true, "supplierDelete": true, "chkCreate": true, "chkAnswer": true, "chkApprove": true, "chkReports": true}'),
+('Bruno Silva', 'Bruno', 'Supervisor de Turno', 'profile/default-avatar.png', 'B', 'Ativo', 'Colaborador', '1003', '', '(11) 98765-3333', 'bruno@bellaitalia.com.br', '{"entrada": true, "saida": true, "perdas": true, "editar": true, "relatorios": true, "config": false, "excluir": false, "sendMsg": true, "sendNotif": true, "receiveNotif": true, "sendAlert": true, "approveRequests": true, "requestItems": true, "sendDocs": true, "viewDocs": true, "supplierView": true, "supplierCreate": true, "supplierEdit": true, "supplierBlock": false, "supplierDelete": false, "chkCreate": true, "chkAnswer": true, "chkApprove": true, "chkReports": true}'),
+('Camila Costa', 'Camila', 'Supervisor de Turno', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&h=150&q=80', 'Ca', 'Ativo', 'Colaborador', '1004', '', '(11) 98765-4444', 'camila@bellaitalia.com.br', '{"entrada": true, "saida": true, "perdas": true, "editar": true, "relatorios": true, "config": false, "excluir": false, "sendMsg": true, "sendNotif": true, "receiveNotif": true, "sendAlert": true, "approveRequests": true, "requestItems": true, "sendDocs": true, "viewDocs": true, "supplierView": true, "supplierCreate": true, "supplierEdit": true, "supplierBlock": false, "supplierDelete": false, "chkCreate": true, "chkAnswer": true, "chkApprove": true, "chkReports": true}'),
+('Anderson Silva', 'Anderson', 'Pizzaiolo', 'profile/default-avatar.png', 'An', 'Ativo', 'Colaborador', '1005', '', '', '', '{"entrada": false, "saida": true, "perdas": true, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": true, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Leandro Souza', 'Leandro', 'Pizzaiolo', 'profile/default-avatar.png', 'L', 'Ativo', 'Colaborador', '1006', '', '', '', '{"entrada": false, "saida": true, "perdas": true, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": true, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Thiago Santos', 'Thiago', 'Pizzaiolo', 'profile/default-avatar.png', 'T', 'Ativo', 'Colaborador', '1007', '', '', '', '{"entrada": false, "saida": true, "perdas": true, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": true, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Rodrigo Lima', 'Rodrigo', 'Auxiliar de Pizzaiolo', 'profile/default-avatar.png', 'Ro', 'Ativo', 'Colaborador', '1008', '', '', '', '{"entrada": false, "saida": true, "perdas": true, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": true, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Douglas Costa', 'Douglas', 'Auxiliar de Pizzaiolo', 'profile/default-avatar.png', 'D', 'Ativo', 'Colaborador', '1009', '', '', '', '{"entrada": false, "saida": true, "perdas": true, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": true, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Fernanda Dias', 'Fernanda', 'Cozinheiro', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&h=150&q=80', 'Fe', 'Ativo', 'Colaborador', '1010', '', '', '', '{"entrada": false, "saida": true, "perdas": true, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": true, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Juliana Ramos', 'Juliana', 'Cozinheiro', 'profile/default-avatar.png', 'Ju', 'Ativo', 'Colaborador', '1011', '', '', '', '{"entrada": false, "saida": true, "perdas": true, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": true, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('João Silva', 'João', 'Auxiliar de Cozinha', 'profile/default-avatar.png', 'J', 'Ativo', 'Colaborador', '1012', '', '', '', '{"entrada": false, "saida": true, "perdas": false, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": true, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Felipe Santos', 'Felipe', 'Auxiliar de Cozinha', 'profile/default-avatar.png', 'Fl', 'Ativo', 'Colaborador', '1013', '', '', '', '{"entrada": false, "saida": true, "perdas": false, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": true, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Daniel Costa', 'Daniel', 'Auxiliar de Cozinha', 'profile/default-avatar.png', 'Da', 'Ativo', 'Colaborador', '1014', '', '', '', '{"entrada": false, "saida": true, "perdas": false, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": true, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('André Costa', 'André', 'Maître', 'profile/default-avatar.png', 'Ad', 'Ativo', 'Colaborador', '1015', '', '', '', '{"entrada": false, "saida": true, "perdas": false, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": true, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": false, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Ricardo Alves', 'Ricardo', 'Garçom', 'profile/default-avatar.png', 'Ri', 'Ativo', 'Colaborador', '1016', '', '', '', '{"entrada": false, "saida": true, "perdas": false, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": true, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": false, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Pedro Santos', 'Pedro', 'Garçom', 'profile/default-avatar.png', 'P', 'Ativo', 'Colaborador', '1017', '', '', '', '{"entrada": false, "saida": true, "perdas": false, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": true, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": false, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Gabriel Lima', 'Gabriel', 'Garçom', 'profile/default-avatar.png', 'Gb', 'Ativo', 'Colaborador', '1018', '', '', '', '{"entrada": false, "saida": true, "perdas": false, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": true, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": false, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Vinícius Souza', 'Vinícius', 'Garçom', 'profile/default-avatar.png', 'V', 'Ativo', 'Colaborador', '1019', '', '', '', '{"entrada": false, "saida": true, "perdas": false, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": true, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": false, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Carlos Santos', 'Carlos', 'Cumim', 'profile/default-avatar.png', 'C', 'Ativo', 'Colaborador', '1020', '', '', '', '{"entrada": false, "saida": true, "perdas": false, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": false, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Sandra Xavier', 'Sandra', 'Atendente de Delivery', 'profile/default-avatar.png', 'S', 'Ativo', 'Colaborador', '1021', '', '', '', '{"entrada": false, "saida": true, "perdas": false, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": true, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": false, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Aline Ramos', 'Aline', 'Atendente de Delivery', 'profile/default-avatar.png', 'Al', 'Ativo', 'Colaborador', '1022', '', '', '', '{"entrada": false, "saida": true, "perdas": false, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": true, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": false, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Mateus Silva', 'Mateus', 'Entregador', 'profile/default-avatar.png', 'M', 'Ativo', 'Colaborador', '1023', '', '', '', '{"entrada": false, "saida": false, "perdas": false, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": false, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Lucas Mendes', 'Lucas', 'Entregador', 'profile/default-avatar.png', 'Lc', 'Ativo', 'Colaborador', '1024', '', '', '', '{"entrada": false, "saida": false, "perdas": false, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": false, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Rafael Oliveira', 'Rafael O.', 'Entregador', 'profile/default-avatar.png', 'Ro', 'Ativo', 'Colaborador', '1025', '', '', '', '{"entrada": false, "saida": false, "perdas": false, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": false, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Renato Oliveira', 'Renato', 'Estoquista', 'profile/default-avatar.png', 'Rn', 'Ativo', 'Colaborador', '1026', '', '', '', '{"entrada": true, "saida": true, "perdas": true, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": true, "sendDocs": true, "viewDocs": false, "supplierView": true, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Roberto Lima', 'Roberto', 'Comprador', 'profile/default-avatar.png', 'Rb', 'Ativo', 'Colaborador', '1027', '', '', '', '{"entrada": true, "saida": true, "perdas": true, "editar": true, "relatorios": false, "config": false, "excluir": false, "sendMsg": true, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": true, "sendDocs": true, "viewDocs": true, "supplierView": true, "supplierCreate": true, "supplierEdit": true, "supplierBlock": false, "supplierDelete": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Maria Santos', 'Maria', 'Auxiliar de Limpeza', 'profile/default-avatar.png', 'Ma', 'Ativo', 'Colaborador', '1028', '', '', '', '{"entrada": false, "saida": false, "perdas": false, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": false, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Luciana Costa', 'Luciana', 'Auxiliar de Limpeza', 'profile/default-avatar.png', 'Lu', 'Ativo', 'Colaborador', '1029', '', '', '', '{"entrada": false, "saida": false, "perdas": false, "editar": false, "relatorios": false, "config": false, "excluir": false, "sendMsg": false, "sendNotif": false, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": false, "sendDocs": true, "viewDocs": false, "supplierView": false, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}'),
+('Patrícia Melo', 'Patrícia', 'Analista Administrativo', 'profile/default-avatar.png', 'Pt', 'Ativo', 'Colaborador', '1030', '', '', '', '{"entrada": true, "saida": true, "perdas": false, "editar": true, "relatorios": true, "config": false, "excluir": false, "sendMsg": true, "sendNotif": true, "receiveNotif": true, "sendAlert": false, "approveRequests": false, "requestItems": true, "sendDocs": true, "viewDocs": true, "supplierView": true, "chkCreate": false, "chkAnswer": true, "chkApprove": false, "chkReports": false}');
 
--- Inserir categorias padrão
+-- 2. Inserir categorias padrão (Pizzaria)
 INSERT INTO categories (name, icon, color, description, status) VALUES
-('LACTÍCIOS', 'fa-cheese', 'color-blue', 'Leite, queijo, iogurte e derivados.', 'Ativo'),
-('PROTEÍNAS', 'fa-drumstick-bite', 'color-red', 'Carnes, frango, peixe e ovos.', 'Ativo'),
-('HORTIFRUTTI', 'fa-carrot', 'color-green', 'Frutas, verduras e legumes.', 'Ativo'),
-('BEBIDAS', 'fa-wine-bottle', 'color-teal', 'Sucos, águas, refrigerantes e afins.', 'Ativo'),
-('MASSAS E FARINÁCEOS', 'fa-bowl-rice', 'color-yellow', 'Farinhas, massas, arroz e cereais.', 'Ativo'),
-('MOLHOS E CONDIMENTOS', 'fa-bottle-droplet', 'color-orange', 'Molhos prontos, ketchup, mostarda.', 'Ativo'),
-('TEMPEROS', 'fa-pepper-hot', 'color-purple', 'Sal, pimenta, ervas e especiarias.', 'Ativo'),
-('CONGELADOS', 'fa-snowflake', 'color-lightblue', 'Produtos que necessitam de congelamento.', 'Ativo'),
-('DOCES E SOBREMESAS', 'fa-ice-cream', 'color-pink', 'Sobremesas, chocolates e doces.', 'Ativo'),
-('PRODUTOS DE LIMPEZA', 'fa-spray-can', 'color-indigo', 'Detergentes, desinfetantes e similar.', 'Ativo');
+('FARINHAS E MASSAS', 'fa-wheat-awn', 'color-yellow', 'Farinhas, fermentos e bases de massa.', 'Ativo'),
+('LATICÍNIOS', 'fa-cheese', 'color-blue', 'Queijos, requeijão, creme de leite e derivados.', 'Ativo'),
+('MOLHOS E CONDIMENTOS', 'fa-bottle-droplet', 'color-orange', 'Molho de tomate pelati, azeites e conservas.', 'Ativo'),
+('CARNES E FRIOS', 'fa-drumstick-bite', 'color-red', 'Calabresa, presunto, bacon, frango e embutidos.', 'Ativo'),
+('VEGETAIS E HORTIFRUTI', 'fa-carrot', 'color-green', 'Tomates, cebolas, rúcula, manjericão e frescos.', 'Ativo'),
+('BEBIDAS', 'fa-wine-bottle', 'color-teal', 'Água, refrigerantes e cervejas geladas.', 'Ativo'),
+('EMBALAGENS', 'fa-box', 'color-brown', 'Caixas de pizza 35cm/40cm e sacolas delivery.', 'Ativo'),
+('HIGIENE E OPERACIONAL', 'fa-spray-can', 'color-indigo', 'Produtos de limpeza, sanitizantes e descartáveis.', 'Ativo');
 
--- Inserir produtos padrão
-INSERT INTO products (sku, name, brand, description, unit, stock, category, status, min_stock, avg_stock, max_stock, gtin_unidade, gtin_fardo, itens_fardo, gtin_caixa, itens_caixa, gtin_pallet, itens_pallet) VALUES
-('PRT-001', 'Filé de Peito de Frango (Sassami)', 'Sadia', 'Peito de Frango (sassami) congelado.', 'KG', 120, 'PROTEÍNAS', 'Ativo', 20, 80, 150, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00),
-('PRT-002', 'Filé de Peito de Frango', 'Perdigão', 'Peito de frango resfriado.', 'KG', 100, 'PROTEÍNAS', 'Ativo', 15, 60, 120, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00),
-('LAC-001', 'Leite Integral 1L', 'Itambé', 'Leite tipo A integral.', 'UN', 50, 'LACTÍCIOS', 'Ativo', 10, 30, 60, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00),
-('HRT-001', 'Alface Crespa', 'Horta Viva', 'Alface crespa higienizada.', 'BDJ', 30, 'HORTIFRUTTI', 'Ativo', 5, 20, 40, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00),
-('BEB-001', 'Coca-Cola 2L', 'Coca-Cola', 'Refrigerante de cola 2 litros.', 'UN', 80, 'BEBIDAS', 'Ativo', 12, 50, 100, '7891234567890', '7891234567891', 6.00, '7891234567892', 12.00, '7891234567893', 240.00),
-('MAS-001', 'Arroz Agulhinha T1 5kg', 'Prato Fino', 'Arroz branco tipo 1.', 'PCT', 200, 'MASSAS E FARINÁCEOS', 'Ativo', 50, 150, 300, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00);
+-- 2.5 Inserir categorias de produtos de venda
+INSERT INTO sale_product_categories (name, icon, color, description, status) VALUES
+('PIZZAS', 'fa-pizza-slice', 'color-pink', 'Pizzas salgadas e doces assadas no forno a lenha.', 'Ativo'),
+('BEBIDAS', 'fa-wine-bottle', 'color-teal', 'Refrigerantes gelados, sucos e cervejas.', 'Ativo'),
+('SOBREMESAS', 'fa-ice-cream', 'color-purple', 'Pizzas doces e sobremesas em geral.', 'Ativo');
 
--- Inserir setores operacionais
+-- 3. Inserir fornecedores padrão (Pizzaria)
+INSERT INTO suppliers (id, razao_social, nome_fantasia, cnpj, ie, im, tipo_fornecedor, situacao, data_cadastro, contato, endereco, financeiro, logistica, linked_products, ratings, notes, history, block_info) VALUES
+(1, 'MOINHO CENTRAL IMPORTADORA LTDA', 'MOINHO CENTRAL', '12.345.678/0001-90', '123.456.789.000', '12345678', 'Distribuidor', 'Ativo', '2025-01-15', '{"responsavelComercial":"Giovanni Rossi","telefone":"(11) 3456-7890","whatsapp":"(11) 98765-4321","emailComercial":"vendas@moinhocentral.com.br","emailFinanceiro":"financeiro@moinhocentral.com.br","site":"www.moinhocentral.com.br"}'::jsonb, '{"cep":"01001-000","rua":"Rua da Itália","numero":"100","complemento":"Galpão A","bairro":"Brás","cidade":"São Paulo","estado":"SP","pais":"Brasil"}'::jsonb, '{"formaPagamento":"Boleto Bancário","prazoPagamento":"30","limiteCredito":80000,"banco":"Itaú","agencia":"1234","conta":"98765-0","pix":"financeiro@moinhocentral.com.br","tipoChavePix":"E-mail"}'::jsonb, '{"prazoEntrega":"3","diasEntrega":"Ter, Sex","transportadora":"TransItalian","pedidoMinimo":1000,"freteMinimo":100,"regiaoAtendimento":"Sudeste"}'::jsonb, ARRAY[]::varchar[], '{"qualidade":10,"prazo":9,"atendimento":9,"preco":8}'::jsonb, ARRAY[]::jsonb[], ARRAY[]::jsonb[], '{"status":"Ativo","motivo":""}'::jsonb),
+(2, 'LATICÍNIOS MANTIQUEIRA LTDA', 'LATICÍNIO MANTIQUEIRA', '98.765.432/0001-10', '987.654.321.000', '87654321', 'Indústria', 'Ativo', '2025-01-20', '{"responsavelComercial":"Claudio Lima","telefone":"(35) 3211-5000","whatsapp":"(35) 99111-2233","emailComercial":"vendas@latmantiqueira.com.br","emailFinanceiro":"financeiro@latmantiqueira.com.br","site":"www.latmantiqueira.com.br"}'::jsonb, '{"cep":"37130-000","rua":"Rodovia das Pias","numero":"KM 12","complemento":"","bairro":"Zona Rural","cidade":"Alfenas","estado":"MG","pais":"Brasil"}'::jsonb, '{"formaPagamento":"Boleto Bancário","prazoPagamento":"15","limiteCredito":60000,"banco":"Bradesco","agencia":"3211","conta":"12345-0","pix":"98765432000110","tipoChavePix":"CNPJ"}'::jsonb, '{"prazoEntrega":"2","diasEntrega":"Seg, Qui","transportadora":"Própria","pedidoMinimo":1500,"freteMinimo":0,"regiaoAtendimento":"Minas Gerais e São Paulo"}'::jsonb, ARRAY[]::varchar[], '{"qualidade":9,"prazo":9,"atendimento":8,"preco":8}'::jsonb, ARRAY[]::jsonb[], ARRAY[]::jsonb[], '{"status":"Ativo","motivo":""}'::jsonb),
+(3, 'DISTRIBUIDORA HORTI-PIZZA LTDA', 'HORTI-PIZZA', '45.678.901/0001-23', '456.789.012.000', '45678901', 'Distribuidor', 'Ativo', '2025-02-10', '{"responsavelComercial":"Maurício Verde","telefone":"(11) 2712-3000","whatsapp":"(11) 98455-6677","emailComercial":"comercial@hortipizza.com.br","emailFinanceiro":"financeiro@hortipizza.com.br","site":""}'::jsonb, '{"cep":"03010-000","rua":"Rua do Pomar","numero":"400","complemento":"Box 12","bairro":"Vila Maria","cidade":"São Paulo","estado":"SP","pais":"Brasil"}'::jsonb, '{"formaPagamento":"Boleto Bancário","prazoPagamento":"7","limiteCredito":20000,"banco":"Banco do Brasil","agencia":"1200","conta":"99887-1","pix":"comercial@hortipizza.com.br","tipoChavePix":"E-mail"}'::jsonb, '{"prazoEntrega":"1","diasEntrega":"Diariamente","transportadora":"Própria","pedidoMinimo":300,"freteMinimo":0,"regiaoAtendimento":"Grande São Paulo"}'::jsonb, ARRAY[]::varchar[], '{"qualidade":9,"prazo":10,"atendimento":9,"preco":9}'::jsonb, ARRAY[]::jsonb[], ARRAY[]::jsonb[], '{"status":"Ativo","motivo":""}'::jsonb),
+(4, 'BEBIDAS PAULISTA S/A', 'BEBIDAS PAULISTA', '33.222.111/0001-55', '332.221.110.000', '33222111', 'Distribuidor', 'Ativo', '2025-01-10', '{"responsavelComercial":"Fernanda Rocha","telefone":"(11) 4004-9090","whatsapp":"(11) 98122-3344","emailComercial":"vendas@bebidaspaulista.com.br","emailFinanceiro":"financeiro@bebidaspaulista.com.br","site":"www.bebidaspaulista.com.br"}'::jsonb, '{"cep":"07190-100","rua":"Av. das Indústrias","numero":"500","complemento":"Galpão 2","bairro":"Cumbica","cidade":"Guarulhos","estado":"SP","pais":"Brasil"}'::jsonb, '{"formaPagamento":"Boleto Bancário","prazoPagamento":"28","limiteCredito":40000,"banco":"Itaú","agencia":"0530","conta":"77665-4","pix":"33222111000155","tipoChavePix":"CNPJ"}'::jsonb, '{"prazoEntrega":"2","diasEntrega":"Seg, Qua, Sex","transportadora":"Própria","pedidoMinimo":500,"freteMinimo":0,"regiaoAtendimento":"Sudeste"}'::jsonb, ARRAY[]::varchar[], '{"qualidade":9,"prazo":9,"atendimento":9,"preco":7}'::jsonb, ARRAY[]::jsonb[], ARRAY[]::jsonb[], '{"status":"Ativo","motivo":""}'::jsonb),
+(5, 'EMBALAGENS BRASIL LTDA', 'EMBALAGENS BRASIL', '23.456.789/0001-01', '234.567.890.111', '23456789', 'Fabricante', 'Ativo', '2025-01-30', '{"responsavelComercial":"Roberto Martins","telefone":"(19) 3880-9000","whatsapp":"(19) 98711-2233","emailComercial":"vendas@embalagensbrasil.com.br","emailFinanceiro":"financeiro@embalagensbrasil.com.br","site":"www.embalagensbrasil.com.br"}'::jsonb, '{"cep":"13040-050","rua":"Rua do Papelão","numero":"850","complemento":"","bairro":"Distrito Industrial","cidade":"Campinas","estado":"SP","pais":"Brasil"}'::jsonb, '{"formaPagamento":"Boleto Bancário","prazoPagamento":"45","limiteCredito":30000,"banco":"Santander","agencia":"3211","conta":"12345-0","pix":"23456789000101","tipoChavePix":"CNPJ"}'::jsonb, '{"prazoEntrega":"4","diasEntrega":"Qua, Sex","transportadora":"Jadlog","pedidoMinimo":800,"freteMinimo":80,"regiaoAtendimento":"Sudeste"}'::jsonb, ARRAY[]::varchar[], '{"qualidade":9,"prazo":8,"atendimento":8,"preco":9}'::jsonb, ARRAY[]::jsonb[], ARRAY[]::jsonb[], '{"status":"Ativo","motivo":""}'::jsonb);
+
+-- 4. Inserir produtos de estoque (30 insumos)
+INSERT INTO products (sku, name, brand, description, unit, stock, category, status, min_stock, avg_stock, max_stock, gtin_unidade, gtin_fardo, itens_fardo, gtin_caixa, itens_caixa, gtin_pallet, itens_pallet, primary_supplier_id) VALUES
+('MAS-001', 'Farinha de Trigo Especial 00', 'Le 5 Stagioni', 'Farinha de trigo italiana tipo 00 para pizzas.', 'KG', 150.00, 'FARINHAS E MASSAS', 'Ativo', 50.00, 200.00, 400.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 1),
+('MAS-002', 'Fermento Biológico Seco', 'Fermipan', 'Fermento biológico seco instantâneo.', 'KG', 8.00, 'FARINHAS E MASSAS', 'Ativo', 2.00, 10.00, 20.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 1),
+('LAC-001', 'Queijo Muçarela Barra', 'Mantiqueira', 'Queijo muçarela em barra para fatiar/ralar.', 'KG', 120.00, 'LATICÍNIOS', 'Ativo', 30.00, 120.00, 250.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 2),
+('MOL-001', 'Molho de Tomate Pelati', 'La Molisana', 'Tomate pelati italiano em conserva para molhos.', 'KG', 65.00, 'MOLHOS E CONDIMENTOS', 'Ativo', 20.00, 80.00, 160.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 3),
+('PRO-001', 'Calabresa Defumada Inteira', 'Sadia', 'Linguiça calabresa defumada reta.', 'KG', 45.00, 'CARNES E FRIOS', 'Ativo', 15.00, 60.00, 120.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 2),
+('PRO-002', 'Presunto Cozido Peça', 'Perdigão', 'Presunto cozido sem capa de gordura.', 'KG', 30.00, 'CARNES E FRIOS', 'Ativo', 10.00, 40.00, 80.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 2),
+('PRO-003', 'Bacon Manta Defumado', 'Seara', 'Bacon manta defumado especial.', 'KG', 25.00, 'CARNES E FRIOS', 'Ativo', 10.00, 30.00, 60.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 2),
+('PRO-004', 'Peito de Frango Desfiado', 'Copacol', 'Peito de frango cozido e desfiado IQF.', 'KG', 35.00, 'CARNES E FRIOS', 'Ativo', 10.00, 50.00, 100.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 2),
+('LAC-002', 'Requeijão Culinário Scala', 'Scala', 'Requeijão cremoso tipo catupiry balde 1.5kg.', 'UN', 25.00, 'LATICÍNIOS', 'Ativo', 5.00, 20.00, 40.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 2),
+('LAC-003', 'Queijo Parmesão Peça', 'Faixa Azul', 'Queijo parmesão tipo grana peça inteira.', 'KG', 15.00, 'LATICÍNIOS', 'Ativo', 5.00, 20.00, 40.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 2),
+('LAC-004', 'Queijo Gorgonzola Peça', 'Cruzilia', 'Queijo azul tipo gorgonzola peça.', 'KG', 12.00, 'LATICÍNIOS', 'Ativo', 4.00, 15.00, 30.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 2),
+('LAC-005', 'Queijo Provolone Defumado', 'President', 'Queijo provolone defumado peça.', 'KG', 15.00, 'LATICÍNIOS', 'Ativo', 5.00, 20.00, 40.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 2),
+('HOR-001', 'Tomate Carmem Fresco', 'Horti-Pizza', 'Tomate carmem maduro selecionado.', 'KG', 40.00, 'VEGETAIS E HORTIFRUTI', 'Ativo', 15.00, 50.00, 100.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 3),
+('HOR-002', 'Cebola Roxa', 'Horti-Pizza', 'Cebola roxa média especial.', 'KG', 20.00, 'VEGETAIS E HORTIFRUTI', 'Ativo', 5.00, 30.00, 60.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 3),
+('HOR-003', 'Cebola Branca', 'Horti-Pizza', 'Cebola branca média especial.', 'KG', 30.00, 'VEGETAIS E HORTIFRUTI', 'Ativo', 10.00, 40.00, 80.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 3),
+('HOR-004', 'Manjericão Fresco Maço', 'Horti-Pizza', 'Folhas de manjericão fresco maço.', 'UN', 15.00, 'VEGETAIS E HORTIFRUTI', 'Ativo', 5.00, 20.00, 40.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 3),
+('HOR-005', 'Rúcula Fresca Maço', 'Horti-Pizza', 'Rúcula em folhas fresca maço.', 'UN', 18.00, 'VEGETAIS E HORTIFRUTI', 'Ativo', 5.00, 25.00, 50.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 3),
+('HOR-006', 'Alho Roxo Cabeça', 'Horti-Pizza', 'Alho roxo nacional especial.', 'KG', 10.00, 'VEGETAIS E HORTIFRUTI', 'Ativo', 3.00, 15.00, 30.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 3),
+('HOR-007', 'Azeitona Preta Inteira', 'Vale Fértil', 'Azeitona preta com caroço em balde.', 'KG', 25.00, 'VEGETAIS E HORTIFRUTI', 'Ativo', 8.00, 30.00, 60.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 3),
+('TMP-001', 'Azeite de Oliva Extra Virgem 500ml', 'Andorinha', 'Azeite de oliva extra virgem de mesa.', 'UN', 24.00, 'MOLHOS E CONDIMENTOS', 'Ativo', 8.00, 30.00, 60.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 1),
+('TMP-002', 'Orégano Desidratado', 'Kitano', 'Orégano em folhas secas desidratadas.', 'KG', 5.00, 'MOLHOS E CONDIMENTOS', 'Ativo', 1.00, 6.00, 12.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 1),
+('TMP-003', 'Sal Refinado 1kg', 'Cisne', 'Sal refinado iodado culinário.', 'UN', 10.00, 'MOLHOS E CONDIMENTOS', 'Ativo', 3.00, 15.00, 30.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 1),
+('BEB-001', 'Refrigerante Coca-Cola 2L', 'Coca-Cola', 'Refrigerante de cola garrafa 2 litros.', 'UN', 60.00, 'BEBIDAS', 'Ativo', 20.00, 80.00, 160.00, '7891234567890', '7891234567891', 6.00, NULL, 12.00, NULL, 240.00, 4),
+('BEB-002', 'Refrigerante Guaraná Antarctica 2L', 'Antarctica', 'Refrigerante de guaraná garrafa 2 litros.', 'UN', 50.00, 'BEBIDAS', 'Ativo', 15.00, 60.00, 120.00, '7891234567894', '7891234567895', 6.00, NULL, 12.00, NULL, 240.00, 4),
+('BEB-003', 'Cerveja Stella Artois Long Neck', 'Ambev', 'Cerveja long neck lager 330ml.', 'UN', 120.00, 'BEBIDAS', 'Ativo', 40.00, 150.00, 300.00, '7891234567898', '7891234567899', 24.00, NULL, 24.00, NULL, 1440.00, 4),
+('BEB-004', 'Água Mineral Sem Gás 500ml', 'Crystal', 'Água mineral sem gás garrafa 500ml.', 'UN', 80.00, 'BEBIDAS', 'Ativo', 20.00, 100.00, 200.00, NULL, NULL, 12.00, NULL, 12.00, NULL, 1200.00, 4),
+('EMB-001', 'Caixa de Pizza Oitavada 35cm', 'Embalagens Brasil', 'Caixa de pizza papelão oitavada 35cm.', 'UN', 300.00, 'EMBALAGENS', 'Ativo', 100.00, 500.00, 1000.00, NULL, NULL, 100.00, NULL, 100.00, NULL, 5000.00, 5),
+('EMB-002', 'Sacola Kraft Delivery', 'Embalagens Brasil', 'Sacola de papel kraft reforçada para delivery.', 'UN', 250.00, 'EMBALAGENS', 'Ativo', 80.00, 400.00, 800.00, NULL, NULL, 100.00, NULL, 100.00, NULL, 4000.00, 5),
+('LIM-001', 'Detergente Neutro Concentrado 5L', 'Clean Química', 'Detergente neutro galão 5 litros.', 'UN', 15.00, 'HIGIENE E OPERACIONAL', 'Ativo', 5.00, 20.00, 40.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 5),
+('LIM-002', 'Cloro Ativo Sanitizante 5L', 'Clean Química', 'Sanitizante de cloro active galão 5 litros.', 'UN', 8.00, 'HIGIENE E OPERACIONAL', 'Ativo', 2.00, 10.00, 20.00, NULL, NULL, 1.00, NULL, 1.00, NULL, 1.00, 5);
+
+-- 5. Inserir setores operacionais (Pizzaria)
 INSERT INTO sectors (id, name, icon, color, description, status) VALUES
 (1, 'ADMINISTRATIVO E FINANCEIRO', 'fa-briefcase', 'color-purple', 'Setor administrativo, recursos humanos, financeiro e gerência geral.', 'Ativo'),
 (2, 'SALÃO E ATENDIMENTO', 'fa-utensils', 'color-teal', 'Setor de atendimento ao cliente no salão, recepção e coordenação de mesas.', 'Ativo'),
@@ -191,7 +254,7 @@ INSERT INTO sectors (id, name, icon, color, description, status) VALUES
 (6, 'ESTOQUE E SUPRIMENTOS', 'fa-boxes-stacked', 'color-blue', 'Setor de recebimento, cotação, compras e controle de insumos.', 'Ativo'),
 (7, 'SERVIÇOS GERAIS', 'fa-spray-can', 'color-green', 'Setor de higienização, limpeza e conservação das instalações.', 'Ativo');
 
--- Inserir áreas operacionais (Cargos)
+-- 6. Inserir áreas operacionais (Cargos - Pizzaria)
 INSERT INTO areas (id, name, description, sector_id, status) VALUES
 (1, 'Gerente de Pizzaria', 'Responsável pela administração geral da pizzaria, coordenando equipes, recursos e resultados.', 1, 'Ativo'),
 (2, 'Supervisor de Turno', 'Responsável por supervisionar as operações durante seu turno de trabalho.', 1, 'Ativo'),
@@ -214,90 +277,43 @@ INSERT INTO areas (id, name, description, sector_id, status) VALUES
 (19, 'Comprador', 'Responsável pelas aquisições da empresa.', 6, 'Ativo'),
 (20, 'Auxiliar de Limpeza', 'Responsável pela limpeza e conservação das instalações.', 7, 'Ativo');
 
--- Inserir lotes de estoque (WMS)
+-- 7. Inserir lotes de estoque iniciais (WMS)
 INSERT INTO stock_batches (item_sku, lot, brand, supplier, manufacturing_date, expiration_date, address, quantity, unit) VALUES
-('PRT-001', 'LT-5243', 'Sadia', 'VALE VERDE', '2026-04-27', '2026-06-24', 'B-04-07', 33, 'KG'),
-('PRT-001', 'LT-8491', 'Sadia', 'VALE VERDE', '2026-03-05', '2026-07-14', 'A-08-07', 35, 'KG'),
-('LAC-001', 'LT-9485', 'Itambé', 'MASTER ALIMENTOS', '2026-03-05', '2026-11-15', 'B-02-06', 8, 'UN'),
-('BEB-001', 'LT-5757', 'Coca-Cola', 'VALE VERDE', '2026-04-13', '2026-08-21', 'A-06-01', 28, 'UN'),
-('MAS-001', 'LT-2918', 'Prato Fino', 'MASTER ALIMENTOS', '2026-03-05', '2026-11-26', 'B-05-01', 16, 'PCT');
+('MAS-001', 'LT-1001', 'Le 5 Stagioni', 'MOINHO CENTRAL', '2026-05-10', '2026-11-10', 'ESA-01-01', 100, 'KG'),
+('MAS-001', 'LT-1002', 'Le 5 Stagioni', 'MOINHO CENTRAL', '2026-05-20', '2026-11-20', 'ESA-01-02', 50, 'KG'),
+('MAS-002', 'LT-1003', 'Fermipan', 'MOINHO CENTRAL', '2026-05-01', '2026-11-01', 'ESB-01-01', 8, 'KG'),
+('LAC-001', 'LT-2001', 'Mantiqueira', 'LATICÍNIO MANTIQUEIRA', '2026-05-15', '2026-07-15', 'CFA-01-01', 80, 'KG'),
+('LAC-001', 'LT-2002', 'Mantiqueira', 'LATICÍNIO MANTIQUEIRA', '2026-05-25', '2026-07-25', 'CFA-01-02', 40, 'KG'),
+('MOL-001', 'LT-3001', 'La Molisana', 'HORTI-PIZZA', '2026-04-10', '2027-04-10', 'ESA-02-01', 65, 'KG'),
+('PRO-001', 'LT-4001', 'Sadia', 'LATICÍNIO MANTIQUEIRA', '2026-05-01', '2026-08-01', 'CFA-02-01', 45, 'KG'),
+('PRO-002', 'LT-4002', 'Perdigão', 'LATICÍNIO MANTIQUEIRA', '2026-05-05', '2026-08-05', 'CFA-02-02', 30, 'KG'),
+('PRO-003', 'LT-4003', 'Seara', 'LATICÍNIO MANTIQUEIRA', '2026-05-10', '2026-09-10', 'CFA-02-03', 25, 'KG'),
+('PRO-004', 'LT-4004', 'Copacol', 'LATICÍNIO MANTIQUEIRA', '2026-05-12', '2026-09-12', 'CFA-02-04', 35, 'KG');
 
--- 8. CRIAR TABELA DE PRODUTOS PARA VENDA (Produtos Finais)
-CREATE TABLE sale_products (
-    code VARCHAR(50) PRIMARY KEY,
-    name VARCHAR(150) NOT NULL,
-    category VARCHAR(100) NOT NULL,
-    description TEXT,
-    price NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-    unit VARCHAR(50) NOT NULL DEFAULT 'UN',
-    status VARCHAR(50) DEFAULT 'Ativo',
-    controla_producao BOOLEAN DEFAULT TRUE,
-    recipe JSONB DEFAULT '[]'::jsonb,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
-);
-
--- Inserir produtos finais para venda padrão
+-- 8. Inserir produtos de venda (Cardápio)
 INSERT INTO sale_products (code, name, category, description, price, unit, status, controla_producao, recipe) VALUES
-('PIZ001', 'Pizza Calabresa G', 'PIZZAS', 'Molho de tomate, queijo muçarela, calabresa fatiada, cebola e orégano.', 49.90, 'UN', 'Ativo', true, '[{"ingredient_sku": "LAC-005", "quantity": 0.25, "unit": "KG"}, {"ingredient_sku": "HOR-003", "quantity": 0.1, "unit": "KG"}]'::jsonb),
-('PIZ002', 'Pizza Margherita G', 'PIZZAS', 'Molho de tomate, queijo muçarela, rodelas de tomate fresco, manjericão e azeite.', 45.00, 'UN', 'Ativo', true, '[{"ingredient_sku": "LAC-005", "quantity": 0.3, "unit": "KG"}, {"ingredient_sku": "HOR-004", "quantity": 0.15, "unit": "KG"}]'::jsonb),
-('BEB001', 'Refrigerante Lata 350ml', 'BEBIDAS', 'Refrigerante lata gelado (diversos sabores).', 6.00, 'UN', 'Ativo', false, '[]'::jsonb);
+('PIZ-001', 'Pizza Calabresa G', 'PIZZAS', 'Molho de tomate, queijo muçarela, calabresa fatiada, cebola e orégano.', 52.90, 'UN', 'Ativo', true, '[{"ingredientSku": "MAS-001", "quantity": 0.25, "unit": "KG"}, {"ingredientSku": "MAS-002", "quantity": 0.005, "unit": "KG"}, {"ingredientSku": "LAC-001", "quantity": 0.25, "unit": "KG"}, {"ingredientSku": "MOL-001", "quantity": 0.08, "unit": "KG"}, {"ingredientSku": "PRO-001", "quantity": 0.15, "unit": "KG"}, {"ingredientSku": "HOR-003", "quantity": 0.05, "unit": "KG"}, {"ingredientSku": "TMP-002", "quantity": 0.005, "unit": "KG"}, {"ingredientSku": "EMB-001", "quantity": 1, "unit": "UN"}]'::jsonb),
+('PIZ-002', 'Pizza Margherita G', 'PIZZAS', 'Molho de tomate, queijo muçarela, rodelas de tomate fresco, manjericão e azeite.', 49.90, 'UN', 'Ativo', true, '[{"ingredientSku": "MAS-001", "quantity": 0.25, "unit": "KG"}, {"ingredientSku": "MAS-002", "quantity": 0.005, "unit": "KG"}, {"ingredientSku": "LAC-001", "quantity": 0.25, "unit": "KG"}, {"ingredientSku": "MOL-001", "quantity": 0.08, "unit": "KG"}, {"ingredientSku": "HOR-001", "quantity": 0.1, "unit": "KG"}, {"ingredientSku": "HOR-004", "quantity": 0.05, "unit": "UN"}, {"ingredientSku": "EMB-001", "quantity": 1, "unit": "UN"}]'::jsonb),
+('PIZ-003', 'Pizza Frango com Catupiry G', 'PIZZAS', 'Molho de tomate, queijo muçarela, peito de frango desfiado e requeijão culinário.', 56.90, 'UN', 'Ativo', true, '[{"ingredientSku": "MAS-001", "quantity": 0.25, "unit": "KG"}, {"ingredientSku": "MAS-002", "quantity": 0.005, "unit": "KG"}, {"ingredientSku": "LAC-001", "quantity": 0.2, "unit": "KG"}, {"ingredientSku": "MOL-001", "quantity": 0.08, "unit": "KG"}, {"ingredientSku": "PRO-004", "quantity": 0.2, "unit": "KG"}, {"ingredientSku": "LAC-002", "quantity": 0.15, "unit": "UN"}, {"ingredientSku": "EMB-001", "quantity": 1, "unit": "UN"}]'::jsonb),
+('PIZ-004', 'Pizza Quatro Queijos G', 'PIZZAS', 'Molho de tomate, queijo muçarela, parmesão, provolone e gorgonzola.', 59.90, 'UN', 'Ativo', true, '[{"ingredientSku": "MAS-001", "quantity": 0.25, "unit": "KG"}, {"ingredientSku": "MAS-002", "quantity": 0.005, "unit": "KG"}, {"ingredientSku": "LAC-001", "quantity": 0.2, "unit": "KG"}, {"ingredientSku": "MOL-001", "quantity": 0.08, "unit": "KG"}, {"ingredientSku": "LAC-003", "quantity": 0.08, "unit": "KG"}, {"ingredientSku": "LAC-004", "quantity": 0.05, "unit": "KG"}, {"ingredientSku": "LAC-005", "quantity": 0.05, "unit": "KG"}, {"ingredientSku": "EMB-001", "quantity": 1, "unit": "UN"}]'::jsonb),
+('PIZ-005', 'Pizza Portuguesa G', 'PIZZAS', 'Molho de tomate, muçarela, presunto cozido, cebola, azeitona preta e ovos.', 54.90, 'UN', 'Ativo', true, '[{"ingredientSku": "MAS-001", "quantity": 0.25, "unit": "KG"}, {"ingredientSku": "MAS-002", "quantity": 0.005, "unit": "KG"}, {"ingredientSku": "LAC-001", "quantity": 0.2, "unit": "KG"}, {"ingredientSku": "MOL-001", "quantity": 0.08, "unit": "KG"}, {"ingredientSku": "PRO-002", "quantity": 0.1, "unit": "KG"}, {"ingredientSku": "HOR-003", "quantity": 0.05, "unit": "KG"}, {"ingredientSku": "HOR-007", "quantity": 0.03, "unit": "KG"}, {"ingredientSku": "EMB-001", "quantity": 1, "unit": "UN"}]'::jsonb),
+('PIZ-006', 'Pizza Pepperoni G', 'PIZZAS', 'Molho de tomate, queijo muçarela, pepperoni fatiado e orégano.', 62.90, 'UN', 'Ativo', true, '[{"ingredientSku": "MAS-001", "quantity": 0.25, "unit": "KG"}, {"ingredientSku": "MAS-002", "quantity": 0.005, "unit": "KG"}, {"ingredientSku": "LAC-001", "quantity": 0.25, "unit": "KG"}, {"ingredientSku": "MOL-001", "quantity": 0.08, "unit": "KG"}, {"ingredientSku": "PRO-001", "quantity": 0.12, "unit": "KG"}, {"ingredientSku": "EMB-001", "quantity": 1, "unit": "UN"}]'::jsonb),
+('PIZ-007', 'Pizza Rúcula com Tomate Seco G', 'PIZZAS', 'Molho de tomate, queijo muçarela, tomate seco fresco, rúcula e azeite.', 58.90, 'UN', 'Ativo', true, '[{"ingredientSku": "MAS-001", "quantity": 0.25, "unit": "KG"}, {"ingredientSku": "MAS-002", "quantity": 0.005, "unit": "KG"}, {"ingredientSku": "LAC-001", "quantity": 0.2, "unit": "KG"}, {"ingredientSku": "MOL-001", "quantity": 0.08, "unit": "KG"}, {"ingredientSku": "HOR-001", "quantity": 0.1, "unit": "KG"}, {"ingredientSku": "HOR-005", "quantity": 0.1, "unit": "UN"}, {"ingredientSku": "EMB-001", "quantity": 1, "unit": "UN"}]'::jsonb),
+('PIZ-008', 'Pizza Brigadeiro G', 'SOBREMESAS', 'Chocolate ao leite cremoso espalhado e granulado de chocolate.', 48.90, 'UN', 'Ativo', true, '[{"ingredientSku": "MAS-001", "quantity": 0.25, "unit": "KG"}, {"ingredientSku": "MAS-002", "quantity": 0.005, "unit": "KG"}, {"ingredientSku": "EMB-001", "quantity": 1, "unit": "UN"}]'::jsonb),
+('BEB-001', 'Refrigerante Coca-Cola 2L', 'BEBIDAS', 'Refrigerante garrafa gelada 2 litros.', 12.00, 'UN', 'Ativo', false, '[{"ingredientSku": "BEB-001", "quantity": 1, "unit": "UN"}, {"ingredientSku": "EMB-002", "quantity": 1, "unit": "UN"}]'::jsonb),
+('BEB-002', 'Refrigerante Guaraná Antarctica 2L', 'BEBIDAS', 'Refrigerante garrafa gelada 2 litros.', 10.00, 'UN', 'Ativo', false, '[{"ingredientSku": "BEB-002", "quantity": 1, "unit": "UN"}, {"ingredientSku": "EMB-002", "quantity": 1, "unit": "UN"}]'::jsonb),
+('BEB-003', 'Cerveja Stella Artois Long Neck', 'BEBIDAS', 'Cerveja long neck Stella Artois 330ml.', 9.00, 'UN', 'Ativo', false, '[{"ingredientSku": "BEB-003", "quantity": 1, "unit": "UN"}]'::jsonb),
+('BEB-004', 'Água Mineral Sem Gás 500ml', 'BEBIDAS', 'Água mineral sem gás 500ml gelada.', 4.00, 'UN', 'Ativo', false, '[{"ingredientSku": "BEB-004", "quantity": 1, "unit": "UN"}]'::jsonb);
 
--- 9. TABELAS DE ESTRUTURA DO WMS (ARMAZÉNS, ZONAS E ENDEREÇAMENTOS)
-DROP TABLE IF EXISTS wms_locations CASCADE;
-DROP TABLE IF EXISTS wms_zones CASCADE;
-DROP TABLE IF EXISTS wms_warehouses CASCADE;
-
--- Tabela de Armazéns
-CREATE TABLE wms_warehouses (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL UNIQUE,
-    acronym VARCHAR(2) NOT NULL UNIQUE,
-    description TEXT,
-    status VARCHAR(50) DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Inativo')),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
-);
-
--- Tabela de Zonas de Armazenamento
-CREATE TABLE wms_zones (
-    id SERIAL PRIMARY KEY,
-    warehouse_id INTEGER REFERENCES wms_warehouses(id) ON DELETE CASCADE NOT NULL,
-    name VARCHAR(3) NOT NULL,
-    acronym_description TEXT,
-    type VARCHAR(50) DEFAULT 'Seco' CHECK (type IN ('Seco', 'Resfriado', 'Congelado', 'Climatizado')),
-    description TEXT,
-    status VARCHAR(50) DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Inativo')),
-    temp_min INTEGER,
-    temp_max INTEGER,
-    is_ambient BOOLEAN DEFAULT FALSE,
-    ambient_type VARCHAR(50) CHECK (ambient_type IN ('fechada', 'externa_aberta', 'externa_coberta')),
-    volume_cubico_padrao NUMERIC(10,4) DEFAULT 0.0000,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-    UNIQUE(warehouse_id, name)
-);
-
--- Tabela de Endereçamentos Físicos
-CREATE TABLE wms_locations (
-    id SERIAL PRIMARY KEY,
-    zone_id INTEGER REFERENCES wms_zones(id) ON DELETE CASCADE NOT NULL,
-    aisle VARCHAR(50) NOT NULL,
-    row VARCHAR(50) NOT NULL,
-    shelf VARCHAR(50) NOT NULL,
-    position VARCHAR(50),
-    status VARCHAR(50) DEFAULT 'Ativo' CHECK (status IN ('Ativo', 'Bloqueado', 'Manutenção')),
-    volume_cubico NUMERIC(10,4) DEFAULT 0.0000,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-    UNIQUE(zone_id, aisle, row, shelf, position)
-);
-
--- Inserir dados iniciais do WMS para testes
-INSERT INTO wms_warehouses (name, acronym, description, status) VALUES
-('Armazém Central', 'AC', 'Centro de distribuição e estoque principal de insumos.', 'Ativo');
+-- 9. Inserir estrutura WMS (Pizzaria)
+INSERT INTO wms_warehouses (id, name, acronym, description, status) VALUES
+(1, 'Armazém Central AC', 'AC', 'CD principal de insumos e embalagens da pizzaria.', 'Ativo');
 
 INSERT INTO wms_zones (warehouse_id, name, acronym_description, type, description, status, temp_min, temp_max, is_ambient, ambient_type) VALUES
-(1, 'CFA', 'Câmara Fria A', 'Resfriado', 'Armazenamento de laticínios e verduras.', 'Ativo', 2, 8, false, null),
+(1, 'CFA', 'Câmara Fria A', 'Resfriado', 'Armazenamento de laticínios e frios.', 'Ativo', 2, 8, false, null),
 (1, 'CFB', 'Câmara Fria B', 'Congelado', 'Armazenamento de carnes e congelados.', 'Ativo', -18, -10, false, null),
-(1, 'ESA', 'Estoque Seco A', 'Seco', 'Armazenamento de massas, grãos e enlatados.', 'Ativo', 15, 25, true, 'fechada'),
-(1, 'ESB', 'Estoque Seco B', 'Seco', 'Armazenamento de temperos e embalagens.', 'Ativo', 15, 25, true, 'fechada');
+(1, 'ESA', 'Estoque Seco A', 'Seco', 'Armazenamento de farinhas, molhos e grãos.', 'Ativo', 15, 25, true, 'fechada'),
+(1, 'ESB', 'Estoque Seco B', 'Seco', 'Armazenamento de temperos, embalagens e descartáveis.', 'Ativo', 15, 25, true, 'fechada');
 
 
 

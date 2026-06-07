@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useCorelluxState, loadUsers } from '../store/corellux-state';
 import DbService from '../services/db-service';
 import { 
@@ -17,6 +18,7 @@ import {
     Check, 
     X, 
     AlertTriangle, 
+    ClipboardList,
     Camera, 
     Signature, 
     MapPin, 
@@ -3159,26 +3161,73 @@ export default function ChecklistHub() {
                 )}
 
                 {/* TAB 5: EXECUÇÃO PANEL */}
-                {activeTab === 'execution' && activeExecution && (
-                    <div className="exec-panel" style={{ background: 'rgba(30, 41, 59, 0.15)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '16px', padding: '2rem' }}>
-                        
-                        {/* Meta Exec Info */}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1.25rem', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-                            <div>
-                                <span style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 800, textTransform: 'uppercase' }}>Código Checklist: {activeExecution.code}</span>
-                                <h3 style={{ margin: '0.1rem 0 0 0', color: '#fff', fontSize: '1.25rem', fontWeight: 800 }}>{activeExecution.name}</h3>
-                                <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
-                                    Setor: <strong>{activeExecution.sector}</strong> | Executor: <strong>{currentUser.name}</strong> {activeExecution.startTime && activeExecution.endTime && (
-                                        <> | Horário Limite: <strong>{activeExecution.startTime} às {activeExecution.endTime}</strong></>
-                                    )}
-                                </p>
+                {activeTab === 'execution' && activeExecution && createPortal(
+                    <div className="modal-overlay" style={{ zIndex: 11000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(5px)' }}>
+                        <div 
+                            className="confirm-modal-content"
+                            style={{
+                                width: '1000px',
+                                maxWidth: '95vw',
+                                height: '85vh',
+                                maxHeight: '90vh',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                padding: '2rem',
+                                background: '#0f172a',
+                                border: '1px solid rgba(255, 255, 255, 0.08)',
+                                borderRadius: '16px',
+                                boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6)',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            {/* Meta Exec Info / Header */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '1.25rem', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem', flexShrink: 0 }}>
+                                <div>
+                                    <span style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 800, textTransform: 'uppercase' }}>Código Checklist: {activeExecution.code}</span>
+                                    <h3 style={{ margin: '0.1rem 0 0 0', color: '#fff', fontSize: '1.25rem', fontWeight: 800 }}>{activeExecution.name}</h3>
+                                    <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
+                                        Setor: <strong>{activeExecution.sector}</strong> | Executor: <strong>{currentUser.name}</strong> {activeExecution.startTime && activeExecution.endTime && (
+                                            <> | Horário Limite: <strong>{activeExecution.startTime} às {activeExecution.endTime}</strong></>
+                                        )}
+                                    </p>
+                                </div>
+                                
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <MapPin size={15} style={{ color: '#2dd4bf' }} />
+                                        <span style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 600 }}>{gpsCoordinates}</span>
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            const hasAnswers = Object.values(execAnswers).some(
+                                                ans => ans.answer || ans.photo || ans.comment || ans.barcode || ans.signature
+                                            );
+                                            if (hasAnswers) {
+                                                showSystemConfirm(
+                                                    'Tem certeza que deseja cancelar? Suas respostas serão apagadas.',
+                                                    () => {
+                                                        setActiveExecution(null);
+                                                        setTab('run_checklist');
+                                                    },
+                                                    null,
+                                                    'Cancelar Execução',
+                                                    'warning'
+                                                );
+                                            } else {
+                                                setActiveExecution(null);
+                                                setTab('run_checklist');
+                                            }
+                                        }} 
+                                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0.2rem' }}
+                                        type="button"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                </div>
                             </div>
-                            
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'rgba(0,0,0,0.2)', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                <MapPin size={15} style={{ color: '#2dd4bf' }} />
-                                <span style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 600 }}>{gpsCoordinates}</span>
-                            </div>
-                        </div>
+
+                            {/* Body - Scrollable content */}
+                            <div className="modal-scrollable-content" style={{ flex: 1, overflowY: 'auto', paddingRight: '0.5rem', marginBottom: '1rem' }}>
 
                         {/* Schedule Window Check & Alert Banner */}
                         {(() => {
@@ -3612,27 +3661,39 @@ export default function ChecklistHub() {
                             })}
                         </div>
 
-                        {/* Submit Row */}
-                        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.5rem' }}>
-                            <button className="btn-tool" style={{ padding: '0.7rem 1.5rem' }} onClick={() => {
-                                showSystemConfirm(
-                                    'Tem certeza que deseja cancelar? Suas respostas serão apagadas.',
-                                    () => {
+                            </div>
+
+                            {/* Submit Row / Footer */}
+                            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1.2rem', flexShrink: 0 }}>
+                                <button className="btn-tool" style={{ padding: '0.7rem 1.5rem' }} type="button" onClick={() => {
+                                    const hasAnswers = Object.values(execAnswers).some(
+                                        ans => ans.answer || ans.photo || ans.comment || ans.barcode || ans.signature
+                                    );
+                                    if (hasAnswers) {
+                                        showSystemConfirm(
+                                            'Tem certeza que deseja cancelar? Suas respostas serão apagadas.',
+                                            () => {
+                                                setActiveExecution(null);
+                                                setTab('run_checklist');
+                                            },
+                                            null,
+                                            'Cancelar Execução',
+                                            'warning'
+                                        );
+                                    } else {
                                         setActiveExecution(null);
-                                        setTab('dashboard');
-                                    },
-                                    null,
-                                    'Cancelar Execução',
-                                    'warning'
-                                );
-                            }}>
-                                Cancelar Vistoria
-                            </button>
-                            <button className="btn-send-aviso" style={{ padding: '0.7rem 2rem' }} onClick={handleFinishExecution}>
-                                FINALIZAR E ENVIAR
-                            </button>
+                                        setTab('run_checklist');
+                                    }
+                                }}>
+                                    Cancelar Vistoria
+                                </button>
+                                <button className="btn-send-aviso" style={{ padding: '0.7rem 2rem' }} type="button" onClick={handleFinishExecution}>
+                                    FINALIZAR E ENVIAR
+                                </button>
+                            </div>
                         </div>
-                    </div>
+                    </div>,
+                    document.body
                 )}
 
                 {/* TAB 6: NÃO CONFORMIDADES LIST */}
@@ -4275,7 +4336,7 @@ export default function ChecklistHub() {
 
             {/* SCANNER OVERLAY SIMULATOR MODAL */}
             {isScanning && (
-                <div className="modal-overlay" style={{ zIndex: 11000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto' }}>
+                <div className="modal-overlay" style={{ zIndex: 12500, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto' }}>
                     <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '400px', width: '100%', textAlign: 'center' }}>
                         <h4 style={{ margin: '0 0 1rem 0', color: '#fff', fontSize: '1.1rem' }}>SIMULADOR LEITOR DE CÓDIGO</h4>
                         <div style={{ background: '#000', height: '140px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem', position: 'relative', overflow: 'hidden' }}>
@@ -4314,7 +4375,7 @@ export default function ChecklistHub() {
 
             {/* DETAIL MODAL: EXECUÇÃO DETALHADA */}
             {activeExecutionDetail && (
-                <div className="modal-overlay" style={{ zIndex: 11000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto' }}>
+                <div className="modal-overlay" style={{ zIndex: 12500, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto' }}>
                     <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '600px', width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.8rem', marginBottom: '1.25rem', flexShrink: 0 }}>
                             <h3 style={{ margin: 0, color: '#fff', fontSize: '1.1rem' }}>Detalhes da Vistoria</h3>
@@ -4379,7 +4440,7 @@ export default function ChecklistHub() {
             )}
 
             {/* SIGNATURE POPUP MODAL */}
-            <div className="modal-overlay" style={{ display: isSignaturePopupOpen ? 'flex' : 'none', zIndex: 12000, alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto', touchAction: 'none' }}>
+            <div className="modal-overlay" style={{ display: isSignaturePopupOpen ? 'flex' : 'none', zIndex: 12500, alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto', touchAction: 'none' }}>
                 <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '600px', width: '100%', textAlign: 'center', touchAction: 'none' }}>
                     <h3 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.2rem', fontWeight: 800 }}>ASSINATURA DIGITAL</h3>
                     <p style={{ margin: '0 0 1.25rem 0', fontSize: '0.82rem', color: '#94a3b8' }}>Use o dedo na tela touchscreen ou o mouse para assinar.</p>
@@ -4416,7 +4477,7 @@ export default function ChecklistHub() {
 
             {/* ANTES E DEPOIS DRAWING MODAL */}
             {drawingImageModalOpen && activeDrawItemInfo && (
-                <div className="modal-overlay" style={{ zIndex: 12000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto', touchAction: 'none' }}>
+                <div className="modal-overlay" style={{ zIndex: 12500, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto', touchAction: 'none' }}>
                     <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '600px', width: '100%', textAlign: 'center', touchAction: 'none' }}>
                         <h3 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.2rem', fontWeight: 800 }}>
                             {activeDrawItemInfo.type === 'antes' ? 'DESENHAR ANOMALIAS (ANTES)' : 'DESENHAR CORREÇÃO (DEPOIS)'}

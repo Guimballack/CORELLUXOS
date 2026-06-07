@@ -1,15 +1,18 @@
 /**
  * Corellux OS - Header Component
  * Componente do cabeçalho global com exibição de usuário, data/hora e ações.
+ * v3.0 — suporte a multi-tenant, impersonação e badge de empresa/filial
  */
 
 import React, { useState, useEffect } from 'react';
 import { useCorelluxState, isAuthenticated } from '../store/corellux-state';
+import { useTenant } from '../store/tenant-context';
 import { getUserAvatar } from '../utils/initial-data';
-import { Home, Bell, UserCheck, LogOut, ShieldAlert, ArrowLeft, Search, FileText } from 'lucide-react';
+import { Home, Bell, UserCheck, LogOut, ShieldAlert, ArrowLeft, Search, FileText, Shield, Building2, GitBranch, X } from 'lucide-react';
 import DbService from '../services/db-service';
 
 export default function Header() {
+    const { empresaData, filialData, isMaster, isImpersonating, sairDoCliente, masterData } = useTenant();
     const [state, setKey, updatePartial] = useCorelluxState([
         'currentUser', 
         'workstationAuthenticated', 
@@ -56,8 +59,10 @@ export default function Header() {
         }
     }, [isUserLoggedIn]);
     const isHeaderVisible = state.workstationAuthenticated && state.currentScreen !== 'login' && state.currentScreen !== 'user-select';
+    // No painel Master puro, o header nativo não é exibido (MasterHub tem o seu próprio layout)
+    const isMasterOnlyScreen = state.currentScreen === 'master-hub' && !isImpersonating;
 
-    if (!isHeaderVisible) return null;
+    if (!isHeaderVisible || isMasterOnlyScreen) return null;
 
     const handleHomeClick = () => {
         setKey('currentScreen', 'dashboard');
@@ -183,7 +188,39 @@ export default function Header() {
         });
     };
 
+    const handleSairDoCliente = async () => {
+        await sairDoCliente();
+        updatePartial({ currentScreen: 'master-hub' });
+    };
+
     return (
+        <>
+        {/* BANNER DE IMPERSONAÇÃO */}
+        {isImpersonating && isMaster && (
+            <div style={{
+                background: 'linear-gradient(90deg, #ea580c, #f97316)',
+                padding: '0.35rem 1rem',
+                display: 'flex', alignItems: 'center', gap: '0.75rem',
+                fontSize: '0.75rem', fontWeight: '700', color: '#fff',
+                zIndex: 100, position: 'relative',
+            }}>
+                <Shield size={13} />
+                <span>Modo Suporte — você está visualizando como:</span>
+                <strong style={{ background: 'rgba(255,255,255,0.2)', padding: '0.1rem 0.5rem', borderRadius: '4px' }}>
+                    {empresaData?.nome_fantasia || empresaData?.razao_social || 'Cliente'}
+                </strong>
+                <button
+                    onClick={handleSairDoCliente}
+                    style={{
+                        marginLeft: 'auto', background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)',
+                        borderRadius: '6px', padding: '0.2rem 0.65rem', color: '#fff', cursor: 'pointer',
+                        fontWeight: '700', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: '0.3rem',
+                    }}
+                >
+                    <X size={11} /> Sair do cliente
+                </button>
+            </div>
+        )}
         <header id="global-header">
             <div className="logo-area">
                 {state.currentScreen !== 'dashboard' && (
@@ -198,6 +235,28 @@ export default function Header() {
                     <img src="/logo_cubo.png?v=5" alt="Logo" style={{ height: '52px', width: 'auto', display: 'block' }} />
                 </div>
             </div>
+
+            {/* BADGE EMPRESA / FILIAL */}
+            {empresaData && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: '0.4rem',
+                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                        borderRadius: '8px', padding: '0.3rem 0.7rem',
+                        fontSize: '0.72rem', color: 'var(--text-secondary)',
+                    }}>
+                        <Building2 size={11} style={{ color: '#f97316' }} />
+                        <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{empresaData.nome_fantasia || empresaData.razao_social}</span>
+                        {filialData && (
+                            <>
+                                <span style={{ opacity: 0.4 }}>›</span>
+                                <GitBranch size={10} style={{ color: '#06b6d4' }} />
+                                <span>{filialData.nome}</span>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {isUserLoggedIn && state.currentUser && (
                 <div className="user-info-area" id="header-user-info">
@@ -277,5 +336,6 @@ export default function Header() {
                 </button>
             </div>
         </header>
+        </>
     );
 }

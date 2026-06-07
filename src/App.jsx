@@ -5,6 +5,7 @@
 
 import React, { useEffect } from 'react';
 import { useCorelluxState } from './store/corellux-state';
+import { useTenant } from './store/tenant-context';
 import Header from './components/Header';
 import Login from './pages/Login';
 import UserSelect from './pages/UserSelect';
@@ -15,6 +16,8 @@ import CentralHub from './pages/CentralHub';
 import ChecklistHub from './pages/ChecklistHub';
 import PatrimonioHub from './pages/PatrimonioHub';
 import SubprodutosHub from './pages/SubprodutosHub';
+import MasterHub from './pages/master/MasterHub';
+import ModuloGuard from './components/ModuloGuard';
 import { ArrowLeft } from 'lucide-react';
 
 // Componente Placeholder para módulos em desenvolvimento
@@ -99,12 +102,16 @@ export default function App() {
                 return <UserSelect />;
             case 'dashboard':
                 return <Dashboard />;
+
+            // Painel Master (Super Administrador)
+            case 'master-hub':
+                return <MasterHub />;
             
-            // Módulos operacionais (Logística completo, outros placeholders)
+            // Módulos operacionais com guards
             case 'logistics-hub':
-                return <LogisticsHub />;
+                return <ModuloGuard modulo="estoque"><LogisticsHub /></ModuloGuard>;
             case 'central-hub':
-                return <CentralHub />;
+                return <ModuloGuard modulo="central"><CentralHub /></ModuloGuard>;
             case 'checklist-hub':
                 return <ChecklistHub />;
             case 'patrimonio-hub':

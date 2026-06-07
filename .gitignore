@@ -29,4 +29,7 @@ dist-ssr
 .env.local
 .env.*.local
 
-
+# Scratch and agent files
+/scratch/
+.agente/
+.kilocode/

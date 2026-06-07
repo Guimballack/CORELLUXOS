@@ -61,51 +61,497 @@ function toSnakeCase(obj) {
 // SERVIÇOS DE BANCO DE DADOS
 // =============================================
 
-// Migração automática de local storage para o novo conjunto de dados v4 (incluindo logs realistas com anomalias induzidas)
+// Migração automática de local storage para o novo conjunto de dados Bella Italia Pizzaria v1 com 1 ano de histórico
 try {
-    const dbVersion = localStorage.getItem('corellux_db_version_v4');
+    const dbVersion = localStorage.getItem('corellux_db_version_pizzeria_v1');
     if (dbVersion !== 'true') {
-        localStorage.removeItem('corellux_products');
-        localStorage.removeItem('corellux_categories');
-        localStorage.removeItem('corellux_suppliers');
-        localStorage.removeItem('corellux_movement_logs');
+        console.log('[DbService] Iniciando migração e geração de dados históricos de 1 ano para Pizzaria Bella Italia...');
         
-        // Generate realistic historical movement logs
-        const productsList = mockData.products || [];
-        const initialLogs = [];
+        // 1. Limpar chaves locais antigas
+        const keysToClean = [
+            'corellux_users', 'corellux_categories', 'corellux_sale_categories', 'corellux_products', 
+            'corellux_sale_products', 'corellux_suppliers', 'corellux_sectors', 'corellux_cargos', 
+            'corellux_stock_batches', 'corellux_movement_logs', 'corellux_checklist_models', 
+            'corellux_checklist_executions', 'corellux_checklist_non_conformities', 
+            'corellux_checklist_action_plans', 'corellux_checklist_audit_logs', 'corellux_patrimony_items', 
+            'corellux_patrimony_categories', 'corellux_patrimony_movements', 'corellux_patrimony_responsibility', 
+            'corellux_patrimony_inventories', 'corellux_patrimony_audits', 'corellux_notifications', 
+            'corellux_loss_records', 'corellux_checklist_assignments', 'corellux_stock_movements'
+        ];
+        keysToClean.forEach(k => localStorage.removeItem(k));
+
+        // 2. Semear dados estáticos iniciais
+        localStorage.setItem('corellux_users', JSON.stringify(mockData.users));
+        localStorage.setItem('corellux_categories', JSON.stringify(mockData.categories));
+        localStorage.setItem('corellux_sale_categories', JSON.stringify(mockData.saleProductCategories));
+        localStorage.setItem('corellux_products', JSON.stringify(mockData.products));
+        localStorage.setItem('corellux_suppliers', JSON.stringify(mockData.suppliers));
+        localStorage.setItem('corellux_sectors', JSON.stringify(mockData.sectors));
+        localStorage.setItem('corellux_cargos', JSON.stringify(mockData.areas));
+        localStorage.setItem('corellux_stock_batches', JSON.stringify(mockData.stockBatches));
+
+        // 3. Semear produtos de venda com receitas
+        const saleProducts = [
+            { code: 'PIZ-001', name: 'Pizza Calabresa G', category: 'PIZZAS', price: 52.90, unit: 'UN', status: 'Ativo', controlaProducao: true, recipe: [{ ingredientSku: 'MAS-001', quantity: 0.25, unit: 'KG' }, { ingredientSku: 'MAS-002', quantity: 0.005, unit: 'KG' }, { ingredientSku: 'LAC-001', quantity: 0.25, unit: 'KG' }, { ingredientSku: 'MOL-001', quantity: 0.08, unit: 'KG' }, { ingredientSku: 'PRO-001', quantity: 0.15, unit: 'KG' }, { ingredientSku: 'HOR-003', quantity: 0.05, unit: 'KG' }, { ingredientSku: 'TMP-002', quantity: 0.005, unit: 'KG' }, { ingredientSku: 'EMB-001', quantity: 1, unit: 'UN' }] },
+            { code: 'PIZ-002', name: 'Pizza Margherita G', category: 'PIZZAS', price: 49.90, unit: 'UN', status: 'Ativo', controlaProducao: true, recipe: [{ ingredientSku: 'MAS-001', quantity: 0.25, unit: 'KG' }, { ingredientSku: 'MAS-002', quantity: 0.005, unit: 'KG' }, { ingredientSku: 'LAC-001', quantity: 0.25, unit: 'KG' }, { ingredientSku: 'MOL-001', quantity: 0.08, unit: 'KG' }, { ingredientSku: 'HOR-001', quantity: 0.1, unit: 'KG' }, { ingredientSku: 'HOR-004', quantity: 0.05, unit: 'UN' }, { ingredientSku: 'EMB-001', quantity: 1, unit: 'UN' }] },
+            { code: 'PIZ-003', name: 'Pizza Frango com Catupiry G', category: 'PIZZAS', price: 56.90, unit: 'UN', status: 'Ativo', controlaProducao: true, recipe: [{ ingredientSku: 'MAS-001', quantity: 0.25, unit: 'KG' }, { ingredientSku: 'MAS-002', quantity: 0.005, unit: 'KG' }, { ingredientSku: 'LAC-001', quantity: 0.2, unit: 'KG' }, { ingredientSku: 'MOL-001', quantity: 0.08, unit: 'KG' }, { ingredientSku: 'PRO-004', quantity: 0.2, unit: 'KG' }, { ingredientSku: 'LAC-002', quantity: 0.15, unit: 'UN' }, { ingredientSku: 'EMB-001', quantity: 1, unit: 'UN' }] },
+            { code: 'PIZ-004', name: 'Pizza Quatro Queijos G', category: 'PIZZAS', price: 59.90, unit: 'UN', status: 'Ativo', controlaProducao: true, recipe: [{ ingredientSku: 'MAS-001', quantity: 0.25, unit: 'KG' }, { ingredientSku: 'MAS-002', quantity: 0.005, unit: 'KG' }, { ingredientSku: 'LAC-001', quantity: 0.2, unit: 'KG' }, { ingredientSku: 'MOL-001', quantity: 0.08, unit: 'KG' }, { ingredientSku: 'LAC-003', quantity: 0.08, unit: 'KG' }, { ingredientSku: 'LAC-004', quantity: 0.05, unit: 'KG' }, { ingredientSku: 'LAC-005', quantity: 0.05, unit: 'KG' }, { ingredientSku: 'EMB-001', quantity: 1, unit: 'UN' }] },
+            { code: 'PIZ-005', name: 'Pizza Portuguesa G', category: 'PIZZAS', price: 54.90, unit: 'UN', status: 'Ativo', controlaProducao: true, recipe: [{ ingredientSku: 'MAS-001', quantity: 0.25, unit: 'KG' }, { ingredientSku: 'MAS-002', quantity: 0.005, unit: 'KG' }, { ingredientSku: 'LAC-001', quantity: 0.2, unit: 'KG' }, { ingredientSku: 'MOL-001', quantity: 0.08, unit: 'KG' }, { ingredientSku: 'PRO-002', quantity: 0.1, unit: 'KG' }, { ingredientSku: 'HOR-003', quantity: 0.05, unit: 'KG' }, { ingredientSku: 'HOR-007', quantity: 0.03, unit: 'KG' }, { ingredientSku: 'EMB-001', quantity: 1, unit: 'UN' }] },
+            { code: 'PIZ-006', name: 'Pizza Pepperoni G', category: 'PIZZAS', price: 62.90, unit: 'UN', status: 'Ativo', controlaProducao: true, recipe: [{ ingredientSku: 'MAS-001', quantity: 0.25, unit: 'KG' }, { ingredientSku: 'MAS-002', quantity: 0.005, unit: 'KG' }, { ingredientSku: 'LAC-001', quantity: 0.25, unit: 'KG' }, { ingredientSku: 'MOL-001', quantity: 0.08, unit: 'KG' }, { ingredientSku: 'PRO-001', quantity: 0.12, unit: 'KG' }, { ingredientSku: 'EMB-001', quantity: 1, unit: 'UN' }] },
+            { code: 'PIZ-007', name: 'Pizza Rúcula com Tomate Seco G', category: 'PIZZAS', price: 58.90, unit: 'UN', status: 'Ativo', controlaProducao: true, recipe: [{ ingredientSku: 'MAS-001', quantity: 0.25, unit: 'KG' }, { ingredientSku: 'MAS-002', quantity: 0.005, unit: 'KG' }, { ingredientSku: 'LAC-001', quantity: 0.2, unit: 'KG' }, { ingredientSku: 'MOL-001', quantity: 0.08, unit: 'KG' }, { ingredientSku: 'HOR-001', quantity: 0.1, unit: 'KG' }, { ingredientSku: 'HOR-005', quantity: 0.1, unit: 'UN' }, { ingredientSku: 'EMB-001', quantity: 1, unit: 'UN' }] },
+            { code: 'PIZ-008', name: 'Pizza Brigadeiro G', category: 'SOBREMESAS', price: 48.90, unit: 'UN', status: 'Ativo', controlaProducao: true, recipe: [{ ingredientSku: 'MAS-001', quantity: 0.25, unit: 'KG' }, { ingredientSku: 'MAS-002', quantity: 0.005, unit: 'KG' }, { ingredientSku: 'EMB-001', quantity: 1, unit: 'UN' }] },
+            { code: 'BEB-001', name: 'Refrigerante Coca-Cola 2L', category: 'BEBIDAS', price: 12.00, unit: 'UN', status: 'Ativo', controlaProducao: false, recipe: [{ ingredientSku: 'BEB-001', quantity: 1, unit: 'UN' }, { ingredientSku: 'EMB-002', quantity: 1, unit: 'UN' }] },
+            { code: 'BEB-002', name: 'Refrigerante Guaraná Antarctica 2L', category: 'BEBIDAS', price: 10.00, unit: 'UN', status: 'Ativo', controlaProducao: false, recipe: [{ ingredientSku: 'BEB-002', quantity: 1, unit: 'UN' }, { ingredientSku: 'EMB-002', quantity: 1, unit: 'UN' }] },
+            { code: 'BEB-003', name: 'Cerveja Stella Artois Long Neck', category: 'BEBIDAS', price: 9.00, unit: 'UN', status: 'Ativo', controlaProducao: false, recipe: [{ ingredientSku: 'BEB-003', quantity: 1, unit: 'UN' }] },
+            { code: 'BEB-004', name: 'Água Mineral Sem Gás 500ml', category: 'BEBIDAS', price: 4.00, unit: 'UN', status: 'Ativo', controlaProducao: false, recipe: [{ ingredientSku: 'BEB-004', quantity: 1, unit: 'UN' }] }
+        ];
+        localStorage.setItem('corellux_sale_products', JSON.stringify(saleProducts));
+
+        // 4. Semear modelos de checklist
+        const checklistModels = [
+            {
+                id: 'mod_pizzaria_1',
+                name: 'ABERTURA DA COZINHA (PIZZARIA)',
+                sector: 'PRODUÇÃO',
+                frequency: 'Diário',
+                status: 'Ativo',
+                items: [
+                    { id: 'ab_1', type: 'sim_nao', label: 'Todos os manipuladores de alimentos estão com uniforme completo e touca?', required: true, conditionalPhoto: true, conditionalObs: true },
+                    { id: 'ab_2', type: 'sim_nao', label: 'Câmara Fria A (Laticínios) está operando entre 2°C e 6°C?', required: true, conditionalPhoto: false, conditionalObs: true },
+                    { id: 'ab_3', type: 'sim_nao', label: 'Câmara Fria B (Carnes/Congelados) está operando abaixo de -10°C?', required: true, conditionalPhoto: false, conditionalObs: true },
+                    { id: 'ab_4', type: 'checkbox', label: 'Pré-aquecimento do forno iniciado.', required: true },
+                    { id: 'ab_5', type: 'checkbox', label: 'Bancadas de inox e masseira sanitizadas com álcool 70%.', required: true }
+                ],
+                lastModified: new Date().toLocaleString('pt-BR')
+            },
+            {
+                id: 'mod_pizzaria_2',
+                name: 'FECHAMENTO DO SALÃO E BAR',
+                sector: 'SALÃO E ATENDIMENTO',
+                frequency: 'Diário',
+                status: 'Ativo',
+                items: [
+                    { id: 'fc_1', type: 'sim_nao', label: 'Todas as mesas e cadeiras foram higienizadas e organizadas?', required: true, conditionalPhoto: false, conditionalObs: false },
+                    { id: 'fc_2', type: 'sim_nao', label: 'Maquininhas de cartão limpas e na base de carregamento?', required: true, conditionalPhoto: false, conditionalObs: true },
+                    { id: 'fc_3', type: 'sim_nao', label: 'Ar condicionados, luzes e som ambiente desligados?', required: true, conditionalPhoto: false, conditionalObs: false },
+                    { id: 'fc_4', type: 'checkbox', label: 'Lixos recolhidos e áreas varridas/passado pano.', required: true }
+                ],
+                lastModified: new Date().toLocaleString('pt-BR')
+            },
+            {
+                id: 'mod_pizzaria_3',
+                name: 'RECEBIMENTO DE INSUMOS (WMS)',
+                sector: 'ESTOQUE E SUPRIMENTOS',
+                frequency: 'Periódico',
+                status: 'Ativo',
+                items: [
+                    { id: 'rc_1', type: 'sim_nao', label: 'A temperatura do veículo de transporte de laticínios/frios estava adequada?', required: true, conditionalPhoto: true, conditionalObs: true },
+                    { id: 'rc_2', type: 'sim_nao', label: 'Os lotes entregues possuem validade superior a 30 dias?', required: true, conditionalPhoto: false, conditionalObs: true },
+                    { id: 'rc_3', type: 'checkbox', label: 'Conferência física das quantidades com a Nota Fiscal.', required: true }
+                ],
+                lastModified: new Date().toLocaleString('pt-BR')
+            }
+        ];
+        localStorage.setItem('corellux_checklist_models', JSON.stringify(checklistModels));
+
+        // 5. Semear estrutura WMS completa
+        const wmsWarehouses = [{ id: 1, name: 'Armazém Central AC', acronym: 'AC', description: 'CD principal de insumos e embalagens.', status: 'Ativo' }];
+        const wmsZones = [
+            { id: 1, warehouseId: 1, name: 'CFA', acronymDescription: 'Câmara Fria A', type: 'Resfriado', description: 'Armazenamento de laticínios e frios.', status: 'Ativo', tempMin: 2, tempMax: 8, isAmbient: false },
+            { id: 2, warehouseId: 1, name: 'CFB', acronymDescription: 'Câmara Fria B', type: 'Congelado', description: 'Armazenamento de carnes e congelados.', status: 'Ativo', tempMin: -18, tempMax: -10, isAmbient: false },
+            { id: 3, warehouseId: 1, name: 'ESA', acronymDescription: 'Estoque Seco A', type: 'Seco', description: 'Armazenamento de farinhas, molhos e grãos.', status: 'Ativo', tempMin: 15, tempMax: 25, isAmbient: true, ambientType: 'fechada' },
+            { id: 4, warehouseId: 1, name: 'ESB', acronymDescription: 'Estoque Seco B', type: 'Seco', description: 'Armazenamento de temperos, embalagens e descartáveis.', status: 'Ativo', tempMin: 15, tempMax: 25, isAmbient: true, ambientType: 'fechada' }
+        ];
+        const wmsLocations = [];
+        wmsZones.forEach(zone => {
+            for (let aisle = 1; aisle <= 2; aisle++) {
+                for (let row = 1; row <= 4; row++) {
+                    for (let shelf = 1; shelf <= 3; shelf++) {
+                        wmsLocations.push({
+                            id: wmsLocations.length + 1,
+                            zoneId: zone.id,
+                            aisle: `Corredor ${aisle}`,
+                            row: `Fileira ${row}`,
+                            shelf: `Nível ${shelf}`,
+                            position: `Posição ${shelf}`,
+                            status: 'Ativo',
+                            volumeCubico: 2.5
+                        });
+                    }
+                }
+            }
+        });
+        localStorage.setItem('corellux_wms_warehouses', JSON.stringify(wmsWarehouses));
+        localStorage.setItem('corellux_wms_zones', JSON.stringify(wmsZones));
+        localStorage.setItem('corellux_wms_locations', JSON.stringify(wmsLocations));
+
+        // 6. Gerar histórico operacional de 1 ano
+        const movementLogs = [];
+        const checklistExecutions = [];
+        const nonConformities = [];
+        const actionPlans = [];
+        const stockMovements = [];
         const today = new Date();
-        for (let dayOffset = 15; dayOffset >= 1; dayOffset--) {
-            const logDate = new Date(today.getTime() - dayOffset * 24 * 60 * 60 * 1000);
-            const dateStr = logDate.toISOString().split('T')[0];
-            const dow = logDate.getDay();
+        const usersList = mockData.users || [];
 
-            productsList.forEach(p => {
-                const baseAvg = Math.max(0.5, (p.avgStock || 10) / 8);
-                let qty = parseFloat((baseAvg * (0.75 + Math.random() * 0.5)).toFixed(2));
-                
-                // Induzir anomalias reais em dias específicos do histórico:
-                // Há 3 dias atrás (offset 3), simula-se um pico massivo de consumo fora do padrão
-                if (dayOffset === 3) {
-                    qty = parseFloat((baseAvg * (4.2 + Math.random() * 1.5)).toFixed(2));
-                }
-                // Há 10 dias atrás (offset 10), simula-se outro pico para metade dos itens
-                else if (dayOffset === 10 && (p.sku.charCodeAt(p.sku.length - 1) % 2 === 0)) {
-                    qty = parseFloat((baseAvg * (3.8 + Math.random() * 1.2)).toFixed(2));
-                }
+        const productMap = {};
+        mockData.products.forEach(p => {
+            productMap[p.sku] = p.name;
+        });
 
-                initialLogs.push({
-                    id: 'mov_init_' + dayOffset + '_' + p.sku,
-                    sku: p.sku,
+        for (let offset = 365; offset >= 1; offset--) {
+            const currentDate = new Date(today.getTime() - offset * 24 * 60 * 60 * 1000);
+            const dateStr = currentDate.toISOString().split('T')[0];
+            const dow = currentDate.getDay();
+
+            // Sazonalidade de Vendas
+            let baseSales = 20; // segunda a quarta
+            if (dow === 4) baseSales = 35; // quinta
+            if (dow === 5 || dow === 6) baseSales = 85; // sexta e sábado
+            if (dow === 0) baseSales = 75; // domingo
+
+            const randomFactor = 0.8 + Math.random() * 0.4;
+            let salesQty = Math.round(baseSales * randomFactor);
+
+            // Sazonalidade anual (férias de verão/inverno e feriados)
+            const month = currentDate.getMonth();
+            if (month === 11 || month === 0 || month === 6) {
+                salesQty = Math.round(salesQty * 1.25);
+            }
+            
+            // Induzir anomalias induzidas (picos fora da curva)
+            if (offset === 45) salesQty = Math.round(salesQty * 3.5); // Festa corporativa
+            if (offset === 150) salesQty = Math.round(salesQty * 3.0); // Transmissão de final de campeonato
+
+            // Calcular consumo diário de ingredientes pelas receitas
+            const dayUsage = {};
+            for (let s = 0; s < salesQty; s++) {
+                const rand = Math.random();
+                let code = 'PIZ-001';
+                if (rand < 0.25) code = 'PIZ-001';
+                else if (rand < 0.45) code = 'PIZ-002';
+                else if (rand < 0.60) code = 'PIZ-003';
+                else if (rand < 0.70) code = 'PIZ-004';
+                else if (rand < 0.80) code = 'PIZ-005';
+                else if (rand < 0.90) code = 'PIZ-006';
+                else if (rand < 0.95) code = 'PIZ-007';
+                else code = 'PIZ-008';
+
+                const item = saleProducts.find(x => x.code === code);
+                if (item && item.recipe) {
+                    item.recipe.forEach(rec => {
+                        dayUsage[rec.ingredientSku] = (dayUsage[rec.ingredientSku] || 0) + rec.quantity;
+                    });
+                }
+            }
+
+            // Consumo de bebidas
+            const drinkQty = Math.round(salesQty * 1.3);
+            for (let s = 0; s < drinkQty; s++) {
+                const rand = Math.random();
+                let code = 'BEB-001';
+                if (rand < 0.35) code = 'BEB-001';
+                else if (rand < 0.65) code = 'BEB-002';
+                else if (rand < 0.85) code = 'BEB-003';
+                else code = 'BEB-004';
+
+                const item = saleProducts.find(x => x.code === code);
+                if (item && item.recipe) {
+                    item.recipe.forEach(rec => {
+                        dayUsage[rec.ingredientSku] = (dayUsage[rec.ingredientSku] || 0) + rec.quantity;
+                    });
+                }
+            }
+
+            // Gravar logs de movimentação (saídas)
+            Object.entries(dayUsage).forEach(([sku, total]) => {
+                movementLogs.push({
+                    id: `mov_${offset}_${sku}`,
+                    sku: sku,
                     date: dateStr,
-                    qty: qty,
+                    qty: parseFloat(total.toFixed(3)),
                     dayOfWeek: dow
                 });
             });
+
+            // Gravar logs de WMS detalhados (Saídas por consumo de venda)
+            const operatorsList = usersList.filter(u => u.role === 'Pizzaiolo' || u.role === 'Estoquista' || u.role === 'Cozinha' || u.role === 'Auxiliar');
+            const cozinheiros = operatorsList.length ? operatorsList : usersList;
+            
+            Object.entries(dayUsage).forEach(([sku, total]) => {
+                const prodName = productMap[sku] || sku;
+                const op = cozinheiros[Math.floor(Math.random() * cozinheiros.length)];
+                
+                stockMovements.push({
+                    id: `mov_gen_${offset}_${sku}`,
+                    sku: sku,
+                    productName: prodName,
+                    type: 'Saída',
+                    quantity: parseFloat(total.toFixed(3)),
+                    userName: op.name,
+                    date: dateStr,
+                    time: '22:30:00',
+                    timestamp: `${dateStr}T22:30:00Z`,
+                    details: 'Baixa de estoque por consumo operacional de vendas (receitas de pizza)'
+                });
+            });
+
+            // Entradas (Compras de lote/recebimento de insumos) a cada 3 dias
+            if (offset % 3 === 0) {
+                const estoquistas = usersList.filter(u => u.role === 'Estoquista' || u.role === 'Supervisor de Turno');
+                const op = estoquistas.length ? estoquistas[Math.floor(Math.random() * estoquistas.length)] : usersList[0];
+                
+                const randomSkus = [];
+                const allSkus = Object.keys(productMap);
+                while (randomSkus.length < 3 && allSkus.length > 0) {
+                    const idx = Math.floor(Math.random() * allSkus.length);
+                    const sku = allSkus[idx];
+                    if (!randomSkus.includes(sku)) {
+                        randomSkus.push(sku);
+                    }
+                }
+                
+                randomSkus.forEach(sku => {
+                    const prodName = productMap[sku];
+                    const qty = Math.round(20 + Math.random() * 50);
+                    stockMovements.push({
+                        id: `mov_gen_in_${offset}_${sku}`,
+                        sku: sku,
+                        productName: prodName,
+                        type: 'Entrada',
+                        quantity: qty,
+                        userName: op.name,
+                        date: dateStr,
+                        time: '10:15:00',
+                        timestamp: `${dateStr}T10:15:00Z`,
+                        details: `Recebimento de lote de compras de insumo. Operador: ${op.name}`
+                    });
+                });
+            }
+
+            // Perdas (Avarias/Descartes) a cada 15 dias
+            if (offset % 15 === 0) {
+                const supervisores = usersList.filter(u => u.role === 'Supervisor de Turno' || u.role === 'Gerente');
+                const op = supervisores.length ? supervisores[Math.floor(Math.random() * supervisores.length)] : usersList[0];
+                
+                const allSkus = Object.keys(productMap);
+                if (allSkus.length > 0) {
+                    const sku = allSkus[Math.floor(Math.random() * allSkus.length)];
+                    const prodName = productMap[sku];
+                    const qty = parseFloat((1 + Math.random() * 5).toFixed(2));
+                    const reasons = [
+                        'Produto vencido na câmara fria',
+                        'Embalagem danificada no transporte',
+                        'Problema de refrigeração',
+                        'Insumo impróprio para consumo (avaria física)'
+                    ];
+                    const reason = reasons[Math.floor(Math.random() * reasons.length)];
+                    stockMovements.push({
+                        id: `mov_gen_lost_${offset}_${sku}`,
+                        sku: sku,
+                        productName: prodName,
+                        type: 'Perda',
+                        quantity: qty,
+                        userName: op.name,
+                        date: dateStr,
+                        time: '16:45:00',
+                        timestamp: `${dateStr}T16:45:00Z`,
+                        details: `${reason}. Registrado por supervisor.`
+                    });
+                }
+            }
+
+            // Execuções diárias de Checklist
+            // Abertura
+            const abUser = usersList.find(u => u.role === 'Pizzaiolo' || u.role === 'Supervisor de Turno') || usersList[0];
+            const isAbConform = Math.random() > 0.05;
+            const abScore = isAbConform ? 100 : Math.round(60 + Math.random() * 25);
+            const abAnswers = {
+                'ab_1': { value: 'sim', comment: '' },
+                'ab_2': { value: 'sim', comment: 'Geladeira em 4.5°C' },
+                'ab_3': { value: 'sim', comment: 'Câmara Fria em -11.8°C' },
+                'ab_4': { value: true },
+                'ab_5': { value: true }
+            };
+
+            if (!isAbConform) {
+                const isTempFail = Math.random() > 0.5;
+                if (isTempFail) {
+                    abAnswers['ab_2'] = { value: 'nao', comment: 'Registrando 9.2°C' };
+                    const ncId = `nc_${offset}_ab`;
+                    nonConformities.push({
+                        id: ncId,
+                        checklistExecutionId: `exec_ab_${offset}`,
+                        itemId: 'ab_2',
+                        itemLabel: 'Câmara Fria A (Laticínios) está operando entre 2°C e 6°C?',
+                        description: 'Geladeira principal registrando 9.2°C devido a sobrecarga de insumos recém-recebidos.',
+                        reportedBy: abUser.name,
+                        status: 'Resolvido',
+                        timestamp: `${dateStr}T08:45:00Z`
+                    });
+                    actionPlans.push({
+                        id: `plan_${offset}_ab`,
+                        nonConformityId: ncId,
+                        description: 'Ajustar fluxo de ar, redistribuir itens e reavaliar temperatura em 1 hora.',
+                        responsible: 'Rafael Mendes',
+                        dueDate: new Date(currentDate.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        status: 'Concluído',
+                        completedAt: new Date(currentDate.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        notes: 'Ajustado. Temperatura estabilizada em 4.1°C após redistribuição.'
+                    });
+                } else {
+                    abAnswers['ab_1'] = { value: 'nao', comment: 'Colaborador recém-admitido sem a touca de proteção.' };
+                    const ncId = `nc_${offset}_ab`;
+                    nonConformities.push({
+                        id: ncId,
+                        checklistExecutionId: `exec_ab_${offset}`,
+                        itemId: 'ab_1',
+                        itemLabel: 'Todos os manipuladores de alimentos estão com uniforme completo e touca?',
+                        description: 'Flagrado colaborador sem o uso obrigatório de touca de barreira na produção.',
+                        reportedBy: abUser.name,
+                        status: 'Resolvido',
+                        timestamp: `${dateStr}T08:15:00Z`
+                    });
+                    actionPlans.push({
+                        id: `plan_${offset}_ab`,
+                        nonConformityId: ncId,
+                        description: 'Fornecer touca descartável imediatamente e alertar sobre advertências.',
+                        responsible: 'Camila Costa',
+                        dueDate: new Date(currentDate.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        status: 'Concluído',
+                        completedAt: new Date(currentDate.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                        notes: 'Fornecida a touca. Colaborador reorientado sobre as Boas Práticas de Fabricação (BPF).'
+                    });
+                }
+            }
+
+            checklistExecutions.push({
+                id: `exec_ab_${offset}`,
+                modelId: 'mod_pizzaria_1',
+                modelName: 'ABERTURA DA COZINHA (PIZZARIA)',
+                user: abUser.name,
+                startTime: `${dateStr}T08:10:00Z`,
+                endTime: `${dateStr}T08:25:00Z`,
+                answers: abAnswers,
+                score: abScore,
+                latitude: -23.550520 + (Math.random() - 0.5) * 0.0008,
+                longitude: -46.633308 + (Math.random() - 0.5) * 0.0008,
+                status: 'Finalizado'
+            });
+
+            // Fechamento
+            const fcUser = usersList.find(u => u.role === 'Supervisor de Turno' || u.role === 'Garçom') || usersList[1];
+            const isFcConform = Math.random() > 0.04;
+            const fcScore = isFcConform ? 100 : Math.round(75 + Math.random() * 20);
+            const fcAnswers = {
+                'fc_1': { value: 'sim', comment: '' },
+                'fc_2': { value: 'sim', comment: 'Todas organizadas no suporte' },
+                'fc_3': { value: 'sim', comment: '' },
+                'fc_4': { value: true }
+            };
+
+            if (!isFcConform) {
+                fcAnswers['fc_3'] = { value: 'nao', comment: 'Ar condicionado do salão lateral foi deixado no modo automático.' };
+                const ncId = `nc_${offset}_fc`;
+                nonConformities.push({
+                    id: ncId,
+                    checklistExecutionId: `exec_fc_${offset}`,
+                    itemId: 'fc_3',
+                    itemLabel: 'Ar condicionados, luzes e som ambiente desligados?',
+                    description: 'Evidenciado aparelho de ar condicionado central esquerdo ligado desnecessariamente após fechamento.',
+                    reportedBy: fcUser.name,
+                    status: 'Resolvido',
+                    timestamp: `${dateStr}T23:50:00Z`
+                });
+                actionPlans.push({
+                    id: `plan_${offset}_fc`,
+                    nonConformityId: ncId,
+                    description: 'Desligar disjuntor geral da ala norte ou incluir aviso luminoso na saída.',
+                    responsible: 'Gustavo Santos',
+                    dueDate: new Date(currentDate.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    status: 'Concluído',
+                    completedAt: new Date(currentDate.getTime() + 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    notes: 'Placa de lembrete adicionada ao lado do interruptor geral de fechamento.'
+                });
+            }
+
+            checklistExecutions.push({
+                id: `exec_fc_${offset}`,
+                modelId: 'mod_pizzaria_2',
+                modelName: 'FECHAMENTO DO SALÃO E BAR',
+                user: fcUser.name,
+                startTime: `${dateStr}T23:35:00Z`,
+                endTime: `${dateStr}T23:55:00Z`,
+                answers: fcAnswers,
+                score: fcScore,
+                latitude: -23.550520 + (Math.random() - 0.5) * 0.0008,
+                longitude: -46.633308 + (Math.random() - 0.5) * 0.0008,
+                status: 'Finalizado'
+            });
+
+            // Recebimento periódico
+            if (offset % 3 === 0) {
+                const recUser = usersList.find(u => u.role === 'Estoquista' || u.role === 'Comprador') || usersList[2];
+                checklistExecutions.push({
+                    id: `exec_rc_${offset}`,
+                    modelId: 'mod_pizzaria_3',
+                    modelName: 'RECEBIMENTO DE INSUMOS (WMS)',
+                    user: recUser.name,
+                    startTime: `${dateStr}T14:15:00Z`,
+                    endTime: `${dateStr}T14:40:00Z`,
+                    answers: {
+                        'rc_1': { value: 'sim', comment: 'Baú refrigerado em 3.9°C' },
+                        'rc_2': { value: 'sim', comment: 'Validades até novembro de 2026' },
+                        'rc_3': { value: true }
+                    },
+                    score: 100,
+                    latitude: -23.550520 + (Math.random() - 0.5) * 0.0008,
+                    longitude: -46.633308 + (Math.random() - 0.5) * 0.0008,
+                    status: 'Finalizado'
+                });
+            }
         }
-        localStorage.setItem('corellux_movement_logs', JSON.stringify(initialLogs));
-        localStorage.setItem('corellux_db_version_v4', 'true');
-        localStorage.setItem('corellux_db_version_v3', 'true');
-        localStorage.setItem('corellux_db_version_v2', 'true');
+
+        localStorage.setItem('corellux_movement_logs', JSON.stringify(movementLogs));
+        localStorage.setItem('corellux_checklist_executions', JSON.stringify(checklistExecutions));
+        localStorage.setItem('corellux_checklist_non_conformities', JSON.stringify(nonConformities));
+        localStorage.setItem('corellux_checklist_action_plans', JSON.stringify(actionPlans));
+        localStorage.setItem('corellux_stock_movements', JSON.stringify(stockMovements));
+
+        // 7. Semear patrimônio e manutenções do patrimônio
+        const patrimonyItems = [
+            { id: 1, code: 'FOR-001', name: 'Forno de Pizza Lenha/Gás DiVolcano', category: 'Equipamentos', subcategory: 'Forno', unit: 'Unidade', qtyActual: 1, qtyMin: 1, valueUnit: 18000.00, valueTotal: 18000.00, sectorActual: 'Produção', location: 'Cozinha Central', acquisitionDate: '2025-06-01', supplier: 'Fornos DiVolcano', notes: 'Forno híbrido rotativo profissional.', status: 'Ativo' },
+            { id: 2, code: 'MAS-001', name: 'Masseira Espiral Industrial 25kg', category: 'Equipamentos', subcategory: 'Misturadores', unit: 'Unidade', qtyActual: 1, qtyMin: 1, valueUnit: 6500.00, valueTotal: 6500.00, sectorActual: 'Produção', location: 'Cozinha Preparação', acquisitionDate: '2025-06-01', supplier: 'Masseiras Premium', notes: 'Masseira de duas velocidades.', status: 'Ativo' },
+            { id: 3, code: 'GEL-001', name: 'Geladeira Comercial Inox 4 Portas', category: 'Equipamentos', subcategory: 'Refrigeração', unit: 'Unidade', qtyActual: 2, qtyMin: 1, valueUnit: 4800.00, valueTotal: 9600.00, sectorActual: 'Produção', location: 'Despensa de Frios', acquisitionDate: '2025-06-15', supplier: 'Refrigeração Inox', notes: 'Utilizada para conservação diária.', status: 'Ativo' },
+            { id: 4, code: 'PDV-001', name: 'Computador Caixa PDV Bematech', category: 'Tecnologia', subcategory: 'PDV', unit: 'Unidade', qtyActual: 1, qtyMin: 1, valueUnit: 3500.00, valueTotal: 3500.00, sectorActual: 'Salão', location: 'Caixa Entrada', acquisitionDate: '2025-06-01', supplier: 'BemaTech BR', notes: 'Computador integrado de atendimento.', status: 'Ativo' },
+            { id: 5, code: 'TAB-001', name: 'Tablets Samsung Galaxy Tab A7', category: 'Tecnologia', subcategory: 'Comandas', unit: 'Unidade', qtyActual: 6, qtyMin: 2, valueUnit: 950.00, valueTotal: 5700.00, sectorActual: 'Salão', location: 'Armário Atendimento', acquisitionDate: '2025-07-10', supplier: 'Magazine Luiza', notes: 'Para lançamento de pedidos.', status: 'Ativo' },
+            { id: 6, code: 'SPL-001', name: 'Ar Condicionado Split 24000 BTU', category: 'Equipamentos', subcategory: 'Climatização', unit: 'Unidade', qtyActual: 3, qtyMin: 1, valueUnit: 2900.00, valueTotal: 8700.00, sectorActual: 'Salão', location: 'Climatização Geral', acquisitionDate: '2025-06-10', supplier: 'FrioMax Split', notes: 'Split inverter econômico.', status: 'Ativo' }
+        ];
+        const patrimonyMovements = [
+            { id: 1, itemId: 1, type: 'Manutenção Preventiva', qty: 1, reason: 'Limpeza anual das chaminés e calibração dos queimadores a gás.', sector: 'Produção', registeredBy: 'Rafael Mendes', registeredAt: '2026-05-10T15:00:00Z' },
+            { id: 2, itemId: 3, type: 'Manutenção Corretiva', qty: 1, reason: 'Troca do termostato digital que apresentava oscilação na leitura de graus.', sector: 'Produção', registeredBy: 'Bruno Silva', registeredAt: '2026-03-12T10:30:00Z' }
+        ];
+        localStorage.setItem('corellux_patrimony_items', JSON.stringify(patrimonyItems));
+        localStorage.setItem('corellux_patrimony_movements', JSON.stringify(patrimonyMovements));
+
+        // 8. Semear avisos (Notifications)
+        const notificationsData = [
+            { id: 1, title: 'Inauguração do Forno Especial', message: 'Prezados, hoje iniciamos a operação com o novo queimador do forno a lenha/gás.', date: new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], readBy: [] },
+            { id: 2, title: 'Uso Obrigatório de EPIs na Cozinha', message: 'Lembramos a todos os pizzaiolos e auxiliares a obrigatoriedade do uso de touca e avental em toda a área de produção.', date: new Date(today.getTime() - 25 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], readBy: [] },
+            { id: 3, title: 'Escala de Folgas Junho/2026', message: 'A escala mensal de folgas já está disponível no quadro administrativo. Favor conferir.', date: new Date(today.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], readBy: [] }
+        ];
+        localStorage.setItem('corellux_notifications', JSON.stringify(notificationsData));
+
+        // 9. Semear registros de perdas (Loss Records)
+        const lossRecordsData = [
+            { id: 1780000000001, sku: 'LAC-001', productName: 'Queijo Muçarela Barra', unit: 'KG', quantity: 5.5, reason: 'Vencimento', customReason: '', sector: 'Produção', materialType: 'estoque', registeredBy: 'Renato Oliveira', registeredAt: new Date(today.getTime() - 4 * 24 * 60 * 60 * 1000).toLocaleString('pt-BR') },
+            { id: 1780000000002, sku: 'HOR-001', productName: 'Tomate Carmem Fresco', unit: 'KG', quantity: 3.2, reason: 'Avaria/Quebra', customReason: '', sector: 'Produção', materialType: 'estoque', registeredBy: 'João Silva', registeredAt: new Date(today.getTime() - 2 * 24 * 60 * 60 * 1000).toLocaleString('pt-BR') }
+        ];
+        localStorage.setItem('corellux_loss_records', JSON.stringify(lossRecordsData));
+
+        // Registrar upgrade de versão completo
+        localStorage.setItem('corellux_db_version_pizzeria_v1', 'true');
+        console.log('[DbService] Migração e geração de histórico de 1 ano concluídas com sucesso para Pizzaria Bella Italia!');
     }
 } catch (e) {
     console.warn('[DbService] Erro ao migrar localStorage:', e);
@@ -1578,32 +2024,47 @@ export const DbService = {
                     console.error('[DbService] Erro ao analisar modelos locais:', err);
                 }
             }
-            // Modelos padrão mockados para início
+            // Modelos padrão mockados para início (Pizzaria)
             const defaultModels = [
                 {
-                    id: 'mod_1',
-                    name: 'VISTORIA DIÁRIA DA COZINHA',
-                    sector: 'COZINHA',
+                    id: 'mod_pizzaria_1',
+                    name: 'ABERTURA DA COZINHA (PIZZARIA)',
+                    sector: 'PRODUÇÃO',
                     frequency: 'Diário',
                     status: 'Ativo',
                     items: [
-                        { id: 'item_1', type: 'sim_nao', label: 'Todos os fogões estão desligados e limpos?', required: true, conditionalPhoto: true, conditionalObs: true },
-                        { id: 'item_2', type: 'sim_nao', label: 'Temperatura da câmara de congelados está abaixo de -18°C?', required: true, conditionalPhoto: false, conditionalObs: true },
-                        { id: 'item_3', type: 'checkbox', label: 'Retirada e descarte de lixo orgânico realizado.', required: true },
-                        { id: 'item_4', type: 'observacao', label: 'Observações gerais do turno da cozinha.', required: false }
+                        { id: 'ab_1', type: 'sim_nao', label: 'Todos os manipuladores de alimentos estão com uniforme completo e touca?', required: true, conditionalPhoto: true, conditionalObs: true },
+                        { id: 'ab_2', type: 'sim_nao', label: 'Câmara Fria A (Laticínios) está operando entre 2°C e 6°C?', required: true, conditionalPhoto: false, conditionalObs: true },
+                        { id: 'ab_3', type: 'sim_nao', label: 'Câmara Fria B (Carnes/Congelados) está operando abaixo de -10°C?', required: true, conditionalPhoto: false, conditionalObs: true },
+                        { id: 'ab_4', type: 'checkbox', label: 'Pré-aquecimento do forno iniciado.', required: true },
+                        { id: 'ab_5', type: 'checkbox', label: 'Bancadas de inox e masseira sanitizadas com álcool 70%.', required: true }
                     ],
                     lastModified: new Date().toLocaleString('pt-BR')
                 },
                 {
-                    id: 'mod_2',
-                    name: 'FECHAMENTO DO SALÃO',
-                    sector: 'SALÃO',
+                    id: 'mod_pizzaria_2',
+                    name: 'FECHAMENTO DO SALÃO E BAR',
+                    sector: 'SALÃO E ATENDIMENTO',
                     frequency: 'Diário',
                     status: 'Ativo',
                     items: [
-                        { id: 'item_5', type: 'sim_nao', label: 'Ar condicionado e luzes desligadas?', required: true, conditionalPhoto: false, conditionalObs: false },
-                        { id: 'item_6', type: 'sim_nao', label: 'Maquininhas de cartão limpas e na base de carregamento?', required: true, conditionalPhoto: false, conditionalObs: true },
-                        { id: 'item_7', type: 'checkbox', label: 'Mesas higienizadas e cadeiras organizadas.', required: true }
+                        { id: 'fc_1', type: 'sim_nao', label: 'Todas as mesas e cadeiras foram higienizadas e organizadas?', required: true, conditionalPhoto: false, conditionalObs: false },
+                        { id: 'fc_2', type: 'sim_nao', label: 'Maquininhas de cartão limpas e na base de carregamento?', required: true, conditionalPhoto: false, conditionalObs: true },
+                        { id: 'fc_3', type: 'sim_nao', label: 'Ar condicionados, luzes e som ambiente desligados?', required: true, conditionalPhoto: false, conditionalObs: false },
+                        { id: 'fc_4', type: 'checkbox', label: 'Lixos recolhidos e áreas varridas/passado pano.', required: true }
+                    ],
+                    lastModified: new Date().toLocaleString('pt-BR')
+                },
+                {
+                    id: 'mod_pizzaria_3',
+                    name: 'RECEBIMENTO DE INSUMOS (WMS)',
+                    sector: 'ESTOQUE E SUPRIMENTOS',
+                    frequency: 'Periódico',
+                    status: 'Ativo',
+                    items: [
+                        { id: 'rc_1', type: 'sim_nao', label: 'A temperatura do veículo de transporte de laticínios/frios estava adequada?', required: true, conditionalPhoto: true, conditionalObs: true },
+                        { id: 'rc_2', type: 'sim_nao', label: 'Os lotes entregues possuem validade superior a 30 dias?', required: true, conditionalPhoto: false, conditionalObs: true },
+                        { id: 'rc_3', type: 'checkbox', label: 'Conferência física das quantidades com a Nota Fiscal.', required: true }
                     ],
                     lastModified: new Date().toLocaleString('pt-BR')
                 }
@@ -2528,13 +2989,12 @@ export const DbService = {
                 if (local) return JSON.parse(local);
 
                 const defaults = [
-                    { id: 1, code: 'PRT-001', name: 'Prato Raso Porcelana', category: 'Utensílios', subcategory: 'Pratos', unit: 'Unidade', qtyActual: 120, qtyMin: 50, valueUnit: 15.00, valueTotal: 1800.00, sectorActual: 'Salão', location: 'Armário A', acquisitionDate: '2025-01-15', supplier: 'Porcelanas Real', notes: 'Pratos de porcelana branca para serviço.', status: 'Ativo' },
-                    { id: 2, code: 'FAC-002', name: 'Faca de Churrasco Tramontina', category: 'Utensílios', subcategory: 'Talheres', unit: 'Unidade', qtyActual: 150, qtyMin: 60, valueUnit: 8.50, valueTotal: 1275.00, sectorActual: 'Salão', location: 'Gaveta 2', acquisitionDate: '2025-01-20', supplier: 'Tramontina S/A', notes: 'Faca cabo de madeira resistente.', status: 'Ativo' },
-                    { id: 3, code: 'COP-003', name: 'Copo Long Drink 300ml', category: 'Utensílios', subcategory: 'Copos', unit: 'Unidade', qtyActual: 200, qtyMin: 80, valueUnit: 5.00, valueTotal: 1000.00, sectorActual: 'Bar', location: 'Prateleira 1', acquisitionDate: '2025-02-10', supplier: 'Nadir Figueiredo', notes: 'Copos de vidro transparente.', status: 'Ativo' },
-                    { id: 4, code: 'TAB-004', name: 'Tablet Samsung Galaxy A8', category: 'Tecnologia', subcategory: 'Tablets', unit: 'Unidade', qtyActual: 8, qtyMin: 2, valueUnit: 1200.00, valueTotal: 9600.00, sectorActual: 'Salão', location: 'Suporte Caixa', acquisitionDate: '2025-03-05', supplier: 'Magazine Luiza', notes: 'Utilizados para comandas eletrônicas.', status: 'Ativo' },
-                    { id: 5, code: 'IMP-005', name: 'Impressora Térmica Bematech', category: 'Tecnologia', subcategory: 'Impressoras', unit: 'Unidade', qtyActual: 5, qtyMin: 1, valueUnit: 650.00, valueTotal: 3250.00, sectorActual: 'Cozinha', location: 'Balcão Expedição', acquisitionDate: '2025-02-05', supplier: 'Kabum', notes: 'Impressora de pedidos de cozinha.', status: 'Ativo' },
-                    { id: 6, code: 'PAN-006', name: 'Panela de Pressão Industrial 20L', category: 'Equipamentos', subcategory: 'Panelas', unit: 'Unidade', qtyActual: 3, qtyMin: 1, valueUnit: 450.00, valueTotal: 1350.00, sectorActual: 'Cozinha', location: 'Fogão Central', acquisitionDate: '2025-01-10', supplier: 'Metalúrgica Alumínio', notes: 'Panela de pressão profissional reforçada.', status: 'Ativo' },
-                    { id: 7, code: 'UNF-007', name: 'Camisa Polo Uniforme M', category: 'Uniformes', subcategory: 'Camisas', unit: 'Unidade', qtyActual: 30, qtyMin: 10, valueUnit: 45.00, valueTotal: 1350.00, sectorActual: 'Almoxarifado', location: 'Armário RH', acquisitionDate: '2025-04-12', supplier: 'Uniformes & Cia', notes: 'Camisas polo pretas com logo bordado.', status: 'Ativo' }
+                    { id: 1, code: 'FOR-001', name: 'Forno de Pizza Lenha/Gás DiVolcano', category: 'Equipamentos', subcategory: 'Forno', unit: 'Unidade', qtyActual: 1, qtyMin: 1, valueUnit: 18000.00, valueTotal: 18000.00, sectorActual: 'Produção', location: 'Cozinha Central', acquisitionDate: '2025-06-01', supplier: 'Fornos DiVolcano', notes: 'Forno híbrido rotativo profissional.', status: 'Ativo' },
+                    { id: 2, code: 'MAS-001', name: 'Masseira Espiral Industrial 25kg', category: 'Equipamentos', subcategory: 'Misturadores', unit: 'Unidade', qtyActual: 1, qtyMin: 1, valueUnit: 6500.00, valueTotal: 6500.00, sectorActual: 'Produção', location: 'Cozinha Preparação', acquisitionDate: '2025-06-01', supplier: 'Masseiras Premium', notes: 'Masseira de duas velocidades.', status: 'Ativo' },
+                    { id: 3, code: 'GEL-001', name: 'Geladeira Comercial Inox 4 Portas', category: 'Equipamentos', subcategory: 'Refrigeração', unit: 'Unidade', qtyActual: 2, qtyMin: 1, valueUnit: 4800.00, valueTotal: 9600.00, sectorActual: 'Produção', location: 'Despensa de Frios', acquisitionDate: '2025-06-15', supplier: 'Refrigeração Inox', notes: 'Utilizada para conservação diária.', status: 'Ativo' },
+                    { id: 4, code: 'PDV-001', name: 'Computador Caixa PDV Bematech', category: 'Tecnologia', subcategory: 'PDV', unit: 'Unidade', qtyActual: 1, qtyMin: 1, valueUnit: 3500.00, valueTotal: 3500.00, sectorActual: 'Salão', location: 'Caixa Entrada', acquisitionDate: '2025-06-01', supplier: 'BemaTech BR', notes: 'Computador integrado de atendimento.', status: 'Ativo' },
+                    { id: 5, code: 'TAB-001', name: 'Tablets Samsung Galaxy Tab A7', category: 'Tecnologia', subcategory: 'Comandas', unit: 'Unidade', qtyActual: 6, qtyMin: 2, valueUnit: 950.00, valueTotal: 5700.00, sectorActual: 'Salão', location: 'Armário Atendimento', acquisitionDate: '2025-07-10', supplier: 'Magazine Luiza', notes: 'Para lançamento de pedidos.', status: 'Ativo' },
+                    { id: 6, code: 'SPL-001', name: 'Ar Condicionado Split 24000 BTU', category: 'Equipamentos', subcategory: 'Climatização', unit: 'Unidade', qtyActual: 3, qtyMin: 1, valueUnit: 2900.00, valueTotal: 8700.00, sectorActual: 'Salão', location: 'Climatização Geral', acquisitionDate: '2025-06-10', supplier: 'FrioMax Split', notes: 'Split inverter econômico.', status: 'Ativo' }
                 ];
                 localStorage.setItem('corellux_patrimony_items', JSON.stringify(defaults));
                 return defaults;
@@ -2548,13 +3008,12 @@ export const DbService = {
             if (local) return JSON.parse(local);
             
             const defaults = [
-                { id: 1, code: 'PRT-001', name: 'Prato Raso Porcelana', category: 'Utensílios', subcategory: 'Pratos', unit: 'Unidade', qtyActual: 120, qtyMin: 50, valueUnit: 15.00, valueTotal: 1800.00, sectorActual: 'Salão', location: 'Armário A', acquisitionDate: '2025-01-15', supplier: 'Porcelanas Real', notes: 'Pratos de porcelana branca para serviço.', status: 'Ativo' },
-                { id: 2, code: 'FAC-002', name: 'Faca de Churrasco Tramontina', category: 'Utensílios', subcategory: 'Talheres', unit: 'Unidade', qtyActual: 150, qtyMin: 60, valueUnit: 8.50, valueTotal: 1275.00, sectorActual: 'Salão', location: 'Gaveta 2', acquisitionDate: '2025-01-20', supplier: 'Tramontina S/A', notes: 'Faca cabo de madeira resistente.', status: 'Ativo' },
-                { id: 3, code: 'COP-003', name: 'Copo Long Drink 300ml', category: 'Utensílios', subcategory: 'Copos', unit: 'Unidade', qtyActual: 200, qtyMin: 80, valueUnit: 5.00, valueTotal: 1000.00, sectorActual: 'Bar', location: 'Prateleira 1', acquisitionDate: '2025-02-10', supplier: 'Nadir Figueiredo', notes: 'Copos de vidro transparente.', status: 'Ativo' },
-                { id: 4, code: 'TAB-004', name: 'Tablet Samsung Galaxy A8', category: 'Tecnologia', subcategory: 'Tablets', unit: 'Unidade', qtyActual: 8, qtyMin: 2, valueUnit: 1200.00, valueTotal: 9600.00, sectorActual: 'Salão', location: 'Suporte Caixa', acquisitionDate: '2025-03-05', supplier: 'Magazine Luiza', notes: 'Utilizados para comandas eletrônicas.', status: 'Ativo' },
-                { id: 5, code: 'IMP-005', name: 'Impressora Térmica Bematech', category: 'Tecnologia', subcategory: 'Impressoras', unit: 'Unidade', qtyActual: 5, qtyMin: 1, valueUnit: 650.00, valueTotal: 3250.00, sectorActual: 'Cozinha', location: 'Balcão Expedição', acquisitionDate: '2025-02-05', supplier: 'Kabum', notes: 'Impressora de pedidos de cozinha.', status: 'Ativo' },
-                { id: 6, code: 'PAN-006', name: 'Panela de Pressão Industrial 20L', category: 'Equipamentos', subcategory: 'Panelas', unit: 'Unidade', qtyActual: 3, qtyMin: 1, valueUnit: 450.00, valueTotal: 1350.00, sectorActual: 'Cozinha', location: 'Fogão Central', acquisitionDate: '2025-01-10', supplier: 'Metalúrgica Alumínio', notes: 'Panela de pressão profissional reforçada.', status: 'Ativo' },
-                { id: 7, code: 'UNF-007', name: 'Camisa Polo Uniforme M', category: 'Uniformes', subcategory: 'Camisas', unit: 'Unidade', qtyActual: 30, qtyMin: 10, valueUnit: 45.00, valueTotal: 1350.00, sectorActual: 'Almoxarifado', location: 'Armário RH', acquisitionDate: '2025-04-12', supplier: 'Uniformes & Cia', notes: 'Camisas polo pretas com logo bordado.', status: 'Ativo' }
+                { id: 1, code: 'FOR-001', name: 'Forno de Pizza Lenha/Gás DiVolcano', category: 'Equipamentos', subcategory: 'Forno', unit: 'Unidade', qtyActual: 1, qtyMin: 1, valueUnit: 18000.00, valueTotal: 18000.00, sectorActual: 'Produção', location: 'Cozinha Central', acquisitionDate: '2025-06-01', supplier: 'Fornos DiVolcano', notes: 'Forno híbrido rotativo profissional.', status: 'Ativo' },
+                { id: 2, code: 'MAS-001', name: 'Masseira Espiral Industrial 25kg', category: 'Equipamentos', subcategory: 'Misturadores', unit: 'Unidade', qtyActual: 1, qtyMin: 1, valueUnit: 6500.00, valueTotal: 6500.00, sectorActual: 'Produção', location: 'Cozinha Preparação', acquisitionDate: '2025-06-01', supplier: 'Masseiras Premium', notes: 'Masseira de duas velocidades.', status: 'Ativo' },
+                { id: 3, code: 'GEL-001', name: 'Geladeira Comercial Inox 4 Portas', category: 'Equipamentos', subcategory: 'Refrigeração', unit: 'Unidade', qtyActual: 2, qtyMin: 1, valueUnit: 4800.00, valueTotal: 9600.00, sectorActual: 'Produção', location: 'Despensa de Frios', acquisitionDate: '2025-06-15', supplier: 'Refrigeração Inox', notes: 'Utilizada para conservação diária.', status: 'Ativo' },
+                { id: 4, code: 'PDV-001', name: 'Computador Caixa PDV Bematech', category: 'Tecnologia', subcategory: 'PDV', unit: 'Unidade', qtyActual: 1, qtyMin: 1, valueUnit: 3500.00, valueTotal: 3500.00, sectorActual: 'Salão', location: 'Caixa Entrada', acquisitionDate: '2025-06-01', supplier: 'BemaTech BR', notes: 'Computador integrado de atendimento.', status: 'Ativo' },
+                { id: 5, code: 'TAB-001', name: 'Tablets Samsung Galaxy Tab A7', category: 'Tecnologia', subcategory: 'Comandas', unit: 'Unidade', qtyActual: 6, qtyMin: 2, valueUnit: 950.00, valueTotal: 5700.00, sectorActual: 'Salão', location: 'Armário Atendimento', acquisitionDate: '2025-07-10', supplier: 'Magazine Luiza', notes: 'Para lançamento de pedidos.', status: 'Ativo' },
+                { id: 6, code: 'SPL-001', name: 'Ar Condicionado Split 24000 BTU', category: 'Equipamentos', subcategory: 'Climatização', unit: 'Unidade', qtyActual: 3, qtyMin: 1, valueUnit: 2900.00, valueTotal: 8700.00, sectorActual: 'Salão', location: 'Climatização Geral', acquisitionDate: '2025-06-10', supplier: 'FrioMax Split', notes: 'Split inverter econômico.', status: 'Ativo' }
             ];
             localStorage.setItem('corellux_patrimony_items', JSON.stringify(defaults));
             return defaults;
@@ -3012,6 +3471,80 @@ export const DbService = {
         } catch (e) {
             console.error('[DbService] Erro ao executar ordem de produção:', e);
             return { success: false, error: e.message };
+        }
+    },
+
+    // Buscar histórico de movimentações (Stock Flow Log)
+    async getStockMovements() {
+        try {
+            console.log('[DbService] Carregando histórico de movimentações WMS...');
+            const { data, error } = await supabase
+                .from('stock_movements')
+                .select('*')
+                .order('timestamp', { ascending: false });
+
+            if (error) throw error;
+            if (!data || data.length === 0) {
+                const local = localStorage.getItem('corellux_stock_movements');
+                return local ? JSON.parse(local) : [];
+            }
+            const camelMovements = toCamelCase(data);
+            localStorage.setItem('corellux_stock_movements', JSON.stringify(camelMovements));
+            return camelMovements;
+        } catch (e) {
+            console.error('[DbService] Erro ao buscar movimentações. Usando fallback local:', e.message || e);
+            const local = localStorage.getItem('corellux_stock_movements');
+            return local ? JSON.parse(local) : [];
+        }
+    },
+
+    // Salvar nova movimentação de estoque
+    async saveStockMovement(mov) {
+        try {
+            console.log('[DbService] Salvando movimentação de estoque...', mov);
+            const local = localStorage.getItem('corellux_stock_movements');
+            const movements = local ? JSON.parse(local) : [];
+            
+            const newMovement = {
+                id: mov.id || `mov_loc_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+                sku: mov.sku,
+                productName: mov.productName,
+                type: mov.type,
+                quantity: parseFloat(mov.quantity) || 0,
+                userName: mov.userName,
+                date: mov.date || new Date().toISOString().split('T')[0],
+                time: mov.time || new Date().toTimeString().split(' ')[0],
+                timestamp: mov.timestamp || new Date().toISOString(),
+                details: mov.details || ''
+            };
+            
+            movements.unshift(newMovement);
+            localStorage.setItem('corellux_stock_movements', JSON.stringify(movements));
+
+            // Converter para snake_case
+            const snakeObj = toSnakeCase({ ...newMovement });
+            if (typeof snakeObj.id === 'string' && snakeObj.id.startsWith('mov_loc_')) {
+                delete snakeObj.id;
+            }
+
+            const { data, error } = await supabase
+                .from('stock_movements')
+                .insert([snakeObj])
+                .select();
+
+            if (error) throw error;
+            if (data && data.length > 0) {
+                const returnedMovement = toCamelCase(data[0]);
+                const index = movements.findIndex(m => m.sku === returnedMovement.sku && m.timestamp === returnedMovement.timestamp);
+                if (index !== -1) {
+                    movements[index] = returnedMovement;
+                    localStorage.setItem('corellux_stock_movements', JSON.stringify(movements));
+                }
+            }
+            return { success: true };
+        } catch (e) {
+            console.error('[DbService] Erro ao salvar movimentação no Supabase. Mantido localmente:', e.message || e);
+            return { success: true, offline: true };
         }
     }
 };

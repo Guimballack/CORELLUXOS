@@ -65,7 +65,13 @@ const DEFAULTS = {
     patrimonyAudits: [],
 
     // Sub-Produtos (Semi-Acabados)
-    subprodutosActiveTab: 'dashboard'
+    subprodutosActiveTab: 'dashboard',
+
+    // Multi-Tenant
+    empresaId: null,
+    filialId: null,
+    isMasterSession: false,
+    modulosHabilitados: [],
 };
 
 // Instância única do estado na memória
