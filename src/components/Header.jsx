@@ -222,118 +222,156 @@ export default function Header() {
             </div>
         )}
         <header id="global-header">
-            <div className="logo-area">
-                {state.currentScreen !== 'dashboard' && (
-                    <button className="btn-home-header" onClick={handleBackClick} title="Voltar" style={{ marginRight: '0.5rem' }}>
-                        <ArrowLeft size={20} />
+            {/* COLUNA ESQUERDA: Logo + Info do Usuário + Hora/Data */}
+            <div style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1.5rem'
+            }}>
+                <div className="logo-area" style={{ margin: 0 }}>
+                    {state.currentScreen !== 'dashboard' && (
+                        <button className="btn-home-header" onClick={handleBackClick} title="Voltar" style={{ marginRight: '0.5rem' }}>
+                            <ArrowLeft size={20} />
+                        </button>
+                    )}
+                    <button className="btn-home-header" onClick={handleHomeClick} title="Início">
+                        <Home size={20} />
                     </button>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <img src="/logo_cubo.png?v=5" alt="Logo" style={{ height: '52px', width: 'auto', display: 'block' }} />
+                    </div>
+                </div>
+
+                {isUserLoggedIn && state.currentUser && (
+                    <div className="user-info-area" id="header-user-info" style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '1.5rem', marginLeft: 0, marginRight: 0 }}>
+                        <div className="header-avatar-container">
+                            <img 
+                                src={getUserAvatar(state.currentUser.img)} 
+                                alt={state.currentUser.displayName || state.currentUser.name} 
+                                className="header-avatar" 
+                            />
+                        </div>
+                        <div className="welcome-text">
+                            <span className="bem-vindo">Bem-vindo,</span>
+                            <span className="user-name">{state.currentUser.name}</span>
+                            <span className="user-role">{state.currentUser.role}</span>
+                        </div>
+                    </div>
                 )}
-                <button className="btn-home-header" onClick={handleHomeClick} title="Início">
-                    <Home size={20} />
-                </button>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <img src="/logo_cubo.png?v=5" alt="Logo" style={{ height: '52px', width: 'auto', display: 'block' }} />
+
+                <div className="time-area" style={{ borderLeft: '1px solid var(--border-color)', paddingLeft: '1.5rem', marginLeft: 0, marginRight: 0 }}>
+                    <div className="time">
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            {time}
+                        </span>
+                    </div>
+                    <div className="date">
+                        {date.dateFormatted}<br />
+                        <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>{date.capitalizedDay}</span>
+                    </div>
                 </div>
             </div>
 
-            {/* BADGE EMPRESA / FILIAL */}
-            {empresaData && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            {/* COLUNA CENTRAL: Nome da Empresa / Filiais */}
+            <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                zIndex: 5
+            }}>
+                {empresaData && (
                     <div style={{
-                        display: 'flex', alignItems: 'center', gap: '0.4rem',
-                        background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: '8px', padding: '0.3rem 0.7rem',
-                        fontSize: '0.72rem', color: 'var(--text-secondary)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        transform: 'scale(1.08)'
                     }}>
-                        <Building2 size={11} style={{ color: '#f97316' }} />
-                        <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>{empresaData.nome_fantasia || empresaData.razao_social}</span>
-                        {filialData && (
-                            <>
-                                <span style={{ opacity: 0.4 }}>›</span>
-                                <GitBranch size={10} style={{ color: '#06b6d4' }} />
-                                <span>{filialData.nome}</span>
-                            </>
-                        )}
-                    </div>
-                </div>
-            )}
-
-            {isUserLoggedIn && state.currentUser && (
-                <div className="user-info-area" id="header-user-info">
-                    <div className="header-avatar-container">
-                        <img 
-                            src={getUserAvatar(state.currentUser.img)} 
-                            alt={state.currentUser.displayName || state.currentUser.name} 
-                            className="header-avatar" 
-                        />
-                    </div>
-                    <div className="welcome-text">
-                        <span className="bem-vindo">Bem-vindo,</span>
-                        <span className="user-name">{state.currentUser.name}</span>
-                        <span className="user-role">{state.currentUser.role}</span>
-                    </div>
-                </div>
-            )}
-
-            <div className="time-area">
-                <div className="time">
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        {time}
-                    </span>
-                </div>
-                <div className="date">
-                    {date.dateFormatted}<br />
-                    <span style={{ fontSize: '0.75rem', opacity: 0.8 }}>{date.capitalizedDay}</span>
-                </div>
-            </div>
-
-            <div className="header-actions" id="header-actions">
-                {state.currentScreen === 'logistics-hub' && state.logisticsActiveTab === 'movimentar' && state.logisticsFlowType === 'entrada' && (
-                    <button 
-                        onClick={() => window.dispatchEvent(new CustomEvent('corellux-import-xml'))}
-                        className="btn-primary" 
-                        style={{
-                            padding: '0.4rem 0.8rem',
-                            fontSize: '0.8rem',
-                            background: 'rgba(255, 90, 0, 0.1)',
-                            border: '1px solid var(--accent-orange)',
-                            color: 'var(--accent-orange)',
+                        <div style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '0.3rem',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            fontWeight: '700',
-                            marginRight: '0.8rem',
-                            height: '34px'
-                        }}
-                    >
-                        <FileText size={14} /> IMPORTAR XML
-                    </button>
-                )}
-                {state.currentScreen === 'logistics-hub' && state.logisticsActiveTab === 'estoque' && (
-                    <div className="search-box" style={{ margin: '0 1rem 0 0', width: '250px' }}>
-                        <Search size={16} />
-                        <input 
-                            type="text" 
-                            placeholder="Buscar SKU, nome ou marca..."
-                            value={state.inventorySearch || ''}
-                            onChange={(e) => setKey('inventorySearch', e.target.value)}
-                        />
+                            gap: '0.5rem',
+                            background: 'rgba(255, 90, 0, 0.08)',
+                            border: '1px solid rgba(255, 90, 0, 0.25)',
+                            borderRadius: '10px',
+                            padding: '0.5rem 1rem',
+                            fontSize: '0.82rem',
+                            color: 'var(--text-secondary)',
+                            boxShadow: '0 0 15px rgba(243, 107, 29, 0.1)',
+                            transition: 'all 0.3s ease',
+                        }}>
+                            <Building2 size={13} style={{ color: '#f97316' }} />
+                            <span style={{ color: 'var(--text-primary)', fontWeight: '700', letterSpacing: '0.5px' }}>
+                                {empresaData.nome_fantasia || empresaData.razao_social}
+                            </span>
+                            {filialData && (
+                                <>
+                                    <span style={{ opacity: 0.4, margin: '0 0.15rem' }}>›</span>
+                                    <GitBranch size={12} style={{ color: '#06b6d4' }} />
+                                    <span style={{ fontWeight: '600', color: '#06b6d4' }}>{filialData.nome}</span>
+                                </>
+                            )}
+                        </div>
                     </div>
                 )}
-                <div className="header-notification-bell" onClick={handleNotificationClick}>
-                    <Bell size={18} />
-                    <span className="notification-badge" id="header-notif-count" style={{ display: unreadCount > 0 ? 'flex' : 'none' }}>
-                        {unreadCount}
-                    </span>
+            </div>
+
+            {/* COLUNA DIREITA: Ações (Busca, XML, Notificações, Logout) */}
+            <div style={{
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'flex-end',
+                gap: '1.5rem'
+            }}>
+                <div className="header-actions" id="header-actions" style={{ marginLeft: 0 }}>
+                    {state.currentScreen === 'logistics-hub' && state.logisticsActiveTab === 'movimentar' && state.logisticsFlowType === 'entrada' && (
+                        <button 
+                            onClick={() => window.dispatchEvent(new CustomEvent('corellux-import-xml'))}
+                            className="btn-primary" 
+                            style={{
+                                padding: '0.4rem 0.8rem',
+                                fontSize: '0.8rem',
+                                background: 'rgba(255, 90, 0, 0.1)',
+                                border: '1px solid var(--accent-orange)',
+                                color: 'var(--accent-orange)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.3rem',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontWeight: '700',
+                                marginRight: '0.8rem',
+                                height: '34px'
+                            }}
+                        >
+                            <FileText size={14} /> IMPORTAR XML
+                        </button>
+                    )}
+                    {state.currentScreen === 'logistics-hub' && state.logisticsActiveTab === 'estoque' && (
+                        <div className="search-box" style={{ margin: '0 1rem 0 0', width: '250px' }}>
+                            <Search size={16} />
+                            <input 
+                                type="text" 
+                                placeholder="Buscar SKU, nome ou marca..."
+                                value={state.inventorySearch || ''}
+                                onChange={(e) => setKey('inventorySearch', e.target.value)}
+                            />
+                        </div>
+                    )}
+                    <div className="header-notification-bell" onClick={handleNotificationClick} style={{ marginRight: 0 }}>
+                        <Bell size={18} />
+                        <span className="notification-badge" id="header-notif-count" style={{ display: unreadCount > 0 ? 'flex' : 'none' }}>
+                            {unreadCount}
+                        </span>
+                    </div>
+                    <button className="btn-logout-header orange-lock" onClick={handleLogout} id="btn-logout">
+                        <UserCheck size={16} /> Logout
+                    </button>
+                    <button className="btn-logout-header exit" onClick={handleExit} id="btn-exit">
+                        <LogOut size={16} /> Exit
+                    </button>
                 </div>
-                <button className="btn-logout-header orange-lock" onClick={handleLogout} id="btn-logout">
-                    <UserCheck size={16} /> Logout
-                </button>
-                <button className="btn-logout-header exit" onClick={handleExit} id="btn-exit">
-                    <LogOut size={16} /> Exit
-                </button>
             </div>
         </header>
         </>
