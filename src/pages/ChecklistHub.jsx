@@ -4359,7 +4359,7 @@ export default function ChecklistHub() {
             </div>
 
             {/* SCANNER OVERLAY SIMULATOR MODAL */}
-            {isScanning && (
+            {isScanning && createPortal(
                 <div className="modal-overlay" style={{ zIndex: 12500, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto' }}>
                     <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '400px', width: '100%', textAlign: 'center' }}>
                         <h4 style={{ margin: '0 0 1rem 0', color: '#fff', fontSize: '1.1rem' }}>SIMULADOR LEITOR DE CÓDIGO</h4>
@@ -4394,11 +4394,12 @@ export default function ChecklistHub() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* DETAIL MODAL: EXECUÇÃO DETALHADA */}
-            {activeExecutionDetail && (
+            {activeExecutionDetail && createPortal(
                 <div className="modal-overlay" style={{ zIndex: 12500, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto' }}>
                     <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '600px', width: '100%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.8rem', marginBottom: '1.25rem', flexShrink: 0 }}>
@@ -4460,47 +4461,51 @@ export default function ChecklistHub() {
                             </div>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* SIGNATURE POPUP MODAL */}
-            <div className="modal-overlay" style={{ display: isSignaturePopupOpen ? 'flex' : 'none', zIndex: 12500, alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto', touchAction: 'none' }}>
-                <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '600px', width: '100%', textAlign: 'center', touchAction: 'none' }}>
-                    <h3 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.2rem', fontWeight: 800 }}>ASSINATURA DIGITAL</h3>
-                    <p style={{ margin: '0 0 1.25rem 0', fontSize: '0.82rem', color: '#94a3b8' }}>Use o dedo na tela touchscreen ou o mouse para assinar.</p>
-                    <div style={{ background: '#000', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem', padding: '10px', touchAction: 'none' }}>
-                        <canvas 
-                            ref={canvasRef}
-                            width="520"
-                            height="240"
-                            style={{ 
-                                background: '#04060a', 
-                                border: '2px dashed rgba(255,255,255,0.1)', 
-                                borderRadius: '8px',
-                                cursor: 'crosshair',
-                                touchAction: 'none',
-                                maxWidth: '100%'
-                            }}
-                            onMouseDown={startDrawing}
-                            onMouseMove={draw}
-                            onMouseUp={stopDrawing}
-                        />
+            {createPortal(
+                <div className="modal-overlay" style={{ display: isSignaturePopupOpen ? 'flex' : 'none', zIndex: 12500, alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto', touchAction: 'none' }}>
+                    <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '600px', width: '100%', textAlign: 'center', touchAction: 'none' }}>
+                        <h3 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.2rem', fontWeight: 800 }}>ASSINATURA DIGITAL</h3>
+                        <p style={{ margin: '0 0 1.25rem 0', fontSize: '0.82rem', color: '#94a3b8' }}>Use o dedo na tela touchscreen ou o mouse para assinar.</p>
+                        <div style={{ background: '#000', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem', padding: '10px', touchAction: 'none' }}>
+                            <canvas 
+                                ref={canvasRef}
+                                width="520"
+                                height="240"
+                                style={{ 
+                                    background: '#04060a', 
+                                    border: '2px dashed rgba(255,255,255,0.1)', 
+                                    borderRadius: '8px',
+                                    cursor: 'crosshair',
+                                    touchAction: 'none',
+                                    maxWidth: '100%'
+                                }}
+                                onMouseDown={startDrawing}
+                                onMouseMove={draw}
+                                onMouseUp={stopDrawing}
+                            />
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                            <button className="btn-tool" style={{ flex: 1 }} onClick={clearSignature} type="button">Limpar</button>
+                            <button className="btn-tool" style={{ flex: 1, color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.2)' }} onClick={() => {
+                                setIsSignaturePopupOpen(false);
+                                setActiveSignatureItemId(null);
+                            }} type="button">Cancelar</button>
+                            <button className="btn-send-aviso" style={{ flex: 1 }} onClick={saveSignatureFromPopup} type="button">
+                                Confirmar
+                            </button>
+                        </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button className="btn-tool" style={{ flex: 1 }} onClick={clearSignature} type="button">Limpar</button>
-                        <button className="btn-tool" style={{ flex: 1, color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.2)' }} onClick={() => {
-                            setIsSignaturePopupOpen(false);
-                            setActiveSignatureItemId(null);
-                        }} type="button">Cancelar</button>
-                        <button className="btn-send-aviso" style={{ flex: 1 }} onClick={saveSignatureFromPopup} type="button">
-                            Confirmar
-                        </button>
-                    </div>
-                </div>
-            </div>
+                </div>,
+                document.body
+            )}
 
             {/* ANTES E DEPOIS DRAWING MODAL */}
-            {drawingImageModalOpen && activeDrawItemInfo && (
+            {drawingImageModalOpen && activeDrawItemInfo && createPortal(
                 <div className="modal-overlay" style={{ zIndex: 12500, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '5.5rem 1.5rem 2rem 1.5rem', overflowY: 'auto', touchAction: 'none' }}>
                     <div className="pin-modal-card" style={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', padding: '2rem', maxWidth: '600px', width: '100%', textAlign: 'center', touchAction: 'none' }}>
                         <h3 style={{ margin: '0 0 0.5rem 0', color: '#fff', fontSize: '1.2rem', fontWeight: 800 }}>
@@ -4600,11 +4605,12 @@ export default function ChecklistHub() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* SYSTEM CUSTOM ALERT / CONFIRM MODAL */}
-            {systemAlert && (
+            {systemAlert && createPortal(
                 <div className="modal-overlay" style={{ zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'rgba(0, 0, 0, 0.75)', backdropFilter: 'blur(4px)' }}>
                     <div className="pin-modal-card" style={{ background: '#0b1329', border: '1px solid rgba(0, 242, 254, 0.15)', borderRadius: '16px', padding: '2rem', maxWidth: '450px', width: '100%', textAlign: 'center', boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.5)' }}>
                         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.25rem' }}>
@@ -4657,11 +4663,12 @@ export default function ChecklistHub() {
                             )}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* CHECKLIST EXECUTION RESULT / SUCCESS REPORT MODAL */}
-            {execResultModal && (
+            {execResultModal && createPortal(
                 <div className="modal-overlay" style={{ zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'rgba(5, 8, 16, 0.85)', backdropFilter: 'blur(8px)' }}>
                     <div className="pin-modal-card" style={{ 
                         background: '#0b1329', 
@@ -4798,11 +4805,12 @@ export default function ChecklistHub() {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* PREVIEW E IMPRESSÃO DO CARTÃO QR CODE */}
-            {qrPrintModalOpen && qrPrintModel && (
+            {qrPrintModalOpen && qrPrintModel && createPortal(
                 <div id="qrcode-print-area-wrapper" className="modal-overlay" style={{ zIndex: 12000, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'rgba(0, 0, 0, 0.85)', backdropFilter: 'blur(5px)' }}>
                     <style dangerouslySetInnerHTML={{__html: `
                         @media print {
@@ -4946,11 +4954,12 @@ export default function ChecklistHub() {
                             <Printer size={16} /> Imprimir Cartão QR
                         </button>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
 
             {/* WEBCAM CAMERA MODAL */}
-            {cameraModal.isOpen && (
+            {cameraModal.isOpen && createPortal(
                 <div className="modal-overlay" style={{ zIndex: 13000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem', background: 'rgba(5, 8, 16, 0.9)', backdropFilter: 'blur(10px)' }}>
                     <div className="pin-modal-card" style={{ 
                         background: '#0b1329', 
@@ -5049,7 +5058,8 @@ export default function ChecklistHub() {
                             <div style={{ width: '92px' }}></div> {/* Spacer to balance layout */}
                         </div>
                     </div>
-                </div>
+                </div>,
+                document.body
             )}
         </div>
     );
