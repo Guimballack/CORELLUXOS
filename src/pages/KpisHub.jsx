@@ -55,13 +55,53 @@ export default function KpisHub() {
         loadData();
     }, [loadData]);
 
-    // Lógica de cálculo de custo e valuation de estoque
+    // Lógica de cálculo de custo e valuation de estoque com valores realistas mockados por SKU
     const productCosts = useMemo(() => {
+        const mockCosts = {
+            'MAS-001': 8.50,   // Farinha de Trigo Especial 00 (KG)
+            'MAS-002': 45.00,  // Fermento Biológico Seco (KG)
+            'LAC-001': 32.00,  // Queijo Muçarela Barra (KG)
+            'MOL-001': 12.00,  // Molho de Tomate Pelati (KG)
+            'PRO-001': 26.50,  // Calabresa Defumada Inteira (KG)
+            'PRO-002': 22.00,  // Presunto Cozido Peça (KG)
+            'PRO-003': 28.00,  // Bacon Manta Defumado (KG)
+            'PRO-004': 18.50,  // Peito de Frango Desfiado (KG)
+            'LAC-002': 38.00,  // Requeijão Culinário Scala (UN)
+            'LAC-003': 68.00,  // Queijo Parmesão Peça (KG)
+            'LAC-004': 56.00,  // Queijo Gorgonzola Peça (KG)
+            'LAC-005': 48.00,  // Queijo Provolone Defumado (KG)
+            'HOR-001': 6.50,   // Tomate Carmem Fresco (KG)
+            'HOR-002': 5.50,   // Cebola Roxa (KG)
+            'HOR-003': 4.50,   // Cebola Branca (KG)
+            'HOR-004': 2.50,   // Manjericão Fresco Maço (UN)
+            'HOR-005': 3.00,   // Rúcula Fresca Maço (UN)
+            'HOR-006': 20.00,  // Alho Roxo Cabeça (KG)
+            'HOR-007': 18.00,  // Azeitona Preta Inteira (KG)
+            'TMP-001': 28.00,  // Azeite de Oliva Extra Virgem 500ml (UN)
+            'TMP-002': 35.00,  // Orégano Desidratado (KG)
+            'TMP-003': 3.50,   // Sal Refinado 1kg (UN)
+            'BEB-001': 7.50,   // Refrigerante Coca-Cola 2L (UN)
+            'BEB-002': 6.50,   // Refrigerante Guaraná Antarctica 2L (UN)
+            'BEB-003': 4.20,   // Cerveja Stella Artois Long Neck (UN)
+            'BEB-004': 1.50,   // Água Mineral Sem Gás 500ml (UN)
+            'EMB-001': 2.20,   // Caixa de Pizza Oitavada 35cm (UN)
+            'EMB-002': 1.20,   // Sacola Kraft Delivery (UN)
+            'LIM-001': 14.50,  // Detergente Neutro Concentrado 5L (UN)
+            'LIM-002': 18.00   // Cloro Ativo Sanitizante 5L (UN)
+        };
+
         const costMap = {};
         products.forEach(p => {
-            // Fórmula estável baseada no SKU para produtos sem custo definido
-            const stableRandom = (p.sku.charCodeAt(p.sku.length - 1) * 3) % 150 + 5;
-            costMap[p.sku] = p.cost || stableRandom;
+            const skuUpper = p.sku.toUpperCase();
+            if (p.cost !== undefined && p.cost !== null && p.cost > 0) {
+                costMap[p.sku] = p.cost;
+            } else if (mockCosts[skuUpper] !== undefined) {
+                costMap[p.sku] = mockCosts[skuUpper];
+            } else {
+                // Fallback de segurança para produtos personalizados
+                const stableRandom = (p.sku.charCodeAt(p.sku.length - 1) * 3) % 150 + 5;
+                costMap[p.sku] = stableRandom;
+            }
         });
         return costMap;
     }, [products]);
