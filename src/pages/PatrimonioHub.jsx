@@ -59,6 +59,38 @@ export default function PatrimonioHub() {
     const activeTab = state.patrimonioActiveTab || 'dashboard';
     const setActiveTab = (tab) => setKey('patrimonioActiveTab', tab);
 
+    const hasAccess = (permissionKey) => {
+        const user = state.currentUser;
+        if (!user) return false;
+        if (user.accessLevel === 'Administrador') return true;
+        if (!user.permissions) return false;
+        if (user.permissions[permissionKey] === undefined) return true;
+        return !!user.permissions[permissionKey];
+    };
+
+    useEffect(() => {
+        const tab = state.patrimonioActiveTab || 'dashboard';
+        const tabList = [
+            { id: 'dashboard', perm: 'sub_patrimonio_painel' },
+            { id: 'cadastro', perm: 'sub_patrimonio_cadastro' },
+            { id: 'categorias', perm: 'sub_patrimonio_categorias' },
+            { id: 'movimentacoes', perm: 'sub_patrimonio_movimentacoes' },
+            { id: 'setores', perm: 'sub_patrimonio_setores' },
+            { id: 'responsabilidade', perm: 'sub_patrimonio_responsabilidade' },
+            { id: 'inventario', perm: 'sub_patrimonio_inventario' },
+            { id: 'relatorios', perm: 'sub_patrimonio_relatorios' },
+            { id: 'auditoria', perm: 'sub_patrimonio_auditoria' }
+        ];
+
+        const currentTabConfig = tabList.find(t => t.id === tab);
+        if (currentTabConfig && !hasAccess(currentTabConfig.perm)) {
+            const firstPermitted = tabList.find(t => hasAccess(t.perm));
+            if (firstPermitted) {
+                setKey('patrimonioActiveTab', firstPermitted.id);
+            }
+        }
+    }, [state.patrimonioActiveTab, state.currentUser]);
+
     const [loading, setLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('Todos');
@@ -1090,33 +1122,51 @@ export default function PatrimonioHub() {
                 </div>
 
                 <div style={{ flex: 1 }}>
-                    <button className={`pat-sidebar-btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
-                        <PieChart size={18} /> Dashboard
-                    </button>
-                    <button className={`pat-sidebar-btn ${activeTab === 'cadastro' ? 'active' : ''}`} onClick={() => setActiveTab('cadastro')}>
-                        <Boxes size={18} /> Cadastro de Bens
-                    </button>
-                    <button className={`pat-sidebar-btn ${activeTab === 'categorias' ? 'active' : ''}`} onClick={() => setActiveTab('categorias')}>
-                        <FolderPlus size={18} /> Categorias
-                    </button>
-                    <button className={`pat-sidebar-btn ${activeTab === 'movimentacoes' ? 'active' : ''}`} onClick={() => setActiveTab('movimentacoes')}>
-                        <TrendingUp size={18} /> Movimentações
-                    </button>
-                    <button className={`pat-sidebar-btn ${activeTab === 'setores' ? 'active' : ''}`} onClick={() => setActiveTab('setores')}>
-                        <MapPin size={18} /> Controle por Setor
-                    </button>
-                    <button className={`pat-sidebar-btn ${activeTab === 'responsabilidade' ? 'active' : ''}`} onClick={() => setActiveTab('responsabilidade')}>
-                        <UserCheck size={18} /> Responsabilidade
-                    </button>
-                    <button className={`pat-sidebar-btn ${activeTab === 'inventario' ? 'active' : ''}`} onClick={() => setActiveTab('inventario')}>
-                        <ClipboardList size={18} /> Inventário Físico
-                    </button>
-                    <button className={`pat-sidebar-btn ${activeTab === 'relatorios' ? 'active' : ''}`} onClick={() => setActiveTab('relatorios')}>
-                        <FileText size={18} /> Relatórios
-                    </button>
-                    <button className={`pat-sidebar-btn ${activeTab === 'auditoria' ? 'active' : ''}`} onClick={() => setActiveTab('auditoria')}>
-                        <Hammer size={18} /> Log de Auditoria
-                    </button>
+                    {hasAccess('sub_patrimonio_painel') && (
+                        <button className={`pat-sidebar-btn ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
+                            <PieChart size={18} /> Dashboard
+                        </button>
+                    )}
+                    {hasAccess('sub_patrimonio_cadastro') && (
+                        <button className={`pat-sidebar-btn ${activeTab === 'cadastro' ? 'active' : ''}`} onClick={() => setActiveTab('cadastro')}>
+                            <Boxes size={18} /> Cadastro de Bens
+                        </button>
+                    )}
+                    {hasAccess('sub_patrimonio_categorias') && (
+                        <button className={`pat-sidebar-btn ${activeTab === 'categorias' ? 'active' : ''}`} onClick={() => setActiveTab('categorias')}>
+                            <FolderPlus size={18} /> Categorias
+                        </button>
+                    )}
+                    {hasAccess('sub_patrimonio_movimentacoes') && (
+                        <button className={`pat-sidebar-btn ${activeTab === 'movimentacoes' ? 'active' : ''}`} onClick={() => setActiveTab('movimentacoes')}>
+                            <TrendingUp size={18} /> Movimentações
+                        </button>
+                    )}
+                    {hasAccess('sub_patrimonio_setores') && (
+                        <button className={`pat-sidebar-btn ${activeTab === 'setores' ? 'active' : ''}`} onClick={() => setActiveTab('setores')}>
+                            <MapPin size={18} /> Controle por Setor
+                        </button>
+                    )}
+                    {hasAccess('sub_patrimonio_responsabilidade') && (
+                        <button className={`pat-sidebar-btn ${activeTab === 'responsabilidade' ? 'active' : ''}`} onClick={() => setActiveTab('responsabilidade')}>
+                            <UserCheck size={18} /> Responsabilidade
+                        </button>
+                    )}
+                    {hasAccess('sub_patrimonio_inventario') && (
+                        <button className={`pat-sidebar-btn ${activeTab === 'inventario' ? 'active' : ''}`} onClick={() => setActiveTab('inventario')}>
+                            <ClipboardList size={18} /> Inventário Físico
+                        </button>
+                    )}
+                    {hasAccess('sub_patrimonio_relatorios') && (
+                        <button className={`pat-sidebar-btn ${activeTab === 'relatorios' ? 'active' : ''}`} onClick={() => setActiveTab('relatorios')}>
+                            <FileText size={18} /> Relatórios
+                        </button>
+                    )}
+                    {hasAccess('sub_patrimonio_auditoria') && (
+                        <button className={`pat-sidebar-btn ${activeTab === 'auditoria' ? 'active' : ''}`} onClick={() => setActiveTab('auditoria')}>
+                            <Hammer size={18} /> Log de Auditoria
+                        </button>
+                    )}
                 </div>
             </aside>
 

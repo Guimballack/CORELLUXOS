@@ -85,6 +85,39 @@ export default function ChecklistHub() {
     const checklistModels = state.checklistModels || [];
     const checklistExecutions = state.checklistExecutions || [];
 
+    const hasAccess = (permissionKey) => {
+        const user = state.currentUser;
+        if (!user) return false;
+        if (user.accessLevel === 'Administrador') return true;
+        if (!user.permissions) return false;
+        if (user.permissions[permissionKey] === undefined) return true;
+        return !!user.permissions[permissionKey];
+    };
+
+    useEffect(() => {
+        const tab = state.checklistActiveTab || 'menu';
+        if (tab !== 'menu') {
+            const permMap = {
+                run_checklist: 'sub_checklist_executar',
+                dashboard: 'sub_checklist_kpis',
+                templates: 'sub_checklist_modelos',
+                builder: 'sub_checklist_modelos',
+                nc: 'sub_checklist_nc',
+                action_plans: 'sub_checklist_planos',
+                integrations: 'sub_checklist_integracoes',
+                checklist_audit: 'sub_checklist_auditoria',
+                score_ranking: 'sub_checklist_performance',
+                audit: 'sub_checklist_trilha',
+                permissions: 'sub_checklist_acessos',
+                collaborator_diagram: 'sub_checklist_diagrama',
+            };
+            const requiredPerm = permMap[tab];
+            if (requiredPerm && !hasAccess(requiredPerm)) {
+                setKey('checklistActiveTab', 'menu');
+            }
+        }
+    }, [state.checklistActiveTab, state.currentUser]);
+
     // UI Local States
     const [theme, setTheme] = useState('dark');
     const [activeExecution, setActiveExecution] = useState(null);
@@ -2198,115 +2231,137 @@ export default function ChecklistHub() {
 
                         {/* Menu de Navegação por Cards (Premium) */}
                         <div className="chk-menu-grid">
-                            <div className="chk-menu-card teal" onClick={() => setTab('run_checklist')}>
-                                <div className="chk-menu-card-icon">
-                                    <Play size={24} fill="currentColor" style={{ marginLeft: '3px' }} />
+                            {hasAccess('sub_checklist_executar') && (
+                                <div className="chk-menu-card teal" onClick={() => setTab('run_checklist')}>
+                                    <div className="chk-menu-card-icon">
+                                        <Play size={24} fill="currentColor" style={{ marginLeft: '3px' }} />
+                                    </div>
+                                    <div className="chk-menu-card-content">
+                                        <h3>Executar Checklist</h3>
+                                        <p>Iniciar o preenchimento de vistorias e checklists operacionais ativos em tempo real.</p>
+                                    </div>
                                 </div>
-                                <div className="chk-menu-card-content">
-                                    <h3>Executar Checklist</h3>
-                                    <p>Iniciar o preenchimento de vistorias e checklists operacionais ativos em tempo real.</p>
-                                </div>
-                            </div>
+                            )}
 
-                            <div className="chk-menu-card blue" onClick={() => setTab('dashboard')}>
-                                <div className="chk-menu-card-icon">
-                                    <TrendingUp size={24} />
+                            {hasAccess('sub_checklist_kpis') && (
+                                <div className="chk-menu-card blue" onClick={() => setTab('dashboard')}>
+                                    <div className="chk-menu-card-icon">
+                                        <TrendingUp size={24} />
+                                    </div>
+                                    <div className="chk-menu-card-content">
+                                        <h3>Indicadores & KPIs</h3>
+                                        <p>Acompanhe gráficos de conformidade, taxas de aprovação, SLAs e estatísticas por setor.</p>
+                                    </div>
                                 </div>
-                                <div className="chk-menu-card-content">
-                                    <h3>Indicadores & KPIs</h3>
-                                    <p>Acompanhe gráficos de conformidade, taxas de aprovação, SLAs e estatísticas por setor.</p>
-                                </div>
-                            </div>
+                            )}
 
-                            <div className="chk-menu-card purple" onClick={() => setTab('templates')}>
-                                <div className="chk-menu-card-icon">
-                                    <Settings size={24} />
+                            {hasAccess('sub_checklist_modelos') && (
+                                <div className="chk-menu-card purple" onClick={() => setTab('templates')}>
+                                    <div className="chk-menu-card-icon">
+                                        <Settings size={24} />
+                                    </div>
+                                    <div className="chk-menu-card-content">
+                                        <h3>Modelos de Checklist</h3>
+                                        <p>Configurar templates, criar novos formulários e gerenciar itens e regras.</p>
+                                    </div>
                                 </div>
-                                <div className="chk-menu-card-content">
-                                    <h3>Modelos de Checklist</h3>
-                                    <p>Configurar templates, criar novos formulários e gerenciar itens e regras.</p>
-                                </div>
-                            </div>
+                            )}
 
-                            <div className="chk-menu-card yellow" onClick={() => setTab('nc')}>
-                                <div className="chk-menu-card-icon">
-                                    <AlertTriangle size={24} />
+                            {hasAccess('sub_checklist_nc') && (
+                                <div className="chk-menu-card yellow" onClick={() => setTab('nc')}>
+                                    <div className="chk-menu-card-icon">
+                                        <AlertTriangle size={24} />
+                                    </div>
+                                    <div className="chk-menu-card-content">
+                                        <h3>Não Conformidades</h3>
+                                        <p>Monitore e trate ocorrências abertas automaticamente devido a falhas de conformidade.</p>
+                                    </div>
                                 </div>
-                                <div className="chk-menu-card-content">
-                                    <h3>Não Conformidades</h3>
-                                    <p>Monitore e trate ocorrências abertas automaticamente devido a falhas de conformidade.</p>
-                                </div>
-                            </div>
+                            )}
 
-                            <div className="chk-menu-card orange" onClick={() => setTab('action_plans')}>
-                                <div className="chk-menu-card-icon">
-                                    <CheckCircle2 size={24} />
+                            {hasAccess('sub_checklist_planos') && (
+                                <div className="chk-menu-card orange" onClick={() => setTab('action_plans')}>
+                                    <div className="chk-menu-card-icon">
+                                        <CheckCircle2 size={24} />
+                                    </div>
+                                    <div className="chk-menu-card-content">
+                                        <h3>Planos de Ação</h3>
+                                        <p>Gerencie ações corretivas (5W2H) com responsáveis, prazos e prioridades.</p>
+                                    </div>
                                 </div>
-                                <div className="chk-menu-card-content">
-                                    <h3>Planos de Ação</h3>
-                                    <p>Gerencie ações corretivas (5W2H) com responsáveis, prazos e prioridades.</p>
-                                </div>
-                            </div>
+                            )}
 
-                            <div className="chk-menu-card emerald" onClick={() => setTab('integrations')}>
-                                <div className="chk-menu-card-icon">
-                                    <RefreshCw size={24} />
+                            {hasAccess('sub_checklist_integracoes') && (
+                                <div className="chk-menu-card emerald" onClick={() => setTab('integrations')}>
+                                    <div className="chk-menu-card-icon">
+                                        <RefreshCw size={24} />
+                                    </div>
+                                    <div className="chk-menu-card-content">
+                                        <h3>Integrações ERP</h3>
+                                        <p>Configure disparos automáticos inteligentes baseados em eventos do ERP.</p>
+                                    </div>
                                 </div>
-                                <div className="chk-menu-card-content">
-                                    <h3>Integrações ERP</h3>
-                                    <p>Configure disparos automáticos inteligentes baseados em eventos do ERP.</p>
-                                </div>
-                            </div>
+                            )}
 
-                            <div className="chk-menu-card emerald" onClick={() => setTab('checklist_audit')}>
-                                <div className="chk-menu-card-icon">
-                                    <Eye size={24} />
+                            {hasAccess('sub_checklist_auditoria') && (
+                                <div className="chk-menu-card emerald" onClick={() => setTab('checklist_audit')}>
+                                    <div className="chk-menu-card-icon">
+                                        <Eye size={24} />
+                                    </div>
+                                    <div className="chk-menu-card-content">
+                                        <h3>Auditoria de Checklist</h3>
+                                        <p>Audite vistorias finalizadas, assinaturas, conformidades e evidências fotográficas.</p>
+                                    </div>
                                 </div>
-                                <div className="chk-menu-card-content">
-                                    <h3>Auditoria de Checklist</h3>
-                                    <p>Audite vistorias finalizadas, assinaturas, conformidades e evidências fotográficas.</p>
-                                </div>
-                            </div>
+                            )}
 
-                            <div className="chk-menu-card yellow" onClick={() => setTab('score_ranking')}>
-                                <div className="chk-menu-card-icon">
-                                    <Award size={24} />
+                            {hasAccess('sub_checklist_performance') && (
+                                <div className="chk-menu-card yellow" onClick={() => setTab('score_ranking')}>
+                                    <div className="chk-menu-card-icon">
+                                        <Award size={24} />
+                                    </div>
+                                    <div className="chk-menu-card-content">
+                                        <h3>Pontuação & Performance</h3>
+                                        <p>Consulte o ranking de conformidade de setores e indicadores de performance de colaboradores.</p>
+                                    </div>
                                 </div>
-                                <div className="chk-menu-card-content">
-                                    <h3>Pontuação & Performance</h3>
-                                    <p>Consulte o ranking de conformidade de setores e indicadores de performance de colaboradores.</p>
-                                </div>
-                            </div>
+                            )}
 
-                            <div className="chk-menu-card slate" onClick={() => setTab('audit')}>
-                                <div className="chk-menu-card-icon">
-                                    <Database size={24} />
+                            {hasAccess('sub_checklist_trilha') && (
+                                <div className="chk-menu-card slate" onClick={() => setTab('audit')}>
+                                    <div className="chk-menu-card-icon">
+                                        <Database size={24} />
+                                    </div>
+                                    <div className="chk-menu-card-content">
+                                        <h3>Trilha de Auditoria</h3>
+                                        <p>Logs detalhados de auditoria contendo dados de GPS, executor e IP.</p>
+                                    </div>
                                 </div>
-                                <div className="chk-menu-card-content">
-                                    <h3>Trilha de Auditoria</h3>
-                                    <p>Logs detalhados de auditoria contendo dados de GPS, executor e IP.</p>
-                                </div>
-                            </div>
+                            )}
 
-                            <div className="chk-menu-card slate" onClick={() => setTab('permissions')}>
-                                <div className="chk-menu-card-icon">
-                                    <Sliders size={24} />
+                            {hasAccess('sub_checklist_acessos') && (
+                                <div className="chk-menu-card slate" onClick={() => setTab('permissions')}>
+                                    <div className="chk-menu-card-icon">
+                                        <Sliders size={24} />
+                                    </div>
+                                    <div className="chk-menu-card-content">
+                                        <h3>Acessos e Permissões</h3>
+                                        <p>Defina permissões de visualização, edição, execução e auditoria por cargos.</p>
+                                    </div>
                                 </div>
-                                <div className="chk-menu-card-content">
-                                    <h3>Acessos e Permissões</h3>
-                                    <p>Defina permissões de visualização, edição, execução e auditoria por cargos.</p>
-                                </div>
-                            </div>
+                            )}
 
-                            <div className="chk-menu-card purple" onClick={() => setTab('collaborator_diagram')}>
-                                <div className="chk-menu-card-icon">
-                                    <Users size={24} />
+                            {hasAccess('sub_checklist_diagrama') && (
+                                <div className="chk-menu-card purple" onClick={() => setTab('collaborator_diagram')}>
+                                    <div className="chk-menu-card-icon">
+                                        <Users size={24} />
+                                    </div>
+                                    <div className="chk-menu-card-content">
+                                        <h3>Diagrama de Colaboradores</h3>
+                                        <p>Vincule colaboradores aos checklists operacionais arrastando-os diretamente.</p>
+                                    </div>
                                 </div>
-                                <div className="chk-menu-card-content">
-                                    <h3>Diagrama de Colaboradores</h3>
-                                    <p>Vincule colaboradores aos checklists operacionais arrastando-os diretamente.</p>
-                                </div>
-                            </div>
+                            )}
                         </div>
                     </>
                 )}

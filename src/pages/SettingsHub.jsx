@@ -140,6 +140,35 @@ export default function SettingsHub() {
     const [saleProducts, setSaleProducts] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const hasAccess = (permissionKey) => {
+        const user = globalState.currentUser;
+        if (!user) return false;
+        if (user.accessLevel === 'Administrador') return true;
+        if (!user.permissions) return false;
+        if (user.permissions[permissionKey] === undefined) return true;
+        return !!user.permissions[permissionKey];
+    };
+
+    useEffect(() => {
+        const tab = globalState.settingsActiveTab || 'menu';
+        if (tab !== 'menu') {
+            const permMap = {
+                colaboradores: 'sub_settings_colaboradores',
+                produtos: 'sub_settings_produtos',
+                produto: 'sub_settings_produtos_venda',
+                categorias: 'sub_settings_categorias',
+                fornecedores: 'sub_settings_fornecedores',
+                setores: 'sub_settings_setores',
+                cargos: 'sub_settings_cargos',
+                wms: 'sub_settings_wms',
+            };
+            const requiredPerm = permMap[tab];
+            if (requiredPerm && !hasAccess(requiredPerm)) {
+                setGlobalKey('settingsActiveTab', 'menu');
+            }
+        }
+    }, [globalState.settingsActiveTab, globalState.currentUser]);
+
     // =============================================
     // WMS STATE DECLARATIONS
     // =============================================
@@ -955,7 +984,62 @@ export default function SettingsHub() {
             approveRequests: false, requestItems: true, supplierView: true,
             supplierCreate: false, supplierEdit: false, supplierBlock: false,
             supplierDelete: false, chkCreate: false, chkAnswer: true,
-            chkApprove: false, chkReports: false
+            chkApprove: false, chkReports: false,
+            menu_logistica: true,
+            menu_gestao_operacional: true,
+            menu_patrimonio: true,
+            menu_financeiro: true,
+            menu_ged: true,
+            menu_kpis: true,
+            menu_ponto: true,
+            menu_compras: true,
+            menu_juridico: true,
+            menu_subprodutos: true,
+            menu_cadastros: true,
+            sub_logistica_estoque: true,
+            sub_logistica_flow: true,
+            sub_logistica_requisicao: true,
+            sub_logistica_aprovacao: true,
+            sub_logistica_perdas: true,
+            sub_logistica_wms: true,
+            sub_logistica_supply: true,
+            sub_logistica_wip: true,
+            sub_gestao_comunicados: true,
+            sub_gestao_enviar: true,
+            sub_gestao_checklist: true,
+            sub_checklist_executar: true,
+            sub_checklist_kpis: true,
+            sub_checklist_modelos: true,
+            sub_checklist_nc: true,
+            sub_checklist_planos: true,
+            sub_checklist_integracoes: true,
+            sub_checklist_auditoria: true,
+            sub_checklist_performance: true,
+            sub_checklist_trilha: true,
+            sub_checklist_acessos: true,
+            sub_checklist_diagrama: true,
+            sub_patrimonio_painel: true,
+            sub_patrimonio_cadastro: true,
+            sub_patrimonio_categorias: true,
+            sub_patrimonio_movimentacoes: true,
+            sub_patrimonio_setores: true,
+            sub_patrimonio_responsabilidade: true,
+            sub_patrimonio_inventario: true,
+            sub_patrimonio_relatorios: true,
+            sub_patrimonio_auditoria: true,
+            sub_subprodutos_painel: true,
+            sub_subprodutos_fichas: true,
+            sub_subprodutos_ordens: true,
+            sub_subprodutos_estoque: true,
+            sub_subprodutos_historico: true,
+            sub_settings_colaboradores: true,
+            sub_settings_produtos: true,
+            sub_settings_produtos_venda: true,
+            sub_settings_categorias: true,
+            sub_settings_fornecedores: true,
+            sub_settings_setores: true,
+            sub_settings_cargos: true,
+            sub_settings_wms: true
         }
     });
 
@@ -1004,7 +1088,62 @@ export default function SettingsHub() {
                 approveRequests: false, requestItems: true, supplierView: true,
                 supplierCreate: false, supplierEdit: false, supplierBlock: false,
                 supplierDelete: false, chkCreate: false, chkAnswer: true,
-                chkApprove: false, chkReports: false
+                chkApprove: false, chkReports: false,
+                menu_logistica: true,
+                menu_gestao_operacional: true,
+                menu_patrimonio: true,
+                menu_financeiro: true,
+                menu_ged: true,
+                menu_kpis: true,
+                menu_ponto: true,
+                menu_compras: true,
+                menu_juridico: true,
+                menu_subprodutos: true,
+                menu_cadastros: true,
+                sub_logistica_estoque: true,
+                sub_logistica_flow: true,
+                sub_logistica_requisicao: true,
+                sub_logistica_aprovacao: true,
+                sub_logistica_perdas: true,
+                sub_logistica_wms: true,
+                sub_logistica_supply: true,
+                sub_logistica_wip: true,
+                sub_gestao_comunicados: true,
+                sub_gestao_enviar: true,
+                sub_gestao_checklist: true,
+                sub_checklist_executar: true,
+                sub_checklist_kpis: true,
+                sub_checklist_modelos: true,
+                sub_checklist_nc: true,
+                sub_checklist_planos: true,
+                sub_checklist_integracoes: true,
+                sub_checklist_auditoria: true,
+                sub_checklist_performance: true,
+                sub_checklist_trilha: true,
+                sub_checklist_acessos: true,
+                sub_checklist_diagrama: true,
+                sub_patrimonio_painel: true,
+                sub_patrimonio_cadastro: true,
+                sub_patrimonio_categorias: true,
+                sub_patrimonio_movimentacoes: true,
+                sub_patrimonio_setores: true,
+                sub_patrimonio_responsabilidade: true,
+                sub_patrimonio_inventario: true,
+                sub_patrimonio_relatorios: true,
+                sub_patrimonio_auditoria: true,
+                sub_subprodutos_painel: true,
+                sub_subprodutos_fichas: true,
+                sub_subprodutos_ordens: true,
+                sub_subprodutos_estoque: true,
+                sub_subprodutos_historico: true,
+                sub_settings_colaboradores: true,
+                sub_settings_produtos: true,
+                sub_settings_produtos_venda: true,
+                sub_settings_categorias: true,
+                sub_settings_fornecedores: true,
+                sub_settings_setores: true,
+                sub_settings_cargos: true,
+                sub_settings_wms: true
             }
         });
         setColabActiveSection('pessoais');
@@ -1031,7 +1170,62 @@ export default function SettingsHub() {
                 approveRequests: false, requestItems: true, supplierView: true,
                 supplierCreate: false, supplierEdit: false, supplierBlock: false,
                 supplierDelete: false, chkCreate: false, chkAnswer: true,
-                chkApprove: false, chkReports: false
+                chkApprove: false, chkReports: false,
+                menu_logistica: true,
+                menu_gestao_operacional: true,
+                menu_patrimonio: true,
+                menu_financeiro: true,
+                menu_ged: true,
+                menu_kpis: true,
+                menu_ponto: true,
+                menu_compras: true,
+                menu_juridico: true,
+                menu_subprodutos: true,
+                menu_cadastros: true,
+                sub_logistica_estoque: true,
+                sub_logistica_flow: true,
+                sub_logistica_requisicao: true,
+                sub_logistica_aprovacao: true,
+                sub_logistica_perdas: true,
+                sub_logistica_wms: true,
+                sub_logistica_supply: true,
+                sub_logistica_wip: true,
+                sub_gestao_comunicados: true,
+                sub_gestao_enviar: true,
+                sub_gestao_checklist: true,
+                sub_checklist_executar: true,
+                sub_checklist_kpis: true,
+                sub_checklist_modelos: true,
+                sub_checklist_nc: true,
+                sub_checklist_planos: true,
+                sub_checklist_integracoes: true,
+                sub_checklist_auditoria: true,
+                sub_checklist_performance: true,
+                sub_checklist_trilha: true,
+                sub_checklist_acessos: true,
+                sub_checklist_diagrama: true,
+                sub_patrimonio_painel: true,
+                sub_patrimonio_cadastro: true,
+                sub_patrimonio_categorias: true,
+                sub_patrimonio_movimentacoes: true,
+                sub_patrimonio_setores: true,
+                sub_patrimonio_responsabilidade: true,
+                sub_patrimonio_inventario: true,
+                sub_patrimonio_relatorios: true,
+                sub_patrimonio_auditoria: true,
+                sub_subprodutos_painel: true,
+                sub_subprodutos_fichas: true,
+                sub_subprodutos_ordens: true,
+                sub_subprodutos_estoque: true,
+                sub_subprodutos_historico: true,
+                sub_settings_colaboradores: true,
+                sub_settings_produtos: true,
+                sub_settings_produtos_venda: true,
+                sub_settings_categorias: true,
+                sub_settings_fornecedores: true,
+                sub_settings_setores: true,
+                sub_settings_cargos: true,
+                sub_settings_wms: true
             }
         });
         setColabActiveSection('pessoais');
@@ -1058,7 +1252,62 @@ export default function SettingsHub() {
             approveRequests: false, requestItems: true, supplierView: true,
             supplierCreate: false, supplierEdit: false, supplierBlock: false,
             supplierDelete: false, chkCreate: false, chkAnswer: true,
-            chkApprove: false, chkReports: false
+            chkApprove: false, chkReports: false,
+            menu_logistica: true,
+            menu_gestao_operacional: true,
+            menu_patrimonio: true,
+            menu_financeiro: true,
+            menu_ged: true,
+            menu_kpis: true,
+            menu_ponto: true,
+            menu_compras: true,
+            menu_juridico: true,
+            menu_subprodutos: true,
+            menu_cadastros: true,
+            sub_logistica_estoque: true,
+            sub_logistica_flow: true,
+            sub_logistica_requisicao: true,
+            sub_logistica_aprovacao: true,
+            sub_logistica_perdas: true,
+            sub_logistica_wms: true,
+            sub_logistica_supply: true,
+            sub_logistica_wip: true,
+            sub_gestao_comunicados: true,
+            sub_gestao_enviar: true,
+            sub_gestao_checklist: true,
+            sub_checklist_executar: true,
+            sub_checklist_kpis: true,
+            sub_checklist_modelos: true,
+            sub_checklist_nc: true,
+            sub_checklist_planos: true,
+            sub_checklist_integracoes: true,
+            sub_checklist_auditoria: true,
+            sub_checklist_performance: true,
+            sub_checklist_trilha: true,
+            sub_checklist_acessos: true,
+            sub_checklist_diagrama: true,
+            sub_patrimonio_painel: true,
+            sub_patrimonio_cadastro: true,
+            sub_patrimonio_categorias: true,
+            sub_patrimonio_movimentacoes: true,
+            sub_patrimonio_setores: true,
+            sub_patrimonio_responsabilidade: true,
+            sub_patrimonio_inventario: true,
+            sub_patrimonio_relatorios: true,
+            sub_patrimonio_auditoria: true,
+            sub_subprodutos_painel: true,
+            sub_subprodutos_fichas: true,
+            sub_subprodutos_ordens: true,
+            sub_subprodutos_estoque: true,
+            sub_subprodutos_historico: true,
+            sub_settings_colaboradores: true,
+            sub_settings_produtos: true,
+            sub_settings_produtos_venda: true,
+            sub_settings_categorias: true,
+            sub_settings_fornecedores: true,
+            sub_settings_setores: true,
+            sub_settings_cargos: true,
+            sub_settings_wms: true
         };
 
         if (accessLevel === 'Administrador') {
@@ -2639,101 +2888,117 @@ export default function SettingsHub() {
                         ============================================= */}
                         {activeTab === 'menu' && (
                             <div className="dashboard-menu">
-                                <button 
-                                    className="menu-card orange" 
-                                    onClick={() => setActiveTab('colaboradores')}
-                                >
-                                    <div className="card-icon"><Users size={24} /></div>
-                                    <div className="card-content">
-                                        <h3>COLABORADORES</h3>
-                                        <p>Funcionários, cargos, salários, horários e checklists.</p>
-                                    </div>
-                                    <ChevronRight className="chevron" size={20} />
-                                </button>
+                                {hasAccess('sub_settings_colaboradores') && (
+                                    <button 
+                                        className="menu-card orange" 
+                                        onClick={() => setActiveTab('colaboradores')}
+                                    >
+                                        <div className="card-icon"><Users size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>COLABORADORES</h3>
+                                            <p>Funcionários, cargos, salários, horários e checklists.</p>
+                                        </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
+                                )}
 
-                                <button 
-                                    className="menu-card blue" 
-                                    onClick={() => setActiveTab('produtos')}
-                                >
-                                    <div className="card-icon"><Boxes size={24} /></div>
-                                    <div className="card-content">
-                                        <h3>INSUMOS</h3>
-                                        <p>Insumos, controle de estoque, unidades e SKUs.</p>
-                                    </div>
-                                    <ChevronRight className="chevron" size={20} />
-                                </button>
+                                {hasAccess('sub_settings_produtos') && (
+                                    <button 
+                                        className="menu-card blue" 
+                                        onClick={() => setActiveTab('produtos')}
+                                    >
+                                        <div className="card-icon"><Boxes size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>INSUMOS</h3>
+                                            <p>Insumos, controle de estoque, unidades e SKUs.</p>
+                                        </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
+                                )}
 
-                                <button 
-                                    className="menu-card pink" 
-                                    onClick={() => setActiveTab('produto')}
-                                >
-                                    <div className="card-icon"><ShoppingBag size={24} /></div>
-                                    <div className="card-content">
-                                        <h3>PRODUTO</h3>
-                                        <p>Gestão de produtos finais de venda e cardápio.</p>
-                                    </div>
-                                    <ChevronRight className="chevron" size={20} />
-                                </button>
+                                {hasAccess('sub_settings_produtos_venda') && (
+                                    <button 
+                                        className="menu-card pink" 
+                                        onClick={() => setActiveTab('produto')}
+                                    >
+                                        <div className="card-icon"><ShoppingBag size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>PRODUTO</h3>
+                                            <p>Gestão de produtos finais de venda e cardápio.</p>
+                                        </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
+                                )}
 
-                                <button 
-                                    className="menu-card green" 
-                                    onClick={() => setActiveTab('categorias')}
-                                >
-                                    <div className="card-icon"><Tag size={24} /></div>
-                                    <div className="card-content">
-                                        <h3>CATEGORIAS</h3>
-                                        <p>Organização de insumos e vinculações de cores.</p>
-                                    </div>
-                                    <ChevronRight className="chevron" size={20} />
-                                </button>
+                                {hasAccess('sub_settings_categorias') && (
+                                    <button 
+                                        className="menu-card green" 
+                                        onClick={() => setActiveTab('categorias')}
+                                    >
+                                        <div className="card-icon"><Tag size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>CATEGORIAS</h3>
+                                            <p>Organização de insumos e vinculações de cores.</p>
+                                        </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
+                                )}
 
-                                <button 
-                                    className="menu-card purple" 
-                                    onClick={() => setActiveTab('fornecedores')}
-                                >
-                                    <div className="card-icon"><Truck size={24} /></div>
-                                    <div className="card-content">
-                                        <h3>FORNECEDORES</h3>
-                                        <p>CGC, contatos comerciais, avaliações e prazos.</p>
-                                    </div>
-                                    <ChevronRight className="chevron" size={20} />
-                                </button>
+                                {hasAccess('sub_settings_fornecedores') && (
+                                    <button 
+                                        className="menu-card purple" 
+                                        onClick={() => setActiveTab('fornecedores')}
+                                    >
+                                        <div className="card-icon"><Truck size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>FORNECEDORES</h3>
+                                            <p>CGC, contatos comerciais, avaliações e prazos.</p>
+                                        </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
+                                )}
 
-                                <button 
-                                    className="menu-card teal" 
-                                    onClick={() => setActiveTab('setores')}
-                                >
-                                    <div className="card-icon"><LayoutGrid size={24} /></div>
-                                    <div className="card-content">
-                                        <h3>SETORES</h3>
-                                        <p>Criação e gestão de setores operacionais da empresa.</p>
-                                    </div>
-                                    <ChevronRight className="chevron" size={20} />
-                                </button>
+                                {hasAccess('sub_settings_setores') && (
+                                    <button 
+                                        className="menu-card teal" 
+                                        onClick={() => setActiveTab('setores')}
+                                    >
+                                        <div className="card-icon"><LayoutGrid size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>SETORES</h3>
+                                            <p>Criação e gestão de setores operacionais da empresa.</p>
+                                        </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
+                                )}
 
-                                <button 
-                                    className="menu-card yellow" 
-                                    onClick={() => setActiveTab('cargos')}
-                                >
-                                    <div className="card-icon"><Briefcase size={24} /></div>
-                                    <div className="card-content">
-                                        <h3>CARGOS</h3>
-                                        <p>Cargos, permissões padrão e funções organizacionais.</p>
-                                    </div>
-                                    <ChevronRight className="chevron" size={20} />
-                                </button>
+                                {hasAccess('sub_settings_cargos') && (
+                                    <button 
+                                        className="menu-card yellow" 
+                                        onClick={() => setActiveTab('cargos')}
+                                    >
+                                        <div className="card-icon"><Briefcase size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>CARGOS</h3>
+                                            <p>Cargos, permissões padrão e funções organizacionais.</p>
+                                        </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
+                                )}
 
-                                <button 
-                                    className="menu-card dark-blue" 
-                                    onClick={() => setActiveTab('wms')}
-                                >
-                                    <div className="card-icon"><Warehouse size={24} /></div>
-                                    <div className="card-content">
-                                        <h3>ARMAZÉNS (WMS)</h3>
-                                        <p>Cadastro de armazéns, zonas (frio/seco) e endereçamentos.</p>
-                                    </div>
-                                    <ChevronRight className="chevron" size={20} />
-                                </button>
+                                {hasAccess('sub_settings_wms') && (
+                                    <button 
+                                        className="menu-card dark-blue" 
+                                        onClick={() => setActiveTab('wms')}
+                                    >
+                                        <div className="card-icon"><Warehouse size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>ARMAZÉNS (WMS)</h3>
+                                            <p>Cadastro de armazéns, zonas (frio/seco) e endereçamentos.</p>
+                                        </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
+                                )}
                             </div>
                         )}
 
@@ -4754,23 +5019,126 @@ export default function SettingsHub() {
                                                 </select>
                                             </div>
                                         </div>
-                                        <div style={{ marginTop: '1.2rem' }}>
-                                            <label style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.6rem', fontWeight: '700' }}>Matriz de Permissões Específicas</label>
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.6rem', background: 'var(--bg-input)', padding: '1rem', borderRadius: '8px' }}>
+                                        <div style={{ marginTop: '1.2rem', display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%' }}>
+                                            <label style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'block', fontWeight: '700', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.4rem' }}>
+                                                Matriz de Permissões por Card de Menu & Sub-menus
+                                            </label>
+                                            
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem', width: '100%' }}>
                                                 {[
-                                                    { label: 'Entrada Estoque', key: 'entrada' },
-                                                    { label: 'Saída Estoque', key: 'saida' },
-                                                    { label: 'Registrar Perdas', key: 'perdas' },
-                                                    { label: 'Aprovar Pedidos', key: 'approveRequests' },
-                                                    { label: 'Configurações', key: 'config' },
-                                                    { label: 'Ver Relatórios', key: 'relatorios' },
-                                                    { label: 'Editar Cadastros', key: 'editar' },
-                                                    { label: 'Criar Fornecedores', key: 'supplierCreate' }
-                                                ].map((perm) => (
-                                                    <label key={perm.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', cursor: isAdminUser ? 'pointer' : 'default', color: colabForm.permissions[perm.key] ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                                                        <input type="checkbox" checked={colabForm.permissions[perm.key]} disabled={!isAdminUser} onChange={() => handleColabPermissionChange(perm.key)} style={{ accentColor: 'var(--accent-orange)' }} />
-                                                        {perm.label}
-                                                    </label>
+                                                    {
+                                                        module: 'Logística',
+                                                        menuKey: 'menu_logistica',
+                                                        subs: [
+                                                            { label: 'Stock View (Estoque)', key: 'sub_logistica_estoque' },
+                                                            { label: 'Stock Flow (Movimentações)', key: 'sub_logistica_flow' },
+                                                            { label: 'Requisição (Pedidos)', key: 'sub_logistica_requisicao' },
+                                                            { label: 'Aprovação (Acesso Restrito)', key: 'sub_logistica_aprovacao' },
+                                                            { label: 'Histórico de Perdas', key: 'sub_logistica_perdas' },
+                                                            { label: 'WMS (Endereçamento)', key: 'sub_logistica_wms' },
+                                                            { label: 'Supply Chain (Predição)', key: 'sub_logistica_supply' },
+                                                            { label: 'WIP (Em desenvolvimento)', key: 'sub_logistica_wip' }
+                                                        ]
+                                                    },
+                                                    {
+                                                        module: 'Gestão Operacional',
+                                                        menuKey: 'menu_gestao_operacional',
+                                                        subs: [
+                                                            { label: 'Meus Avisos (Feed)', key: 'sub_gestao_comunicados' },
+                                                            { label: 'Enviar Avisos (Criar)', key: 'sub_gestao_enviar' },
+                                                            { label: 'Checklist (Hub)', key: 'sub_gestao_checklist' }
+                                                        ]
+                                                    },
+                                                    {
+                                                        module: 'Checklist',
+                                                        menuKey: 'sub_gestao_checklist',
+                                                        isSubModule: true,
+                                                        subs: [
+                                                            { label: 'Executar Checklist', key: 'sub_checklist_executar' },
+                                                            { label: 'Indicadores & KPIs', key: 'sub_checklist_kpis' },
+                                                            { label: 'Modelos de Checklist', key: 'sub_checklist_modelos' },
+                                                            { label: 'Não Conformidades', key: 'sub_checklist_nc' },
+                                                            { label: 'Planos de Ação', key: 'sub_checklist_planos' },
+                                                            { label: 'Integrações ERP', key: 'sub_checklist_integracoes' },
+                                                            { label: 'Auditoria de Checklist', key: 'sub_checklist_auditoria' },
+                                                            { label: 'Pontuação & Performance', key: 'sub_checklist_performance' },
+                                                            { label: 'Trilha de Auditoria', key: 'sub_checklist_trilha' },
+                                                            { label: 'Acessos e Permissões', key: 'sub_checklist_acessos' },
+                                                            { label: 'Diagrama de Colaboradores', key: 'sub_checklist_diagrama' }
+                                                        ]
+                                                    },
+                                                    {
+                                                        module: 'Patrimônio e Materiais',
+                                                        menuKey: 'menu_patrimonio',
+                                                        subs: [
+                                                            { label: 'Dashboard Geral', key: 'sub_patrimonio_painel' },
+                                                            { label: 'Cadastro de Bens', key: 'sub_patrimonio_cadastro' },
+                                                            { label: 'Categorias de Bens', key: 'sub_patrimonio_categorias' },
+                                                            { label: 'Movimentações', key: 'sub_patrimonio_movimentacoes' },
+                                                            { label: 'Controle por Setor', key: 'sub_patrimonio_setores' },
+                                                            { label: 'Cautelas (Responsabilidade)', key: 'sub_patrimonio_responsabilidade' },
+                                                            { label: 'Inventário Físico', key: 'sub_patrimonio_inventario' },
+                                                            { label: 'Relatórios & DRE', key: 'sub_patrimonio_relatorios' },
+                                                            { label: 'Log de Auditoria', key: 'sub_patrimonio_auditoria' }
+                                                        ]
+                                                    },
+                                                    {
+                                                        module: 'Sub-produtos',
+                                                        menuKey: 'menu_subprodutos',
+                                                        subs: [
+                                                            { label: 'Dashboard Geral', key: 'sub_subprodutos_painel' },
+                                                            { label: 'Fichas Técnicas', key: 'sub_subprodutos_fichas' },
+                                                            { label: 'Ordens de Produção', key: 'sub_subprodutos_ordens' },
+                                                            { label: 'Estoque Semi-acabados', key: 'sub_subprodutos_estoque' },
+                                                            { label: 'Histórico de Produção', key: 'sub_subprodutos_historico' }
+                                                        ]
+                                                    },
+                                                    {
+                                                        module: 'Cadastros (Configurações)',
+                                                        menuKey: 'menu_cadastros',
+                                                        subs: [
+                                                            { label: 'Colaboradores', key: 'sub_settings_colaboradores' },
+                                                            { label: 'Itens de Consumo', key: 'sub_settings_produtos' },
+                                                            { label: 'Produtos de Venda', key: 'sub_settings_produtos_venda' },
+                                                            { label: 'Categorias de Insumos', key: 'sub_settings_categorias' },
+                                                            { label: 'Fornecedores', key: 'sub_settings_fornecedores' },
+                                                            { label: 'Setores', key: 'sub_settings_setores' },
+                                                            { label: 'Cargos', key: 'sub_settings_cargos' },
+                                                            { label: 'Configuração WMS', key: 'sub_settings_wms' }
+                                                        ]
+                                                    },
+                                                    {
+                                                        module: 'Outros Módulos',
+                                                        isOutros: true,
+                                                        subs: [
+                                                            { label: 'Financeiro', key: 'menu_financeiro' },
+                                                            { label: 'GED', key: 'menu_ged' },
+                                                            { label: 'KPIs', key: 'menu_kpis' },
+                                                            { label: 'Controle de Ponto', key: 'menu_ponto' },
+                                                            { label: 'Compras', key: 'menu_compras' },
+                                                            { label: 'Jurídico', key: 'menu_juridico' }
+                                                        ]
+                                                    }
+                                                ].map((mod) => (
+                                                    <div key={mod.module} style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.8rem 1rem' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.4rem', marginBottom: '0.6rem' }}>
+                                                            <span style={{ fontWeight: '700', color: 'var(--accent-orange)', fontSize: '0.85rem' }}>{mod.module}</span>
+                                                            {mod.menuKey && !mod.isSubModule && (
+                                                                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.78rem', cursor: isAdminUser ? 'pointer' : 'default', color: colabForm.permissions[mod.menuKey] !== false ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                                                                    <input type="checkbox" checked={colabForm.permissions[mod.menuKey] !== false} disabled={!isAdminUser} onChange={() => handleColabPermissionChange(mod.menuKey)} style={{ accentColor: 'var(--accent-orange)' }} />
+                                                                    Acesso ao Card
+                                                                </label>
+                                                            )}
+                                                        </div>
+                                                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
+                                                            {mod.subs.map((perm) => (
+                                                                <label key={perm.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', cursor: isAdminUser ? 'pointer' : 'default', color: colabForm.permissions[perm.key] !== false ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                                                                    <input type="checkbox" checked={colabForm.permissions[perm.key] !== false} disabled={!isAdminUser} onChange={() => handleColabPermissionChange(perm.key)} style={{ accentColor: 'var(--accent-orange)' }} />
+                                                                    {perm.label}
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                    </div>
                                                 ))}
                                             </div>
                                         </div>

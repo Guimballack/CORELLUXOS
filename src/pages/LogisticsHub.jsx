@@ -142,6 +142,35 @@ export default function LogisticsHub() {
     const [wmsLocations, setWmsLocations] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const hasAccess = (permissionKey) => {
+        const user = state.currentUser;
+        if (!user) return false;
+        if (user.accessLevel === 'Administrador') return true;
+        if (!user.permissions) return false;
+        if (user.permissions[permissionKey] === undefined) return true;
+        return !!user.permissions[permissionKey];
+    };
+
+    useEffect(() => {
+        const tab = state.logisticsActiveTab || 'menu';
+        if (tab !== 'menu') {
+            const permMap = {
+                estoque: 'sub_logistica_estoque',
+                movimentar: 'sub_logistica_flow',
+                solicitacao: 'sub_logistica_requisicao',
+                aprovacoes: 'sub_logistica_aprovacao',
+                perdas_historico: 'sub_logistica_perdas',
+                wms: 'sub_logistica_wms',
+                'supply-chain': 'sub_logistica_supply',
+                wip: 'sub_logistica_wip',
+            };
+            const requiredPerm = permMap[tab];
+            if (requiredPerm && !hasAccess(requiredPerm)) {
+                setKey('logisticsActiveTab', 'menu');
+            }
+        }
+    }, [state.logisticsActiveTab, state.currentUser]);
+
     // WMS/FEFO States
     const [stockBatches, setStockBatches] = useState([]);
     const [expandedItems, setExpandedItems] = useState(new Set());
@@ -2133,125 +2162,141 @@ export default function LogisticsHub() {
                         {/* CARD MENU FOR LOGISTICS HUB */}
                         {activeTab === 'menu' && (
                             <div className="dashboard-menu">
-                                <button 
-                                    className="menu-card blue" 
-                                    onClick={() => setActiveTab('estoque')}
-                                >
-                                    <div className="card-icon"><Boxes size={24} /></div>
-                                    <div className="card-content">
-                                        <h3>STOCK VIEW</h3>
-                                        <p>Registro geral de itens, consulta de SKU, saldo atual e controle de validades por lote (FEFO).</p>
-                                    </div>
-                                    <ChevronRight className="chevron" size={20} />
-                                </button>
+                                {hasAccess('sub_logistica_estoque') && (
+                                    <button 
+                                        className="menu-card blue" 
+                                        onClick={() => setActiveTab('estoque')}
+                                    >
+                                        <div className="card-icon"><Boxes size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>STOCK VIEW</h3>
+                                            <p>Registro geral de itens, consulta de SKU, saldo atual e controle de validades por lote (FEFO).</p>
+                                        </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
+                                )}
 
-                                <button 
-                                    className="menu-card orange" 
-                                    onClick={() => {
-                                        setActiveTab('movimentar');
-                                        setFlowType(null);
-                                        setFlowStep('category');
-                                        setCurrentCategory(null);
-                                    }}
-                                >
-                                    <div className="card-icon"><History size={24} /></div>
-                                    <div className="card-content">
-                                        <h3>STOCK FLOW</h3>
-                                        <p>Registrar entradas, saídas operacionais e descarte de produtos por perdas.</p>
-                                    </div>
-                                    <ChevronRight className="chevron" size={20} />
-                                </button>
+                                {hasAccess('sub_logistica_flow') && (
+                                    <button 
+                                        className="menu-card orange" 
+                                        onClick={() => {
+                                            setActiveTab('movimentar');
+                                            setFlowType(null);
+                                            setFlowStep('category');
+                                            setCurrentCategory(null);
+                                        }}
+                                    >
+                                        <div className="card-icon"><History size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>STOCK FLOW</h3>
+                                            <p>Registrar entradas, saídas operacionais e descarte de produtos por perdas.</p>
+                                        </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
+                                )}
 
-                                <button 
-                                    className="menu-card yellow" 
-                                    onClick={() => {
-                                        setActiveTab('solicitacao');
-                                        setFlowType('solicitacao');
-                                        setFlowStep('category');
-                                        setCurrentCategory(null);
-                                    }}
-                                >
-                                    <div className="card-icon"><ShoppingCart size={24} /></div>
-                                    <div className="card-content">
-                                        <h3>REQUISIÇÃO</h3>
-                                        <p>Criar solicitações e pedidos de insumos para cozinha ou outros setores operacionais.</p>
-                                    </div>
-                                    <ChevronRight className="chevron" size={20} />
-                                </button>
+                                {hasAccess('sub_logistica_requisicao') && (
+                                    <button 
+                                        className="menu-card yellow" 
+                                        onClick={() => {
+                                            setActiveTab('solicitacao');
+                                            setFlowType('solicitacao');
+                                            setFlowStep('category');
+                                            setCurrentCategory(null);
+                                        }}
+                                    >
+                                        <div className="card-icon"><ShoppingCart size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>REQUISIÇÃO</h3>
+                                            <p>Criar solicitações e pedidos de insumos para cozinha ou outros setores operacionais.</p>
+                                        </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
+                                )}
 
-                                <button 
-                                    className="menu-card green" 
-                                    onClick={() => setActiveTab('aprovacoes')}
-                                >
-                                    <div className="card-icon">
-                                        <ShieldCheck size={24} />
-                                        {requests.filter(r => r.status === 'Pendente').length > 0 && (
-                                            <span className="notification-badge" style={{ backgroundColor: 'var(--accent-red)' }}>
-                                                {requests.filter(r => r.status === 'Pendente').length}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="card-content">
-                                        <h3>APROVAÇÃO</h3>
-                                        <p>Visualizar e autorizar solicitações de retirada de insumos (acesso restrito).</p>
-                                    </div>
-                                    <ChevronRight className="chevron" size={20} />
-                                </button>
+                                {hasAccess('sub_logistica_aprovacao') && (
+                                    <button 
+                                        className="menu-card green" 
+                                        onClick={() => setActiveTab('aprovacoes')}
+                                    >
+                                        <div className="card-icon">
+                                            <ShieldCheck size={24} />
+                                            {requests.filter(r => r.status === 'Pendente').length > 0 && (
+                                                <span className="notification-badge" style={{ backgroundColor: 'var(--accent-red)' }}>
+                                                    {requests.filter(r => r.status === 'Pendente').length}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="card-content">
+                                            <h3>APROVAÇÃO</h3>
+                                            <p>Visualizar e autorizar solicitações de retirada de insumos (acesso restrito).</p>
+                                        </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
+                                )}
 
-                                <button 
-                                    className="menu-card red" 
-                                    onClick={() => setActiveTab('perdas_historico')}
-                                >
-                                    <div className="card-icon">
-                                        <AlertTriangle size={24} />
-                                        {lossRecords.length > 0 && (
-                                            <span className="notification-badge" style={{ backgroundColor: 'var(--accent-yellow)' }}>
-                                                {lossRecords.length}
-                                            </span>
-                                        )}
-                                    </div>
-                                    <div className="card-content">
-                                        <h3>HISTÓRICO DE PERDAS</h3>
-                                        <p>Consultar todos os registros de descarte e perdas de insumos.</p>
-                                    </div>
-                                    <ChevronRight className="chevron" size={20} />
-                                </button>
+                                {hasAccess('sub_logistica_perdas') && (
+                                    <button 
+                                        className="menu-card red" 
+                                        onClick={() => setActiveTab('perdas_historico')}
+                                    >
+                                        <div className="card-icon">
+                                            <AlertTriangle size={24} />
+                                            {lossRecords.length > 0 && (
+                                                <span className="notification-badge" style={{ backgroundColor: 'var(--accent-yellow)' }}>
+                                                    {lossRecords.length}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="card-content">
+                                            <h3>HISTÓRICO DE PERDAS</h3>
+                                            <p>Consultar todos os registros de descarte e perdas de insumos.</p>
+                                        </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
+                                )}
 
-                                <button 
-                                    className="menu-card purple"
-                                    onClick={() => setActiveTab('wms')}
-                                >
-                                    <div className="card-icon"><Warehouse size={24} /></div>
-                                    <div className="card-content">
-                                        <h3>WMS</h3>
-                                        <p>Gerenciamento de armazém, endereçamento e movimentação de paletes.</p>
-                                    </div>
-                                    <ChevronRight className="chevron" size={20} />
-                                </button>
+                                {hasAccess('sub_logistica_wms') && (
+                                    <button 
+                                        className="menu-card purple"
+                                        onClick={() => setActiveTab('wms')}
+                                    >
+                                        <div className="card-icon"><Warehouse size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>WMS</h3>
+                                            <p>Gerenciamento de armazém, endereçamento e movimentação de paletes.</p>
+                                        </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
+                                )}
 
-                                <button 
-                                    className="menu-card teal"
-                                    onClick={() => { setActiveTab('supply-chain'); setScSubTab('overview'); }}
-                                >
-                                    <div className="card-icon"><BarChart3 size={24} /></div>
-                                    <div className="card-content">
-                                        <h3>SUPPLY CHAIN</h3>
-                                        <p>Inteligência preditiva, sugestões de compra e análise de cobertura.</p>
-                                    </div>
-                                    <ChevronRight className="chevron" size={20} />
-                                </button>
+                                {hasAccess('sub_logistica_supply') && (
+                                    <button 
+                                        className="menu-card teal"
+                                        onClick={() => { setActiveTab('supply-chain'); setScSubTab('overview'); }}
+                                    >
+                                        <div className="card-icon"><BarChart3 size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>SUPPLY CHAIN</h3>
+                                            <p>Inteligência preditiva, sugestões de compra e análise de cobertura.</p>
+                                        </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
+                                )}
 
-                                <button 
-                                    className="menu-card gray"
-                                    onClick={() => setActiveTab('wip')}
-                                >
-                                    <div className="card-icon"><Clock size={24} /></div>
-                                    <div className="card-content">
-                                        <h3>WIP</h3>
-                                        <p>Módulo em desenvolvimento. Novas funcionalidades em breve.</p>
-                                    </div>
-                                    <ChevronRight className="chevron" size={20} />
-                                </button>
+                                {hasAccess('sub_logistica_wip') && (
+                                    <button 
+                                        className="menu-card gray"
+                                        onClick={() => setActiveTab('wip')}
+                                    >
+                                        <div className="card-icon"><Clock size={24} /></div>
+                                        <div className="card-content">
+                                            <h3>WIP</h3>
+                                            <p>Módulo em desenvolvimento. Novas funcionalidades em breve.</p>
+                                        </div>
+                                        <ChevronRight className="chevron" size={20} />
+                                    </button>
+                                )}
                             </div>
                         )}
                         {/* TAB 1: VISÃO GERAL DO ESTOQUE */}

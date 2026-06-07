@@ -45,6 +45,28 @@ export default function CentralHub() {
     // Local UI States (Avisos e Geral)
     const activeTab = state.centralActiveTab;
     const setActiveTab = (tabName) => setKey('centralActiveTab', tabName);
+
+    const hasAccess = (permissionKey) => {
+        const user = state.currentUser;
+        if (!user) return false;
+        if (user.accessLevel === 'Administrador') return true;
+        if (!user.permissions) return false;
+        if (user.permissions[permissionKey] === undefined) return true;
+        return !!user.permissions[permissionKey];
+    };
+
+    useEffect(() => {
+        const tab = state.centralActiveTab || 'menu';
+        if (tab !== 'menu') {
+            const permMap = {
+                feed: 'sub_gestao_comunicados'
+            };
+            const requiredPerm = permMap[tab];
+            if (requiredPerm && !hasAccess(requiredPerm)) {
+                setKey('centralActiveTab', 'menu');
+            }
+        }
+    }, [state.centralActiveTab, state.currentUser]);
     const [recipientSubTab, setRecipientSubTab] = useState('users'); // 'users', 'sectors', 'areas'
     const [searchQuery, setSearchQuery] = useState('');
     const [feedFilter, setFeedFilter] = useState('todos'); // 'todos', 'unread', 'sent', 'sistema'
@@ -420,31 +442,21 @@ export default function CentralHub() {
             <div className="central-content-container" style={{ overflowY: isComposeModalOpen || activeTab === 'feed' ? 'hidden' : 'auto' }}>
                 {activeTab === 'menu' && (
                     <div className="dashboard-menu">
-                        <button 
-                            className="menu-card dark-blue" 
-                            onClick={() => setActiveTab('feed')}
-                        >
-                            <div className="card-icon"><Bell size={24} /></div>
-                            <div className="card-content">
-                                <h3>MEUS AVISOS</h3>
-                                <p>Ver comunicados, notificações do sistema e avisos importantes.</p>
-                            </div>
-                            <ChevronRight className="chevron" size={20} />
-                        </button>
-
-                        {!currentUser.permissions.sendNotif ? (
-                            <div 
-                                className="menu-card blue" 
-                                style={{ opacity: 0.65, cursor: 'not-allowed' }}
+                        {hasAccess('sub_gestao_comunicados') && (
+                            <button 
+                                className="menu-card dark-blue" 
+                                onClick={() => setActiveTab('feed')}
                             >
-                                <div className="card-icon"><Send size={24} /></div>
+                                <div className="card-icon"><Bell size={24} /></div>
                                 <div className="card-content">
-                                    <h3>ENVIAR AVISOS</h3>
-                                    <p>Disparar novos avisos, criar comunicados e definir destinatários.</p>
+                                    <h3>MEUS AVISOS</h3>
+                                    <p>Ver comunicados, notificações do sistema e avisos importantes.</p>
                                 </div>
-                                <Lock size={16} style={{ opacity: 0.5, marginRight: '1rem' }} />
-                            </div>
-                        ) : (
+                                <ChevronRight className="chevron" size={20} />
+                            </button>
+                        )}
+
+                        {hasAccess('sub_gestao_enviar') && hasAccess('sendNotif') && (
                             <button 
                                 className="menu-card blue" 
                                 onClick={() => setIsComposeModalOpen(true)}
@@ -458,20 +470,22 @@ export default function CentralHub() {
                             </button>
                         )}
 
-                        <button 
-                            className="menu-card teal" 
-                            onClick={() => {
-                                setKey('currentScreen', 'checklist-hub');
-                                setKey('checklistActiveTab', 'menu');
-                            }}
-                        >
-                            <div className="card-icon"><CheckSquare size={24} /></div>
-                            <div className="card-content">
-                                <h3>CHECK-LIST</h3>
-                                <p>Executar vistorias, checklists operacionais e auditorias de conformidade.</p>
-                            </div>
-                            <ChevronRight className="chevron" size={20} />
-                        </button>
+                        {hasAccess('sub_gestao_checklist') && (
+                            <button 
+                                className="menu-card teal" 
+                                onClick={() => {
+                                    setKey('currentScreen', 'checklist-hub');
+                                    setKey('checklistActiveTab', 'menu');
+                                }}
+                            >
+                                <div className="card-icon"><CheckSquare size={24} /></div>
+                                <div className="card-content">
+                                    <h3>CHECK-LIST</h3>
+                                    <p>Executar vistorias, checklists operacionais e auditorias de conformidade.</p>
+                                </div>
+                                <ChevronRight className="chevron" size={20} />
+                            </button>
+                        )}
                     </div>
                 )}
 

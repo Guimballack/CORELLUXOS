@@ -61,6 +61,34 @@ export default function SubprodutosHub() {
     const activeTab = state.subprodutosActiveTab || 'dashboard';
     const setActiveTab = (tab) => setKey('subprodutosActiveTab', tab);
 
+    const hasAccess = (permissionKey) => {
+        const user = state.currentUser;
+        if (!user) return false;
+        if (user.accessLevel === 'Administrador') return true;
+        if (!user.permissions) return false;
+        if (user.permissions[permissionKey] === undefined) return true;
+        return !!user.permissions[permissionKey];
+    };
+
+    useEffect(() => {
+        const tab = state.subprodutosActiveTab || 'dashboard';
+        const tabList = [
+            { id: 'dashboard', perm: 'sub_subprodutos_painel' },
+            { id: 'cadastro', perm: 'sub_subprodutos_fichas' },
+            { id: 'ordens', perm: 'sub_subprodutos_ordens' },
+            { id: 'estoque', perm: 'sub_subprodutos_estoque' },
+            { id: 'historico', perm: 'sub_subprodutos_historico' }
+        ];
+
+        const currentTabConfig = tabList.find(t => t.id === tab);
+        if (currentTabConfig && !hasAccess(currentTabConfig.perm)) {
+            const firstPermitted = tabList.find(t => hasAccess(t.perm));
+            if (firstPermitted) {
+                setKey('subprodutosActiveTab', firstPermitted.id);
+            }
+        }
+    }, [state.subprodutosActiveTab, state.currentUser]);
+
     // Data
     const [allProducts, setAllProducts] = useState([]);
     const [orders, setOrders] = useState([]);
@@ -89,11 +117,11 @@ export default function SubprodutosHub() {
 
     // ── NAV ITEMS ─────────────────────────────
     const navItems = [
-        { id: 'dashboard', label: 'Dashboard',     icon: PieChart },
-        { id: 'cadastro',  label: 'Cadastro',       icon: BookOpen },
-        { id: 'ordens',    label: 'Ordens',         icon: ClipboardList },
-        { id: 'estoque',   label: 'Estoque Atual',  icon: Archive },
-        { id: 'historico', label: 'Histórico',      icon: Clock },
+        { id: 'dashboard', label: 'Dashboard',     icon: PieChart, perm: 'sub_subprodutos_painel' },
+        { id: 'cadastro',  label: 'Cadastro',       icon: BookOpen, perm: 'sub_subprodutos_fichas' },
+        { id: 'ordens',    label: 'Ordens',         icon: ClipboardList, perm: 'sub_subprodutos_ordens' },
+        { id: 'estoque',   label: 'Estoque Atual',  icon: Archive, perm: 'sub_subprodutos_estoque' },
+        { id: 'historico', label: 'Histórico',      icon: Clock, perm: 'sub_subprodutos_historico' },
     ];
 
     return (
@@ -224,7 +252,7 @@ export default function SubprodutosHub() {
                 </div>
 
                 <div style={{ flex: 1 }}>
-                    {navItems.map(({ id, label, icon: Icon }) => (
+                    {navItems.filter(item => hasAccess(item.perm)).map(({ id, label, icon: Icon }) => (
                         <button
                             key={id}
                             className={`sub-sidebar-btn ${activeTab === id ? 'active' : ''}`}
