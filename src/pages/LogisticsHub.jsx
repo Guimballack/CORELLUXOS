@@ -427,6 +427,10 @@ export default function LogisticsHub() {
     const [followFefoSuggestion, setFollowFefoSuggestion] = useState(true);
     const [manualAddress, setManualAddress] = useState('');
     const [manualLot, setManualLot] = useState('');
+    const [showAddressDropdown, setShowAddressDropdown] = useState(false);
+    const [showLotDropdown, setShowLotDropdown] = useState(false);
+    const [addressReadOnly, setAddressReadOnly] = useState(true);
+    const [lotReadOnly, setLotReadOnly] = useState(true);
 
     // WMS Address formatting and mapping
     const formattedWmsAddresses = useMemo(() => {
@@ -5642,8 +5646,9 @@ export default function LogisticsHub() {
                                 if (!showManualInputs) return null;
 
                                 // Collect unique addresses and lots for suggestions
-                                const prodAddresses = [...new Set(stockBatches.filter(b => b.itemSku === activeApprovalRequest.itemSku && b.address).map(b => b.address))];
-                                const prodLots = [...new Set(stockBatches.filter(b => b.itemSku === activeApprovalRequest.itemSku && b.lot).map(b => b.lot))];
+                                const productBatchesInStock = stockBatches.filter(b => b.itemSku === activeApprovalRequest.itemSku && b.quantity > 0);
+                                const prodAddresses = [...new Set(productBatchesInStock.filter(b => b.address).map(b => b.address))];
+                                const prodLots = [...new Set(productBatchesInStock.filter(b => b.lot).map(b => b.lot))];
 
                                 return (
                                     <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid rgba(243, 107, 29, 0.2)', background: 'rgba(243, 107, 29, 0.02)', padding: '1rem', borderRadius: '8px', marginTop: '0.2rem' }}>
@@ -5651,59 +5656,333 @@ export default function LogisticsHub() {
                                             Especificar Lote e Endereçamento de Retirada:
                                         </span>
 
-                                        <datalist id="approval-address-suggestions">
-                                            {prodAddresses.map(addr => <option key={addr} value={addr} />)}
-                                        </datalist>
-                                        <datalist id="approval-lot-suggestions">
-                                            {prodLots.map(lot => <option key={lot} value={lot} />)}
-                                        </datalist>
-
                                         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '180px' }}>
+                                            {/* Custom Address Dropdown Select */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '180px', position: 'relative' }}>
                                                 <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>
                                                     ENDEREÇO DE RETIRADA *
                                                 </label>
-                                                <input 
-                                                    type="text" 
-                                                    list="approval-address-suggestions"
-                                                    value={manualAddress}
-                                                    onChange={(e) => setManualAddress(e.target.value)}
-                                                    placeholder="Digite ou selecione..."
-                                                    style={{
-                                                        background: 'var(--bg-input)',
-                                                        border: '1.5px solid var(--border-color)',
-                                                        color: 'var(--text-primary)',
-                                                        borderRadius: '8px',
-                                                        padding: '0.5rem 0.8rem',
-                                                        fontSize: '0.85rem',
-                                                        outline: 'none',
-                                                        fontWeight: '600'
-                                                    }}
-                                                />
-                                            </div>
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '180px' }}>
-                                                <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>
-                                                    LOTE DE RETIRADA (OPCIONAL)
-                                                </label>
-                                                <input 
-                                                    type="text" 
-                                                    list="approval-lot-suggestions"
-                                                    value={manualLot}
-                                                    onChange={(e) => setManualLot(e.target.value)}
-                                                    placeholder="Digite, selecione ou vazio..."
-                                                    style={{
-                                                        background: 'var(--bg-input)',
-                                                        border: '1.5px solid var(--border-color)',
-                                                        color: 'var(--text-primary)',
-                                                        borderRadius: '8px',
-                                                        padding: '0.5rem 0.8rem',
-                                                        fontSize: '0.85rem',
-                                                        outline: 'none',
-                                                        fontWeight: '600'
-                                                    }}
-                                                />
-                                            </div>
+                                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                                     <input 
+                                                         type="text" 
+                                                         autoComplete="one-time-code"
+                                                         name="manual-address-no-autofill"
+                                                         value={manualAddress}
+                                                         readOnly={addressReadOnly}
+                                                         onFocus={() => {
+                                                             setAddressReadOnly(false);
+                                                             setShowAddressDropdown(true);
+                                                         }}
+                                                         onBlur={() => {
+                                                             setAddressReadOnly(true);
+                                                             setTimeout(() => setShowAddressDropdown(false), 200);
+                                                         }}
+                                                         onChange={(e) => {
+                                                             setManualAddress(e.target.value);
+                                                             setShowAddressDropdown(true);
+                                                         }}
+                                                         placeholder="Digite ou selecione..."
+                                                         style={{
+                                                             width: '100%',
+                                                             background: 'var(--bg-input)',
+                                                             border: '1.5px solid var(--border-color)',
+                                                             color: 'var(--text-primary)',
+                                                             borderRadius: '8px',
+                                                             padding: '0.5rem 2rem 0.5rem 0.8rem',
+                                                             fontSize: '0.85rem',
+                                                             outline: 'none',
+                                                             fontWeight: '600'
+                                                         }}
+                                                     />
+                                                     <ChevronDown 
+                                                         size={16} 
+                                                         style={{ 
+                                                             position: 'absolute', 
+                                                             right: '10px', 
+                                                             color: 'var(--text-secondary)', 
+                                                             cursor: 'pointer',
+                                                             pointerEvents: 'none'
+                                                         }} 
+                                                     />
+                                                </div>
+                                                {showAddressDropdown && (
+                                                     <div 
+                                                         className="custom-dropdown-menu"
+                                                         style={{
+                                                             position: 'absolute',
+                                                             top: '100%',
+                                                             left: 0,
+                                                             right: 0,
+                                                             marginTop: '0.25rem',
+                                                             background: 'rgba(15, 23, 42, 0.98)',
+                                                             backdropFilter: 'blur(12px)',
+                                                             border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                             borderRadius: '8px',
+                                                             boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
+                                                             zIndex: 100,
+                                                             maxHeight: '180px',
+                                                             overflowY: 'auto',
+                                                             padding: '0.25rem',
+                                                             display: 'flex',
+                                                             flexDirection: 'column',
+                                                             gap: '2px'
+                                                         }}
+                                                     >
+                                                         {productBatchesInStock.filter(b => 
+                                                             (b.address || '').toLowerCase().includes((manualAddress || '').toLowerCase()) ||
+                                                             (b.lot || '').toLowerCase().includes((manualAddress || '').toLowerCase())
+                                                         ).length === 0 ? (
+                                                             <div style={{ padding: '0.5rem', fontSize: '0.78rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                                                 {manualAddress.trim() ? `Usar valor personalizado: "${manualAddress}"` : 'Nenhum endereço com este item'}
+                                                             </div>
+                                                         ) : (
+                                                             productBatchesInStock.filter(b => 
+                                                                 (b.address || '').toLowerCase().includes((manualAddress || '').toLowerCase()) ||
+                                                                 (b.lot || '').toLowerCase().includes((manualAddress || '').toLowerCase())
+                                                             ).map((b, idx) => (
+                                                                 <div
+                                                                     key={idx}
+                                                                     onMouseDown={() => {
+                                                                         setManualAddress(b.address || '');
+                                                                         setManualLot(b.lot || '');
+                                                                         setShowAddressDropdown(false);
+                                                                     }}
+                                                                     style={{
+                                                                         padding: '0.45rem 0.6rem',
+                                                                         cursor: 'pointer',
+                                                                         borderRadius: '4px',
+                                                                         fontSize: '0.82rem',
+                                                                         color: (manualAddress === b.address && manualLot === (b.lot || '')) ? '#fff' : 'var(--text-secondary)',
+                                                                         background: (manualAddress === b.address && manualLot === (b.lot || '')) ? 'var(--accent-orange)' : 'transparent',
+                                                                         transition: 'all 0.15s ease',
+                                                                         display: 'flex',
+                                                                         alignItems: 'center',
+                                                                         justifyContent: 'space-between'
+                                                                     }}
+                                                                     onMouseEnter={(e) => {
+                                                                         if (!(manualAddress === b.address && manualLot === (b.lot || ''))) {
+                                                                             e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                                             e.currentTarget.style.color = '#fff';
+                                                                         }
+                                                                     }}
+                                                                     onMouseLeave={(e) => {
+                                                                         if (!(manualAddress === b.address && manualLot === (b.lot || ''))) {
+                                                                             e.currentTarget.style.background = 'transparent';
+                                                                             e.currentTarget.style.color = 'var(--text-secondary)';
+                                                                         }
+                                                                     }}
+                                                                 >
+                                                                     <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                                                         <span style={{ fontWeight: '700', color: (manualAddress === b.address && manualLot === (b.lot || '')) ? '#fff' : 'var(--accent-orange)' }}>
+                                                                             {b.address || 'Sem Endereço'}
+                                                                         </span>
+                                                                         <span style={{ opacity: 0.8, fontSize: '0.75rem' }}>
+                                                                             | Lote: {b.lot || 'Sem lote'}
+                                                                         </span>
+                                                                     </div>
+                                                                     <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                                                         Qtd: {b.quantity}
+                                                                     </span>
+                                                                 </div>
+                                                             ))
+                                                         )}
+                                                     </div>
+                                                 )}
+                                             </div>
+
+                                             {/* Custom Lot Dropdown Select */}
+                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '180px', position: 'relative' }}>
+                                                 <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>
+                                                     LOTE DE RETIRADA (OPCIONAL)
+                                                 </label>
+                                                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                                     <input 
+                                                         type="text" 
+                                                         autoComplete="one-time-code"
+                                                         name="manual-lot-no-autofill"
+                                                         value={manualLot}
+                                                         readOnly={lotReadOnly}
+                                                         onFocus={() => {
+                                                             setLotReadOnly(false);
+                                                             setShowLotDropdown(true);
+                                                         }}
+                                                         onBlur={() => {
+                                                             setLotReadOnly(true);
+                                                             setTimeout(() => setShowLotDropdown(false), 200);
+                                                         }}
+                                                         onChange={(e) => {
+                                                             setManualLot(e.target.value);
+                                                             setShowLotDropdown(true);
+                                                         }}
+                                                         placeholder="Digite, selecione ou vazio..."
+                                                         style={{
+                                                             width: '100%',
+                                                             background: 'var(--bg-input)',
+                                                             border: '1.5px solid var(--border-color)',
+                                                             color: 'var(--text-primary)',
+                                                             borderRadius: '8px',
+                                                             padding: '0.5rem 2rem 0.5rem 0.8rem',
+                                                             fontSize: '0.85rem',
+                                                             outline: 'none',
+                                                             fontWeight: '600'
+                                                         }}
+                                                     />
+                                                     <ChevronDown 
+                                                         size={16} 
+                                                         style={{ 
+                                                             position: 'absolute', 
+                                                             right: '10px', 
+                                                             color: 'var(--text-secondary)', 
+                                                             cursor: 'pointer',
+                                                             pointerEvents: 'none'
+                                                         }} 
+                                                     />
+                                                 </div>
+                                                 {showLotDropdown && (
+                                                     <div 
+                                                         className="custom-dropdown-menu"
+                                                         style={{
+                                                             position: 'absolute',
+                                                             top: '100%',
+                                                             left: 0,
+                                                             right: 0,
+                                                             marginTop: '0.25rem',
+                                                             background: 'rgba(15, 23, 42, 0.98)',
+                                                             backdropFilter: 'blur(12px)',
+                                                             border: '1px solid rgba(255, 255, 255, 0.1)',
+                                                             borderRadius: '8px',
+                                                             boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
+                                                             zIndex: 100,
+                                                             maxHeight: '180px',
+                                                             overflowY: 'auto',
+                                                             padding: '0.25rem',
+                                                             display: 'flex',
+                                                             flexDirection: 'column',
+                                                             gap: '2px'
+                                                         }}
+                                                     >
+                                                         {productBatchesInStock.filter(b => 
+                                                             (b.address || '').toLowerCase().includes((manualLot || '').toLowerCase()) ||
+                                                             (b.lot || '').toLowerCase().includes((manualLot || '').toLowerCase())
+                                                         ).length === 0 ? (
+                                                             <div style={{ padding: '0.5rem', fontSize: '0.78rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                                                 {manualLot.trim() ? `Usar lote personalizado: "${manualLot}"` : 'Sem lotes sugeridos'}
+                                                             </div>
+                                                         ) : (
+                                                             productBatchesInStock.filter(b => 
+                                                                 (b.address || '').toLowerCase().includes((manualLot || '').toLowerCase()) ||
+                                                                 (b.lot || '').toLowerCase().includes((manualLot || '').toLowerCase())
+                                                             ).map((b, idx) => (
+                                                                 <div
+                                                                     key={idx}
+                                                                     onMouseDown={() => {
+                                                                         setManualAddress(b.address || '');
+                                                                         setManualLot(b.lot || '');
+                                                                         setShowLotDropdown(false);
+                                                                     }}
+                                                                     style={{
+                                                                         padding: '0.45rem 0.6rem',
+                                                                         cursor: 'pointer',
+                                                                         borderRadius: '4px',
+                                                                         fontSize: '0.82rem',
+                                                                         color: (manualAddress === b.address && manualLot === (b.lot || '')) ? '#fff' : 'var(--text-secondary)',
+                                                                         background: (manualAddress === b.address && manualLot === (b.lot || '')) ? 'var(--accent-orange)' : 'transparent',
+                                                                         transition: 'all 0.15s ease',
+                                                                         display: 'flex',
+                                                                         alignItems: 'center',
+                                                                         justifyContent: 'space-between'
+                                                                     }}
+                                                                     onMouseEnter={(e) => {
+                                                                         if (!(manualAddress === b.address && manualLot === (b.lot || ''))) {
+                                                                             e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                                                                             e.currentTarget.style.color = '#fff';
+                                                                         }
+                                                                     }}
+                                                                     onMouseLeave={(e) => {
+                                                                         if (!(manualAddress === b.address && manualLot === (b.lot || ''))) {
+                                                                             e.currentTarget.style.background = 'transparent';
+                                                                             e.currentTarget.style.color = 'var(--text-secondary)';
+                                                                         }
+                                                                     }}
+                                                                 >
+                                                                     <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                                                         <span style={{ fontWeight: '700', color: (manualAddress === b.address && manualLot === (b.lot || '')) ? '#fff' : 'var(--accent-orange)' }}>
+                                                                             Lote: {b.lot || 'Sem lote'}
+                                                                         </span>
+                                                                         <span style={{ opacity: 0.8, fontSize: '0.75rem' }}>
+                                                                             | Endereço: {b.address || 'Sem endereço'}
+                                                                         </span>
+                                                                     </div>
+                                                                     <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
+                                                                         Qtd: {b.quantity}
+                                                                     </span>
+                                                                 </div>
+                                                             ))
+                                                         )}
+                                                     </div>
+                                                 )}
+                                             </div>
                                         </div>
+
+                                         {/* Clickable Quick-Select list of available lots/addresses directly inside the modal panel */}
+                                         {productBatchesInStock.length > 0 && (
+                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.2rem' }}>
+                                                 <span style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                                     Saldos e Lotes Disponíveis em Estoque (Clique para selecionar):
+                                                 </span>
+                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '130px', overflowY: 'auto', background: 'rgba(0,0,0,0.15)', border: '1px solid var(--border-color)', padding: '0.4rem', borderRadius: '6px' }}>
+                                                     {productBatchesInStock.map((b, idx) => {
+                                                         const isSelected = manualAddress === b.address && manualLot === (b.lot || '');
+                                                         return (
+                                                             <div 
+                                                                 key={idx}
+                                                                 onClick={() => {
+                                                                     setManualAddress(b.address || '');
+                                                                     setManualLot(b.lot || '');
+                                                                 }}
+                                                                 style={{
+                                                                     display: 'flex',
+                                                                     justifyContent: 'space-between',
+                                                                     alignItems: 'center',
+                                                                     padding: '0.45rem 0.6rem',
+                                                                     background: isSelected ? 'rgba(243, 107, 29, 0.15)' : 'rgba(255, 255, 255, 0.02)',
+                                                                     border: '1px solid ' + (isSelected ? 'var(--accent-orange)' : 'rgba(255, 255, 255, 0.05)'),
+                                                                     borderRadius: '6px',
+                                                                     cursor: 'pointer',
+                                                                     fontSize: '0.8rem',
+                                                                     transition: 'all 0.15s ease'
+                                                                 }}
+                                                                 onMouseEnter={(e) => {
+                                                                     if (!isSelected) {
+                                                                         e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                                                                         e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                                                                     }
+                                                                 }}
+                                                                 onMouseLeave={(e) => {
+                                                                     if (!isSelected) {
+                                                                         e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
+                                                                         e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+                                                                     }
+                                                                 }}
+                                                             >
+                                                                 <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
+                                                                     <span style={{ background: isSelected ? 'var(--accent-orange)' : 'rgba(243, 107, 29, 0.12)', color: isSelected ? '#fff' : 'var(--accent-orange)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: '700', fontSize: '0.72rem' }}>
+                                                                         {b.address || 'Sem Endereço'}
+                                                                     </span>
+                                                                     <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>
+                                                                         Lote: {b.lot || <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Sem Lote</span>}
+                                                                     </span>
+                                                                 </div>
+                                                                 <span style={{ color: 'var(--text-secondary)', fontWeight: '700', fontSize: '0.78rem' }}>
+                                                                     Saldo: <strong style={{ color: '#fff' }}>{b.quantity}</strong>
+                                                                 </span>
+                                                             </div>
+                                                         );
+                                                     })}
+                                                 </div>
+                                             </div>
+                                         )}
+
                                         <small style={{ color: 'var(--text-secondary)', fontSize: '0.72rem' }}>
                                             * O endereço é obrigatório. Caso o lote seja omitido, a baixa será feita por endereço.
                                         </small>
