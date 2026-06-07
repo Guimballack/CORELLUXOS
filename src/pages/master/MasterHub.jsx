@@ -492,49 +492,264 @@ function AuditoriaViewer() {
 }
 
 // ─── PLANOS MANAGER ─────────────────────────────────────────────
+// ─── PLANOS MANAGER ─────────────────────────────────────────────
 function PlanosManager() {
     const [planos, setPlanos] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showForm, setShowForm] = useState(false);
+    const [editingPlano, setEditingPlano] = useState(null);
+    const [form, setForm] = useState({
+        nome: '',
+        descricao: '',
+        preco_mensal: 0,
+        max_usuarios: 5,
+        max_filiais: 1,
+        max_storage_gb: 5,
+        modulos_inclusos: [],
+        status: 'Ativo'
+    });
+    const [saving, setSaving] = useState(false);
+    const [confirmDelete, setConfirmDelete] = useState(null);
+
+    const disponiveisModulos = [
+        { codigo: 'estoque', nome: 'Estoque & WMS' },
+        { codigo: 'producao', nome: 'Produção' },
+        { codigo: 'pdv', nome: 'PDV & Vendas' },
+        { codigo: 'financeiro', nome: 'Financeiro' },
+        { codigo: 'fiscal', nome: 'Fiscal & NF-e' },
+        { codigo: 'checklist', nome: 'Checklist' },
+        { codigo: 'patrimonio', nome: 'Patrimônio' },
+        { codigo: 'rh', nome: 'RH & Pessoas' },
+        { codigo: 'crm', nome: 'CRM & Clientes' },
+        { codigo: 'delivery', nome: 'Delivery' },
+        { codigo: 'ged', nome: 'GED & Documentos' },
+        { codigo: 'kpi', nome: 'KPIs & Analytics' }
+    ];
+
+    const loadPlanos = useCallback(async () => {
+        setLoading(true);
+        const { data, error } = await supabase.from('planos').select('*').order('preco_mensal');
+        if (!error) setPlanos(data || []);
+        setLoading(false);
+    }, []);
 
     useEffect(() => {
-        supabase.from('planos').select('*').order('preco_mensal').then(({ data }) => {
-            setPlanos(data || []);
-            setLoading(false);
+        loadPlanos();
+    }, [loadPlanos]);
+
+    const handleSave = async () => {
+        setSaving(true);
+        try {
+            const planPayload = {
+                nome: form.nome,
+                descricao: form.descricao,
+                preco_mensal: parseFloat(form.preco_mensal || 0),
+                max_usuarios: parseInt(form.max_usuarios || 0),
+                max_filiais: parseInt(form.max_filiais || 0),
+                max_storage_gb: parseInt(form.max_storage_gb || 0),
+                modulos_inclusos: form.modulos_inclusos || [],
+                status: form.status
+            };
+
+            let error;
+            if (editingPlano) {
+                const res = await supabase.from('planos').update(planPayload).eq('id', editingPlano.id);
+                error = res.error;
+            } else {
+                const res = await supabase.from('planos').insert(planPayload);
+                error = res.error;
+            }
+
+            if (error) {
+                alert('Erro ao salvar plano: ' + (error.message || JSON.stringify(error)));
+            } else {
+                setShowForm(false);
+                setEditingPlano(null);
+                setForm({
+                    nome: '',
+                    descricao: '',
+                    preco_mensal: 0,
+                    max_usuarios: 5,
+                    max_filiais: 1,
+                    max_storage_gb: 5,
+                    modulos_inclusos: [],
+                    status: 'Ativo'
+                });
+                loadPlanos();
+            }
+        } catch (err) {
+            console.error('Error saving plan:', err);
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!confirmDelete) return;
+        const { error } = await supabase.from('planos').delete().eq('id', confirmDelete.id);
+        if (error) {
+            alert('Erro ao excluir plano: ' + (error.message || JSON.stringify(error)));
+        } else {
+            setConfirmDelete(null);
+            loadPlanos();
+        }
+    };
+
+    const toggleModuleInPlan = (codigo) => {
+        setForm(f => {
+            const list = f.modulos_inclusos || [];
+            const isIncluded = list.includes(codigo);
+            const newList = isIncluded 
+                ? list.filter(c => c !== codigo) 
+                : [...list, codigo];
+            return { ...f, modulos_inclusos: newList };
         });
-    }, []);
+    };
 
     const CORES = ['#6366f1', '#10b981', '#f97316'];
 
     return (
-        <div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Header / Ações */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button onClick={() => { 
+                    setEditingPlano(null); 
+                    setForm({
+                        nome: '',
+                        descricao: '',
+                        preco_mensal: 0,
+                        max_usuarios: 5,
+                        max_filiais: 1,
+                        max_storage_gb: 5,
+                        modulos_inclusos: disponiveisModulos.map(m => m.codigo), // Acesso total por padrão ao criar novo
+                        status: 'Ativo'
+                    }); 
+                    setShowForm(true); 
+                }} style={{
+                    background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: '8px',
+                    padding: '0.6rem 1.2rem', color: '#fff', fontWeight: '700', fontSize: '0.82rem',
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem',
+                }}>
+                    <Plus size={14} /> Novo Plano
+                </button>
+            </div>
+
+            {/* Formulário de Plano */}
+            {showForm && (
+                <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '14px', padding: '1.5rem' }}>
+                    <h3 style={{ marginBottom: '1.25rem', color: 'var(--text-primary)', fontWeight: '700' }}>
+                        {editingPlano ? 'Editar Plano' : 'Novo Plano'}
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.3rem', fontWeight: '600', textTransform: 'uppercase' }}>Nome do Plano*</label>
+                                <input type="text" value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} required
+                                    style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: '0.85rem' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.3rem', fontWeight: '600', textTransform: 'uppercase' }}>Preço Mensal (R$)*</label>
+                                <input type="number" step="0.01" value={form.preco_mensal} onChange={e => setForm(f => ({ ...f, preco_mensal: e.target.value }))} required
+                                    style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: '0.85rem' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.3rem', fontWeight: '600', textTransform: 'uppercase' }}>Status</label>
+                                <select value={form.status} onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+                                    style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                                    <option value="Ativo">Ativo</option>
+                                    <option value="Inativo">Inativo</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.3rem', fontWeight: '600', textTransform: 'uppercase' }}>Limite de Usuários</label>
+                                <input type="number" value={form.max_usuarios} onChange={e => setForm(f => ({ ...f, max_usuarios: e.target.value }))} placeholder="999 para ilimitado"
+                                    style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: '0.85rem' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.3rem', fontWeight: '600', textTransform: 'uppercase' }}>Limite de Filiais</label>
+                                <input type="number" value={form.max_filiais} onChange={e => setForm(f => ({ ...f, max_filiais: e.target.value }))} placeholder="999 para ilimitado"
+                                    style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: '0.85rem' }} />
+                            </div>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.3rem', fontWeight: '600', textTransform: 'uppercase' }}>Limite Espaço (GB)</label>
+                                <input type="number" value={form.max_storage_gb} onChange={e => setForm(f => ({ ...f, max_storage_gb: e.target.value }))} placeholder="999 para ilimitado"
+                                    style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: '0.85rem' }} />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.3rem', fontWeight: '600', textTransform: 'uppercase' }}>Descrição</label>
+                            <textarea value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} rows={2}
+                                style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem 0.75rem', color: 'var(--text-primary)', fontSize: '0.85rem', fontFamily: 'inherit', resize: 'vertical' }} />
+                        </div>
+
+                        {/* Módulos inclusos */}
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '0.6rem', fontWeight: '600', textTransform: 'uppercase' }}>Liberar Módulos (Acesso ao ERP)</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.5rem' }}>
+                                {disponiveisModulos.map(m => {
+                                    const isChecked = (form.modulos_inclusos || []).includes(m.codigo);
+                                    return (
+                                        <div key={m.codigo} onClick={() => toggleModuleInPlan(m.codigo)} style={{
+                                            display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                            padding: '0.5rem 0.75rem', background: isChecked ? 'rgba(99,102,241,0.08)' : 'rgba(255,255,255,0.02)',
+                                            border: `1px solid ${isChecked ? 'rgba(99,102,241,0.35)' : 'var(--border-color)'}`,
+                                            borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s',
+                                        }}>
+                                            <input type="checkbox" checked={isChecked} onChange={() => {}} style={{ pointerEvents: 'none' }} />
+                                            <span style={{ fontSize: '0.8rem', color: isChecked ? 'var(--text-primary)' : 'var(--text-secondary)' }}>{m.nome}</span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Botões do formulário */}
+                        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', justifyContent: 'flex-end' }}>
+                            <button onClick={() => { setShowForm(false); setEditingPlano(null); }} style={{ background: 'none', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.5rem 1.2rem', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.85rem' }}>Cancelar</button>
+                            <button onClick={handleSave} disabled={saving} style={{ background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: '8px', padding: '0.5rem 1.5rem', color: '#fff', fontWeight: '700', fontSize: '0.85rem', cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+                                {saving ? 'Salvando...' : 'Salvar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Listagem de planos */}
             {loading ? <div style={{ padding: '3rem', display: 'flex', justifyContent: 'center', color: 'var(--text-secondary)' }}><RefreshCw size={20} style={{ animation: 'spin 1s linear infinite' }} /></div> : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
                     {planos.map((plano, i) => (
                         <div key={plano.id} style={{
                             background: 'var(--bg-card)', border: `1px solid ${CORES[i % CORES.length]}44`,
                             borderRadius: '16px', padding: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1rem',
                             boxShadow: `0 4px 20px ${CORES[i % CORES.length]}11`,
+                            position: 'relative'
                         }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                 <div>
                                     <h3 style={{ color: 'var(--text-primary)', fontSize: '1.2rem', fontWeight: '800' }}>{plano.nome}</h3>
                                     <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.2rem' }}>{plano.descricao}</p>
                                 </div>
-                                <StatusBadge status={plano.status} />
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', alignItems: 'flex-end' }}>
+                                    <StatusBadge status={plano.status} />
+                                </div>
                             </div>
                             <div>
-                                <span style={{ fontSize: '2rem', fontWeight: '900', color: CORES[i % CORES.length] }}>R$ {plano.preco_mensal?.toFixed(2).replace('.', ',')}</span>
+                                <span style={{ fontSize: '2rem', fontWeight: '900', color: CORES[i % CORES.length] }}>R$ {plano.preco_mensal ? parseFloat(plano.preco_mensal).toFixed(2).replace('.', ',') : '0,00'}</span>
                                 <span style={{ color: 'var(--text-secondary)', fontSize: '0.8rem' }}>/mês</span>
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
                                 {[
                                     { label: 'Usuários', value: plano.max_usuarios === 999 ? '∞' : plano.max_usuarios },
                                     { label: 'Filiais',  value: plano.max_filiais  === 999 ? '∞' : plano.max_filiais },
-                                    { label: 'Storage',  value: plano.max_storage_gb === 999 ? '∞ GB' : `${plano.max_storage_gb} GB` },
+                                    { label: 'Storage',  value: plano.max_storage_gb === 999 ? '∞' : `${plano.max_storage_gb} GB` },
                                 ].map((item, j) => (
                                     <div key={j} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.5rem', textAlign: 'center' }}>
-                                        <div style={{ fontWeight: '800', color: 'var(--text-primary)' }}>{item.value}</div>
-                                        <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{item.label}</div>
+                                        <div style={{ fontWeight: '800', color: 'var(--text-primary)', fontSize: '0.85rem' }}>{item.value}</div>
+                                        <div style={{ fontSize: '0.62rem', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{item.label}</div>
                                     </div>
                                 ))}
                             </div>
@@ -544,10 +759,49 @@ function PlanosManager() {
                                     {(plano.modulos_inclusos || []).map(mod => (
                                         <span key={mod} style={{ background: `${CORES[i % CORES.length]}18`, color: CORES[i % CORES.length], padding: '0.1rem 0.5rem', borderRadius: '4px', fontSize: '0.68rem', fontWeight: '600' }}>{mod}</span>
                                     ))}
+                                    {(!plano.modulos_inclusos?.length) && <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>Nenhum</span>}
                                 </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: 'auto', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem', justifyContent: 'flex-end' }}>
+                                <button onClick={() => {
+                                    setEditingPlano(plano);
+                                    setForm({
+                                        nome: plano.nome,
+                                        descricao: plano.descricao || '',
+                                        preco_mensal: plano.preco_mensal || 0,
+                                        max_usuarios: plano.max_usuarios || 5,
+                                        max_filiais: plano.max_filiais || 1,
+                                        max_storage_gb: plano.max_storage_gb || 5,
+                                        modulos_inclusos: plano.modulos_inclusos || [],
+                                        status: plano.status || 'Ativo'
+                                    });
+                                    setShowForm(true);
+                                }} style={{ background: 'rgba(99,102,241,0.12)', border: 'none', borderRadius: '6px', padding: '0.35rem 0.7rem', color: '#818cf8', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                    <Edit3 size={11} /> Editar
+                                </button>
+                                <button onClick={() => setConfirmDelete(plano)} style={{ background: 'rgba(239,68,68,0.12)', border: 'none', borderRadius: '6px', padding: '0.35rem 0.7rem', color: '#ef4444', cursor: 'pointer', fontSize: '0.75rem', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                                    <Trash2 size={11} /> Excluir
+                                </button>
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Modal de confirmação de exclusão */}
+            {confirmDelete && (
+                <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ background: 'var(--bg-secondary, #1e293b)', border: '1px solid var(--border-color)', borderRadius: '16px', padding: '2rem', maxWidth: '400px', width: '90%', textAlign: 'center' }}>
+                        <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+                        <h3 style={{ color: '#ef4444', marginBottom: '0.5rem' }}>Excluir Plano?</h3>
+                        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1.5rem' }}>
+                            Esta ação é <strong>irreversível</strong>. O plano <strong>{confirmDelete.nome}</strong> será removido.
+                        </p>
+                        <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+                            <button onClick={() => setConfirmDelete(null)} style={{ background: 'none', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem 1.5rem', color: 'var(--text-secondary)', cursor: 'pointer' }}>Cancelar</button>
+                            <button onClick={handleDelete} style={{ background: '#ef4444', border: 'none', borderRadius: '8px', padding: '0.6rem 1.5rem', color: '#fff', fontWeight: '700', cursor: 'pointer' }}>Excluir</button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
