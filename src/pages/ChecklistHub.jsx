@@ -1466,7 +1466,7 @@ export default function ChecklistHub() {
             totalWeight += weight;
 
             let isCompliant = true;
-            if (item.type === 'sim_nao' && userAns.answer === 'Não') {
+            if ((item.type === 'sim_nao' || item.type === 'checkbox') && userAns.answer === 'Não') {
                 isCompliant = false;
             } else if (item.type === 'numero' && userAns.answer) {
                 const num = parseFloat(userAns.answer);
@@ -1481,7 +1481,7 @@ export default function ChecklistHub() {
                 compliantWeight += weight;
             } else {
                 const itemActions = getItemRuleActions(item);
-                if (itemActions.includes('create_nc') || item.type === 'sim_nao' || item.type === 'antes_depois') {
+                if (itemActions.includes('create_nc') || item.type === 'sim_nao' || item.type === 'checkbox' || item.type === 'antes_depois') {
                     ncTriggered++;
                 }
             }
@@ -1527,7 +1527,7 @@ export default function ChecklistHub() {
                     const itemActions = getItemRuleActions(item);
                     
                     let failed = false;
-                    if (item.type === 'sim_nao' && userAns.answer === 'Não') failed = true;
+                    if ((item.type === 'sim_nao' || item.type === 'checkbox') && userAns.answer === 'Não') failed = true;
                     if (item.type === 'numero' && userAns.answer) {
                         const val = parseFloat(userAns.answer);
                         if (val < item.minVal || val > item.maxVal) failed = true;
@@ -1538,7 +1538,7 @@ export default function ChecklistHub() {
                         if (itemActions.includes('alert')) {
                             showSystemAlert(`Alerta de Desvio Operacional: O item "${item.label}" falhou na execução!`, 'Desvio Operacional', 'warning');
                         }
-                        if (itemActions.includes('create_nc') || item.type === 'sim_nao' || item.type === 'antes_depois') {
+                        if (itemActions.includes('create_nc') || item.type === 'sim_nao' || item.type === 'checkbox' || item.type === 'antes_depois') {
                             const ncObj = {
                                 executionId: dbExec.id,
                                 modelName: activeExecution.name,
@@ -3287,8 +3287,8 @@ export default function ChecklistHub() {
                                             {item.weight && <span style={{ fontSize: '0.68rem', background: 'rgba(255,255,255,0.05)', padding: '0.1rem 0.4rem', borderRadius: '4px', color: '#94a3b8' }}>Peso: {item.weight}</span>}
                                         </div>
 
-                                        {/* Sim/Não question type */}
-                                        {item.type === 'sim_nao' && (
+                                        {/* Sim/Não and Checkbox question types */}
+                                        {(item.type === 'sim_nao' || item.type === 'checkbox') && (
                                             <div style={{ display: 'flex', gap: '1rem', marginBottom: '0.5rem' }}>
                                                 <button 
                                                     className={`btn-sim-nao sim ${ans.answer === 'Sim' ? 'selected' : ''}`}
@@ -3306,28 +3306,6 @@ export default function ChecklistHub() {
                                                 >
                                                     NÃO
                                                 </button>
-                                            </div>
-                                        )}
-
-                                        {/* Single checkbox type */}
-                                        {item.type === 'checkbox' && (
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', background: 'rgba(0,0,0,0.1)', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.02)' }}>
-                                                <input 
-                                                    type="checkbox" 
-                                                    id={`chk-${item.id}`}
-                                                    checked={ans.answer === 'Sim'}
-                                                    onChange={(e) => setExecAnswers({ 
-                                                        ...execAnswers, 
-                                                        [item.id]: { ...ans, answer: e.target.checked ? 'Sim' : '' } 
-                                                    })}
-                                                    style={{ accentColor: '#38bdf8', width: '20px', height: '20px', cursor: 'pointer' }}
-                                                />
-                                                <label 
-                                                    htmlFor={`chk-${item.id}`} 
-                                                    style={{ fontSize: '0.88rem', color: '#cbd5e1', cursor: 'pointer', userSelect: 'none', fontWeight: '500' }}
-                                                >
-                                                    Confirmar Realização
-                                                </label>
                                             </div>
                                         )}
 
