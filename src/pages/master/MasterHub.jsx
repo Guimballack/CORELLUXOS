@@ -813,24 +813,61 @@ function ModulosManager() {
     const [empresas, setEmpresas] = useState([]);
     const [selectedEmpresa, setSelectedEmpresa] = useState('');
     const [modulos, setModulos]   = useState([]);
+    const [modulosLocal, setModulosLocal] = useState([]);
     const [loading, setLoading]   = useState(false);
+    const [saving, setSaving]     = useState(false);
+    const [hasChanges, setHasChanges] = useState(false);
 
     useEffect(() => {
         EmpresasService.getEmpresas({ limit: 200 }).then(({ data }) => setEmpresas(data || []));
     }, []);
 
-    useEffect(() => {
-        if (!selectedEmpresa) return;
+    const loadModulos = useCallback(async (empresaId) => {
         setLoading(true);
-        ModulosService.getAllModulosComStatus(selectedEmpresa).then(data => {
-            setModulos(data);
-            setLoading(false);
-        });
-    }, [selectedEmpresa]);
+        const data = await ModulosService.getAllModulosComStatus(empresaId);
+        setModulos(data);
+        setModulosLocal(data);
+        setHasChanges(false);
+        setLoading(false);
+    }, []);
 
-    const toggleModulo = async (moduloId, atualHabilitado) => {
-        await ModulosService.setModuloStatus(selectedEmpresa, moduloId, !atualHabilitado);
-        setModulos(prev => prev.map(m => m.id === moduloId ? { ...m, habilitado: !atualHabilitado } : m));
+    useEffect(() => {
+        if (!selectedEmpresa) {
+            setModulos([]);
+            setModulosLocal([]);
+            setHasChanges(false);
+            return;
+        }
+        loadModulos(selectedEmpresa);
+    }, [selectedEmpresa, loadModulos]);
+
+    const handleToggleModuloLocal = (moduloId) => {
+        setModulosLocal(prev => {
+            const updated = prev.map(m => m.id === moduloId ? { ...m, habilitado: !m.habilitado } : m);
+            const originalMap = Object.fromEntries(modulos.map(m => [m.id, m.habilitado]));
+            const isChanged = updated.some(m => m.habilitado !== originalMap[m.id]);
+            setHasChanges(isChanged);
+            return updated;
+        });
+    };
+
+    const handleSaveModulos = async () => {
+        setSaving(true);
+        try {
+            for (const mod of modulosLocal) {
+                const original = modulos.find(m => m.id === mod.id);
+                if (original && original.habilitado !== mod.habilitado) {
+                    await ModulosService.setModuloStatus(selectedEmpresa, mod.id, mod.habilitado);
+                }
+            }
+            alert('Módulos da empresa atualizados com sucesso!');
+            await loadModulos(selectedEmpresa);
+        } catch (err) {
+            console.error('Error saving modules:', err);
+            alert('Erro ao salvar módulos: ' + err.message);
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -846,31 +883,78 @@ function ModulosManager() {
 
             {selectedEmpresa && (
                 loading ? <div style={{ padding: '2rem', display: 'flex', justifyContent: 'center', color: 'var(--text-secondary)' }}><RefreshCw size={18} style={{ animation: 'spin 1s linear infinite' }} /></div> : (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
-                        {modulos.map(mod => (
-                            <div key={mod.id} onClick={() => toggleModulo(mod.id, mod.habilitado)} style={{
-                                background: mod.habilitado ? 'rgba(34,197,94,0.08)' : 'var(--bg-card)',
-                                border: `1px solid ${mod.habilitado ? 'rgba(34,197,94,0.3)' : 'var(--border-color)'}`,
-                                borderRadius: '12px', padding: '1rem', cursor: 'pointer',
-                                display: 'flex', alignItems: 'center', gap: '0.75rem',
-                                transition: 'all 0.2s',
-                            }}
-                                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
-                                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                            >
-                                <div style={{ fontSize: '1.5rem' }}>{
-                                    { estoque: '📦', producao: '🏭', pdv: '🛒', financeiro: '💰', fiscal: '📄', checklist: '✅', patrimonio: '🏷️', rh: '👥', crm: '❤️', delivery: '🚚', ged: '📁', kpi: '📊' }[mod.codigo] || '⚙️'
-                                }</div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontWeight: '700', fontSize: '0.82rem', color: 'var(--text-primary)' }}>{mod.nome}</div>
-                                    <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>{mod.versao}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '0.75rem' }}>
+                            {modulosLocal.map(mod => (
+                                <div key={mod.id} onClick={() => handleToggleModuloLocal(mod.id)} style={{
+                                    background: mod.habilitado ? 'rgba(34,197,94,0.08)' : 'var(--bg-card)',
+                                    border: `1px solid ${mod.habilitado ? 'rgba(34,197,94,0.3)' : 'var(--border-color)'}`,
+                                    borderRadius: '12px', padding: '1rem', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', gap: '0.75rem',
+                                    transition: 'all 0.2s',
+                                }}
+                                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.02)'}
+                                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                                >
+                                    <div style={{ fontSize: '1.5rem' }}>{
+                                        { estoque: '📦', producao: '🏭', pdv: '🛒', financeiro: '💰', fiscal: '📄', checklist: '✅', patrimonio: '🏷️', rh: '👥', crm: '❤️', delivery: '🚚', ged: '📁', kpi: '📊' }[mod.codigo] || '⚙️'
+                                    }</div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontWeight: '700', fontSize: '0.82rem', color: 'var(--text-primary)' }}>{mod.nome}</div>
+                                        <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)' }}>{mod.versao}</div>
+                                    </div>
+                                    {mod.habilitado
+                                        ? <ToggleRight size={20} style={{ color: '#22c55e' }} />
+                                        : <ToggleLeft  size={20} style={{ color: '#64748b' }} />
+                                    }
                                 </div>
-                                {mod.habilitado
-                                    ? <ToggleRight size={20} style={{ color: '#22c55e' }} />
-                                    : <ToggleLeft  size={20} style={{ color: '#64748b' }} />
-                                }
-                            </div>
-                        ))}
+                            ))}
+                        </div>
+
+                        {/* Save Button Bar */}
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            gap: '0.75rem',
+                            borderTop: '1px solid rgba(255,255,255,0.05)',
+                            paddingTop: '1.25rem',
+                            marginTop: '1rem'
+                        }}>
+                            <button
+                                onClick={() => setModulosLocal(modulos) || setHasChanges(false)}
+                                disabled={!hasChanges || saving}
+                                style={{
+                                    background: 'none',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: '8px',
+                                    padding: '0.6rem 1.5rem',
+                                    color: 'var(--text-secondary)',
+                                    cursor: 'pointer',
+                                    fontSize: '0.85rem',
+                                    opacity: (!hasChanges || saving) ? 0.5 : 1
+                                }}
+                            >
+                                Descartar
+                            </button>
+                            <button
+                                onClick={handleSaveModulos}
+                                disabled={!hasChanges || saving}
+                                style={{
+                                    background: hasChanges ? 'linear-gradient(135deg, #10b981, #059669)' : 'rgba(255,255,255,0.05)',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    padding: '0.6rem 2rem',
+                                    color: hasChanges ? '#fff' : 'var(--text-secondary)',
+                                    fontWeight: '700',
+                                    fontSize: '0.85rem',
+                                    cursor: hasChanges ? 'pointer' : 'default',
+                                    opacity: saving ? 0.7 : 1,
+                                    boxShadow: hasChanges ? '0 4px 12px rgba(16,185,129,0.2)' : 'none'
+                                }}
+                            >
+                                {saving ? 'Salvando...' : 'Salvar Alterações'}
+                            </button>
+                        </div>
                     </div>
                 )
             )}
