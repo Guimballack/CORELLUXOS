@@ -111,21 +111,21 @@ export default function App() {
             case 'logistics-hub':
                 return <ModuloGuard modulo="estoque"><LogisticsHub /></ModuloGuard>;
             case 'central-hub':
-                return <ModuloGuard modulo="central"><CentralHub /></ModuloGuard>;
+                return <ModuloGuard modulo="checklist"><CentralHub /></ModuloGuard>;
             case 'checklist-hub':
-                return <ChecklistHub />;
+                return <ModuloGuard modulo="checklist"><ChecklistHub /></ModuloGuard>;
             case 'patrimonio-hub':
-                return <PatrimonioHub />;
+                return <ModuloGuard modulo="patrimonio"><PatrimonioHub /></ModuloGuard>;
             case 'subprodutos-hub':
-                return <SubprodutosHub />;
+                return <ModuloGuard modulo="producao"><SubprodutosHub /></ModuloGuard>;
             case 'financeiro-hub':
-                return <PlaceholderModule name="FINANCEIRO" description="Controle de fluxo de caixa, contas, faturamento e DRE em migração para React." />;
+                return <ModuloGuard modulo="financeiro"><PlaceholderModule name="FINANCEIRO" description="Controle de fluxo de caixa, contas a pagar/receber, faturamento e DRE em migração para React." /></ModuloGuard>;
             case 'ged-hub':
-                return <PlaceholderModule name="GED" description="Gestão Empresarial de Documentos e controle de assinaturas em migração para React." />;
+                return <ModuloGuard modulo="ged"><PlaceholderModule name="GED" description="Gestão Empresarial de Documentos e controle de assinaturas em migração para React." /></ModuloGuard>;
             case 'kpis-hub':
-                return <PlaceholderModule name="KPI'S" description="Painéis de indicadores, metas e dashboards analíticos em migração para React." />;
+                return <ModuloGuard modulo="kpi"><PlaceholderModule name="KPI'S" description="Painéis de indicadores, metas e dashboards analíticos em migração para React." /></ModuloGuard>;
             case 'juridico-hub':
-                return <PlaceholderModule name="JURÍDICO" description="Controle de contratos, processos e IA jurídica em migração para React." />;
+                return <ModuloGuard modulo="juridico"><PlaceholderModule name="JURÍDICO" description="Controle de contratos, processos e IA jurídica em migração para React." /></ModuloGuard>;
             case 'settings':
                 return <SettingsHub />;
             
