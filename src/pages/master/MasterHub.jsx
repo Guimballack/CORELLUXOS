@@ -218,7 +218,10 @@ function EmpresasManager({ onEntrarComoCliente }) {
             ? await EmpresasService.editarEmpresa(editingEmpresa.id, form)
             : await EmpresasService.criarEmpresa(form);
         setSaving(false);
-        if (!result.error) {
+        if (result.error) {
+            alert('Erro ao salvar empresa: ' + (result.error.message || JSON.stringify(result.error)));
+            console.error('[MasterHub] Erro ao salvar:', result.error);
+        } else {
             setShowForm(false);
             setEditingEmpresa(null);
             setForm({ razao_social: '', nome_fantasia: '', cnpj: '', email: '', telefone: '', plano_id: '', data_vencimento: '', login_usuario: '', login_senha: '' });
