@@ -17,6 +17,7 @@ import ChecklistHub from './pages/ChecklistHub';
 import PatrimonioHub from './pages/PatrimonioHub';
 import SubprodutosHub from './pages/SubprodutosHub';
 import FinanceiroHub from './pages/FinanceiroHub';
+import KpisHub from './pages/KpisHub';
 import MasterHub from './pages/master/MasterHub';
 import ModuloGuard from './components/ModuloGuard';
 import { ArrowLeft } from 'lucide-react';
@@ -124,7 +125,7 @@ export default function App() {
             case 'ged-hub':
                 return <ModuloGuard modulo="ged"><PlaceholderModule name="GED" description="Gestão Empresarial de Documentos e controle de assinaturas em migração para React." /></ModuloGuard>;
             case 'kpis-hub':
-                return <ModuloGuard modulo="kpi"><PlaceholderModule name="KPI'S" description="Painéis de indicadores, metas e dashboards analíticos em migração para React." /></ModuloGuard>;
+                return <ModuloGuard modulo="kpi"><KpisHub /></ModuloGuard>;
             case 'juridico-hub':
                 return <ModuloGuard modulo="juridico"><PlaceholderModule name="JURÍDICO" description="Controle de contratos, processos e IA jurídica em migração para React." /></ModuloGuard>;
             case 'settings':
