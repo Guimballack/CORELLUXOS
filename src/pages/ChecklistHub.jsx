@@ -73,7 +73,8 @@ export default function ChecklistHub() {
         'checklistExecutions',
         'checklistActiveTab',
         'checklistOfflineMode',
-        'checklistOfflineQueue'
+        'checklistOfflineQueue',
+        'currentScreen'
     ]);
 
     const activeTab = state.checklistActiveTab || 'menu';
@@ -4832,7 +4833,10 @@ export default function ChecklistHub() {
                             <button 
                                 className="btn-send-aviso" 
                                 style={{ width: '100%', padding: '0.75rem', fontSize: '0.88rem' }} 
-                                onClick={() => setExecResultModal(null)}
+                                onClick={() => {
+                                    setExecResultModal(null);
+                                    setKey('currentScreen', 'dashboard');
+                                }}
                             >
                                 Ir para o Painel Geral
                             </button>
