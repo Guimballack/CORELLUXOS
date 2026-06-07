@@ -422,6 +422,12 @@ export default function LogisticsHub() {
     // Custom System dialog state
     const [systemDialog, setSystemDialog] = useState(null);
 
+    // Custom Approval States
+    const [activeApprovalRequest, setActiveApprovalRequest] = useState(null);
+    const [followFefoSuggestion, setFollowFefoSuggestion] = useState(true);
+    const [manualAddress, setManualAddress] = useState('');
+    const [manualLot, setManualLot] = useState('');
+
     // WMS Address formatting and mapping
     const formattedWmsAddresses = useMemo(() => {
         if (!wmsLocations || !wmsZones || !wmsWarehouses) return [];
@@ -861,6 +867,49 @@ export default function LogisticsHub() {
                 });
             }
         }
+        await recalculateProductStockFromBatches();
+    };
+
+    const deductStockManually = async (sku, qty, address, lot) => {
+        const targetAddress = (address || '').trim().toUpperCase();
+        const targetLot = (lot || '').trim().toUpperCase();
+        
+        // 1. Try to find a batch of this SKU with exact address and lot match
+        let batch = stockBatches.find(b => 
+            b.itemSku === sku && 
+            (b.address || '').trim().toUpperCase() === targetAddress && 
+            (b.lot || '').trim().toUpperCase() === targetLot
+        );
+        
+        // 2. If not found, try to find by SKU and address (ignoring lot)
+        if (!batch) {
+            batch = stockBatches.find(b => 
+                b.itemSku === sku && 
+                (b.address || '').trim().toUpperCase() === targetAddress
+            );
+        }
+        
+        if (batch) {
+            // Update the existing batch
+            const newQty = batch.quantity - qty;
+            if (newQty <= 0) {
+                await DbService.deleteStockBatch(batch.id);
+            } else {
+                await DbService.updateStockBatch(batch.id, {
+                    quantity: newQty,
+                    updatedAt: new Date().toISOString()
+                });
+            }
+        } else {
+            // 3. If no batch exists at that address, we can create a negative/new entry or adjust overall stock.
+            const product = products.find(p => p.sku === sku);
+            if (product) {
+                const newStock = Math.max(0, product.stock - qty);
+                await DbService.updateProductStock(sku, newStock);
+            }
+        }
+        
+        // Refresh all state from db
         await recalculateProductStockFromBatches();
     };
 
@@ -1746,7 +1795,7 @@ export default function LogisticsHub() {
     // SUPERVISOR APPROVAL LOGIC
     // =============================================
 
-    const handleApproveRequest = async (reqId) => {
+    const handleApproveRequest = (reqId) => {
         const req = requests.find(r => r.id === reqId);
         if (!req || req.status !== 'Pendente') return;
 
@@ -1761,72 +1810,103 @@ export default function LogisticsHub() {
             return;
         }
 
-        const productBatches = stockBatches.filter(b => b.itemSku === req.itemSku);
-        let confirmMsg = `Aprovar entrega de ${req.quantity} ${product.unit} de "${req.itemName}"?`;
+        // Open the custom modal
+        setActiveApprovalRequest(req);
+        setFollowFefoSuggestion(true);
+        setManualAddress('');
+        setManualLot('');
+    };
+
+    const confirmApproveRequest = async () => {
+        if (!activeApprovalRequest) return;
         
-        if (productBatches.length > 0) {
-            const fefo = calculateFefoPlan(req.itemSku, req.quantity);
-            const planDetails = fefo.plan.map(item => `  - Lote: ${item.batch.lot} (Val: ${item.batch.expirationDate ? new Date(item.batch.expirationDate).toLocaleDateString('pt-BR') : 'Sem Data'}) -> Qtd: -${item.quantityToTake}`).join('\n');
-            confirmMsg += `\n\nResumo de Dedução FEFO:\n${planDetails}`;
-            if (fefo.remainingUnallocated > 0) {
-                confirmMsg += `\n\nAVISO: ${fefo.remainingUnallocated} ${product.unit} sem lote específico correspondente (será deduzido do saldo global).`;
-            }
+        const req = activeApprovalRequest;
+        const reqId = req.id;
+        const product = products.find(p => p.sku === req.itemSku);
+        
+        if (!product) return;
+
+        const productBatches = stockBatches.filter(b => b.itemSku === req.itemSku && b.quantity > 0);
+        const hasBatches = productBatches.length > 0;
+        
+        // Manual validation: address is mandatory if they chose NOT to follow FEFO (or if product has no batches but address was entered)
+        if ((!hasBatches || !followFefoSuggestion) && !manualAddress.trim()) {
+            showSystemAlert('Erro: O endereço de retirada é obrigatório quando não se segue a sugestão do sistema.', 'Erro');
+            return;
         }
 
-        showSystemConfirm(confirmMsg, async () => {
-            if (productBatches.length > 0) {
-                await deductStockFromBatchesFefo(req.itemSku, req.quantity);
+        // Proceed to approve and deduct stock
+        if (hasBatches && followFefoSuggestion) {
+            // 1. Follow FEFO Suggestion
+            await deductStockFromBatchesFefo(req.itemSku, req.quantity);
+        } else {
+            // 2. Manual input
+            if (manualAddress.trim()) {
+                await deductStockManually(req.itemSku, req.quantity, manualAddress, manualLot);
             } else {
+                // Fallback for items with no batches and no manual address typed
                 const newStock = product.stock - req.quantity;
                 await DbService.updateProductStock(req.itemSku, newStock);
                 setProducts(prev => prev.map(p => p.sku === req.itemSku ? { ...p, stock: newStock } : p));
             }
+        }
 
-            // Update request status
-            const updatedRequests = requests.map(r => r.id === reqId ? {
-                ...r,
-                status: 'Entregue',
-                approvedBy: state.currentUser ? state.currentUser.name : 'Supervisor',
-                approvedAt: new Date().toLocaleString('pt-BR')
-            } : r);
+        // Update request status
+        const updatedRequests = requests.map(r => r.id === reqId ? {
+            ...r,
+            status: 'Entregue',
+            approvedBy: state.currentUser ? state.currentUser.name : 'Supervisor',
+            approvedAt: new Date().toLocaleString('pt-BR'),
+            withdrawalAddress: hasBatches && followFefoSuggestion 
+                ? calculateFefoPlan(req.itemSku, req.quantity).plan.map(item => item.batch.address).join(', ')
+                : manualAddress.trim(),
+            withdrawalLot: hasBatches && followFefoSuggestion
+                ? calculateFefoPlan(req.itemSku, req.quantity).plan.map(item => item.batch.lot).join(', ')
+                : manualLot.trim()
+        } : r);
 
-            saveRequests(updatedRequests);
+        saveRequests(updatedRequests);
 
-            // Registrar log de movimentação de saída para requisição aprovada
-            try {
-                await DbService.saveStockMovement({
-                    sku: req.itemSku,
-                    productName: req.itemName,
-                    type: 'Saída',
-                    quantity: req.quantity,
-                    userName: state.currentUser ? state.currentUser.name : 'Supervisor',
-                    details: `Requisição Aprovada. Destino: ${req.destinationSector || 'Não informado'}. Solic: ${req.userName}.`
-                });
-            } catch (err) {
-                console.error('[Logistics] Erro ao registrar movimentação de requisição:', err);
-            }
+        // Registrar log de movimentação de saída para requisição aprovada
+        try {
+            const detailsText = hasBatches && followFefoSuggestion
+                ? `FEFO. Destino: ${req.destinationSector || 'Não informado'}. Solic: ${req.userName}.`
+                : `Manual (End: ${manualAddress.trim()}${manualLot.trim() ? `, Lote: ${manualLot.trim()}` : ''}). Destino: ${req.destinationSector || 'Não informado'}. Solic: ${req.userName}.`;
 
-            // Log transaction to movement logs
-            try {
-                const logsRaw = localStorage.getItem('corellux_movement_logs');
-                const logs = logsRaw ? JSON.parse(logsRaw) : [];
-                const today = new Date();
-                const newLog = {
-                    id: 'mov_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-                    sku: req.itemSku,
-                    date: today.toISOString().split('T')[0],
-                    qty: req.quantity,
-                    dayOfWeek: today.getDay()
-                };
-                logs.push(newLog);
-                localStorage.setItem('corellux_movement_logs', JSON.stringify(logs));
-                setScRecalcKey(prev => prev + 1);
-            } catch (err) {
-                console.error('[Logistics] Error logging movement to localStorage:', err);
-            }
+            await DbService.saveStockMovement({
+                sku: req.itemSku,
+                productName: req.itemName,
+                type: 'Saída',
+                quantity: req.quantity,
+                userName: state.currentUser ? state.currentUser.name : 'Supervisor',
+                details: `Req. Aprovada. ${detailsText}`
+            });
+        } catch (err) {
+            console.error('[Logistics] Erro ao registrar movimentação de requisição:', err);
+        }
 
-            showSystemAlert('Solicitação aprovada e insumo baixado do estoque!', 'Sucesso');
-        });
+        // Log transaction to movement logs
+        try {
+            const logsRaw = localStorage.getItem('corellux_movement_logs');
+            const logs = logsRaw ? JSON.parse(logsRaw) : [];
+            const today = new Date();
+            const newLog = {
+                id: 'mov_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                sku: req.itemSku,
+                date: today.toISOString().split('T')[0],
+                qty: req.quantity,
+                dayOfWeek: today.getDay()
+            };
+            logs.push(newLog);
+            localStorage.setItem('corellux_movement_logs', JSON.stringify(logs));
+            setScRecalcKey(prev => prev + 1);
+        } catch (err) {
+            console.error('[Logistics] Error logging movement to localStorage:', err);
+        }
+
+        // Close modal and alert success
+        setActiveApprovalRequest(null);
+        showSystemAlert('Solicitação aprovada e insumo baixado do estoque!', 'Sucesso');
     };
 
     const handleRejectRequest = (reqId) => {
@@ -2960,11 +3040,11 @@ export default function LogisticsHub() {
                                         <thead>
                                             <tr>
                                                 <th>Produto</th>
-                                                <th>Sugestão de Retirada (FEFO)</th>
-                                                <th>Quantidade</th>
+                                                <th>Sugestão (FEFO)</th>
+                                                <th>Qtd</th>
                                                 <th>Solicitado Por</th>
-                                                <th>Setor / Função</th>
-                                                <th>Data da Solicitação</th>
+                                                <th>Setor / Área</th>
+                                                <th>Data/Hora</th>
                                                 <th>Status</th>
                                                 <th style={{ textAlign: 'center' }}>Ações</th>
                                             </tr>
@@ -3015,7 +3095,7 @@ export default function LogisticsHub() {
                                                                                 {item.batch.address || 'Sem end.'}
                                                                             </span>
                                                                             <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                                                                Lote: <strong style={{ color: 'var(--text-primary)' }}>{item.batch.lot}</strong> (-{item.quantityToTake} {product?.unit || ''})
+                                                                                <strong style={{ color: 'var(--text-primary)' }}>{item.batch.lot}</strong> (-{item.quantityToTake} {product?.unit || ''})
                                                                             </span>
                                                                         </div>
                                                                     ))}
@@ -3041,15 +3121,42 @@ export default function LogisticsHub() {
                                                                 </div>
                                                             </td>
                                                             <td><span style={{ fontWeight: '700' }}>{req.quantity}</span></td>
-                                                            <td>{req.requestedBy}</td>
                                                             <td>
-                                                                <span className="category-tag" style={{ background: 'rgba(255,255,255,0.02)', color: 'var(--text-primary)' }}>
-                                                                    {req.sector || 'COZINHA'}
+                                                                <span style={{ textTransform: 'uppercase', fontSize: '0.8rem', fontWeight: '600' }}>
+                                                                    {req.requestedBy}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <span className="category-tag" style={{ 
+                                                                    background: 'rgba(255,255,255,0.02)', 
+                                                                    color: 'var(--text-primary)',
+                                                                    fontSize: '0.7rem',
+                                                                    padding: '0.25rem 0.5rem'
+                                                                }}>
+                                                                    {(() => {
+                                                                        const s = (req.sector || 'COZINHA').toUpperCase();
+                                                                        if (s === 'ADMINISTRATIVO E FINANCEIRO') return 'ADM / FIN';
+                                                                        if (s === 'ESTOQUE E SUPRIMENTOS') return 'ESTOQUE';
+                                                                        return s;
+                                                                    })()}
                                                                 </span>
                                                                 <br />
                                                                 <small style={{ color: 'var(--text-secondary)' }}>{req.area || 'Auxiliar'}</small>
                                                             </td>
-                                                            <td><small>{req.requestedAt}</small></td>
+                                                            <td>
+                                                                {(() => {
+                                                                    const parts = (req.requestedAt || '').split(',');
+                                                                    if (parts.length === 2) {
+                                                                        return (
+                                                                            <div style={{ display: 'flex', flexDirection: 'column', fontSize: '0.8rem', lineHeight: '1.2' }}>
+                                                                                <span style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{parts[0].trim()}</span>
+                                                                                <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{parts[1].trim()}</span>
+                                                                            </div>
+                                                                        );
+                                                                    }
+                                                                    return <small>{req.requestedAt}</small>;
+                                                                })()}
+                                                            </td>
                                                             <td>
                                                                 {/* Map styles manually to match consolidated index.css */}
                                                                 <span 
@@ -3080,7 +3187,7 @@ export default function LogisticsHub() {
                                                                     {req.status === 'Recusado' && <Info size={12} />}
                                                                 </span>
                                                             </td>
-                                                            <td style={{ textAlign: 'center' }}>
+                                                            <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                                                                 {isPending ? (
                                                                     canApprove ? (
                                                                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
@@ -3088,7 +3195,7 @@ export default function LogisticsHub() {
                                                                                 className="action-btn-sm" 
                                                                                 onClick={() => handleApproveRequest(req.id)}
                                                                                 title="Aprovar entrega"
-                                                                                style={{ color: 'var(--accent-green)', background: 'rgba(34,197,94,0.1)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                                                                style={{ color: 'var(--accent-green)', background: 'rgba(34,197,94,0.1)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                                                             >
                                                                                 <Check size={16} />
                                                                             </button>
@@ -3096,19 +3203,21 @@ export default function LogisticsHub() {
                                                                                 className="action-btn-sm" 
                                                                                 onClick={() => handleRejectRequest(req.id)}
                                                                                 title="Recusar solicitação"
-                                                                                style={{ color: 'var(--accent-red)', background: 'rgba(239,68,68,0.1)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                                                                                style={{ color: 'var(--accent-red)', background: 'rgba(239,68,68,0.1)', padding: '0.4rem', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                                                                             >
                                                                                 <X size={16} />
                                                                             </button>
                                                                         </div>
                                                                     ) : (
-                                                                        <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                                                        <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
                                                                             Aguardando Supervisor
                                                                         </span>
                                                                     )
                                                                 ) : (
-                                                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                                        {req.status === 'Recusado' ? 'Recusado por:' : 'Liberação por:'} {req.approvedBy}
+                                                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', lineHeight: '1.2' }}>
+                                                                        <span style={{ fontWeight: '600' }}>{req.status === 'Recusado' ? 'Recusado: ' : 'Liberação: '}</span>
+                                                                        <br />
+                                                                        <span style={{ textTransform: 'uppercase' }}>{req.approvedBy}</span>
                                                                     </span>
                                                                 )}
                                                             </td>
@@ -5402,6 +5511,242 @@ export default function LogisticsHub() {
                     </div>
                 , document.body);
             })()}
+
+            {/* =============================================
+                MODAL: CUSTOM APPROVAL CONFIRMATION DIALOG
+            ============================================= */}
+            {activeApprovalRequest && createPortal(
+                <div className="pin-modal-overlay active" style={{ zIndex: 11000 }}>
+                    <div className="pin-modal-card" style={{ maxWidth: '520px', padding: '2rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <Check size={24} style={{ color: 'var(--accent-green)' }} />
+                                <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff', fontWeight: '800' }}>Confirmar Aprovação de Entrega</h3>
+                            </div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Produto:</span>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{activeApprovalRequest.itemName}</strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Quantidade Solicitada:</span>
+                                    <strong style={{ color: 'var(--accent-orange)' }}>
+                                        {activeApprovalRequest.quantity} {products.find(p => p.sku === activeApprovalRequest.itemSku)?.unit || ''}
+                                    </strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Solicitado Por:</span>
+                                    <strong style={{ color: 'var(--text-primary)' }}>{activeApprovalRequest.requestedBy}</strong>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                    <span style={{ color: 'var(--text-secondary)' }}>Setor Destino:</span>
+                                    <span className="category-tag" style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}>
+                                        {activeApprovalRequest.sector || 'COZINHA'}
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Suggestion plan display if product has batches */}
+                            {(() => {
+                                const productBatches = stockBatches.filter(b => b.itemSku === activeApprovalRequest.itemSku && b.quantity > 0);
+                                if (productBatches.length === 0) {
+                                    return (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '8px' }}>
+                                            <span style={{ fontSize: '0.85rem', color: 'var(--accent-red)', fontWeight: '700' }}>
+                                                Nenhum lote registrado para este produto.
+                                            </span>
+                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                A retirada manual é obrigatória. Por favor, preencha o endereço.
+                                            </span>
+                                        </div>
+                                    );
+                                }
+
+                                const fefo = calculateFefoPlan(activeApprovalRequest.itemSku, activeApprovalRequest.quantity);
+                                return (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-secondary)' }}>Sugestão FEFO do Sistema:</span>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '120px', overflowY: 'auto', background: 'rgba(192, 132, 252, 0.04)', border: '1px solid rgba(192, 132, 252, 0.15)', padding: '0.75rem', borderRadius: '8px' }}>
+                                            {fefo.plan.map((item, idx) => (
+                                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
+                                                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                                        <span style={{ background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc', padding: '0.1rem 0.4rem', borderRadius: '4px', fontFamily: 'monospace', fontWeight: '700', fontSize: '0.72rem' }}>
+                                                            {item.batch.address || 'Sem end.'}
+                                                        </span>
+                                                        <span style={{ color: 'var(--text-secondary)' }}>
+                                                            Lote: <strong style={{ color: 'var(--text-primary)' }}>{item.batch.lot || 'Sem lote'}</strong>
+                                                        </span>
+                                                    </div>
+                                                    <strong style={{ color: '#c084fc' }}>-{item.quantityToTake}</strong>
+                                                </div>
+                                            ))}
+                                            {fefo.remainingUnallocated > 0 && (
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: 'var(--accent-red)' }}>
+                                                    <span>Dedução do Saldo Geral (Sem lote específico)</span>
+                                                    <strong>-{fefo.remainingUnallocated}</strong>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Toggle selection */}
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.3rem' }}>
+                                            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-secondary)' }}>Opção de Retirada:</span>
+                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                <button
+                                                    onClick={() => setFollowFefoSuggestion(true)}
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: '0.6rem',
+                                                        borderRadius: '6px',
+                                                        background: followFefoSuggestion ? 'var(--accent-orange)' : 'rgba(255,255,255,0.03)',
+                                                        border: '1px solid ' + (followFefoSuggestion ? 'var(--accent-orange)' : 'var(--border-color)'),
+                                                        color: followFefoSuggestion ? '#ffffff' : 'var(--text-secondary)',
+                                                        fontSize: '0.8rem',
+                                                        fontWeight: '700',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    Seguir Sugestão FEFO
+                                                </button>
+                                                <button
+                                                    onClick={() => setFollowFefoSuggestion(false)}
+                                                    style={{
+                                                        flex: 1,
+                                                        padding: '0.6rem',
+                                                        borderRadius: '6px',
+                                                        background: !followFefoSuggestion ? 'var(--accent-orange)' : 'rgba(255,255,255,0.03)',
+                                                        border: '1px solid ' + (!followFefoSuggestion ? 'var(--accent-orange)' : 'var(--border-color)'),
+                                                        color: !followFefoSuggestion ? '#ffffff' : 'var(--text-secondary)',
+                                                        fontSize: '0.8rem',
+                                                        fontWeight: '700',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.2s'
+                                                    }}
+                                                >
+                                                    Retirada Personalizada
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Custom Address and Lot fields */}
+                            {(() => {
+                                const productBatches = stockBatches.filter(b => b.itemSku === activeApprovalRequest.itemSku && b.quantity > 0);
+                                const hasBatches = productBatches.length > 0;
+                                const showManualInputs = !hasBatches || !followFefoSuggestion;
+
+                                if (!showManualInputs) return null;
+
+                                // Collect unique addresses and lots for suggestions
+                                const prodAddresses = [...new Set(stockBatches.filter(b => b.itemSku === activeApprovalRequest.itemSku && b.address).map(b => b.address))];
+                                const prodLots = [...new Set(stockBatches.filter(b => b.itemSku === activeApprovalRequest.itemSku && b.lot).map(b => b.lot))];
+
+                                return (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid rgba(243, 107, 29, 0.2)', background: 'rgba(243, 107, 29, 0.02)', padding: '1rem', borderRadius: '8px', marginTop: '0.2rem' }}>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--accent-orange)' }}>
+                                            Especificar Lote e Endereçamento de Retirada:
+                                        </span>
+
+                                        <datalist id="approval-address-suggestions">
+                                            {prodAddresses.map(addr => <option key={addr} value={addr} />)}
+                                            {formattedWmsAddresses.map(loc => <option key={loc.id} value={loc.formatted} />)}
+                                        </datalist>
+                                        <datalist id="approval-lot-suggestions">
+                                            {prodLots.map(lot => <option key={lot} value={lot} />)}
+                                        </datalist>
+
+                                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '180px' }}>
+                                                <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>
+                                                    ENDEREÇO DE RETIRADA *
+                                                </label>
+                                                <input 
+                                                    type="text" 
+                                                    list="approval-address-suggestions"
+                                                    value={manualAddress}
+                                                    onChange={(e) => setManualAddress(e.target.value)}
+                                                    placeholder="Digite ou selecione..."
+                                                    style={{
+                                                        background: 'var(--bg-input)',
+                                                        border: '1.5px solid var(--border-color)',
+                                                        color: 'var(--text-primary)',
+                                                        borderRadius: '8px',
+                                                        padding: '0.5rem 0.8rem',
+                                                        fontSize: '0.85rem',
+                                                        outline: 'none',
+                                                        fontWeight: '600'
+                                                    }}
+                                                />
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '180px' }}>
+                                                <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>
+                                                    LOTE DE RETIRADA (OPCIONAL)
+                                                </label>
+                                                <input 
+                                                    type="text" 
+                                                    list="approval-lot-suggestions"
+                                                    value={manualLot}
+                                                    onChange={(e) => setManualLot(e.target.value)}
+                                                    placeholder="Digite, selecione ou vazio..."
+                                                    style={{
+                                                        background: 'var(--bg-input)',
+                                                        border: '1.5px solid var(--border-color)',
+                                                        color: 'var(--text-primary)',
+                                                        borderRadius: '8px',
+                                                        padding: '0.5rem 0.8rem',
+                                                        fontSize: '0.85rem',
+                                                        outline: 'none',
+                                                        fontWeight: '600'
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <small style={{ color: 'var(--text-secondary)', fontSize: '0.72rem' }}>
+                                            * O endereço é obrigatório. Caso o lote seja omitido, a baixa será feita por endereço.
+                                        </small>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Modal Actions */}
+                            <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '0.8rem' }}>
+                                <button 
+                                    className="btn-clear-modal" 
+                                    style={{ 
+                                        flex: 1, 
+                                        background: 'rgba(255, 255, 255, 0.03)', 
+                                        border: '1.5px solid var(--border-color)', 
+                                        color: 'var(--text-primary)',
+                                        fontWeight: '700',
+                                        height: '42px',
+                                        cursor: 'pointer'
+                                    }} 
+                                    onClick={() => setActiveApprovalRequest(null)}
+                                >
+                                    CANCELAR
+                                </button>
+                                <button 
+                                    className="btn-confirm-modal" 
+                                    style={{ 
+                                        flex: 1, 
+                                        backgroundColor: 'var(--accent-orange)', 
+                                        color: '#ffffff',
+                                        fontWeight: '800',
+                                        height: '42px',
+                                        cursor: 'pointer'
+                                    }} 
+                                    onClick={confirmApproveRequest}
+                                >
+                                    APROVAR
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>, document.body)}
 
             {/* =============================================
                 MODAL: REJECTION INFO DIALOG
