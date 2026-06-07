@@ -3294,6 +3294,7 @@ export default function ChecklistHub() {
                                                     className={`btn-sim-nao sim ${ans.answer === 'Sim' ? 'selected' : ''}`}
                                                     onClick={() => handleSimNaoAnswer(item.id, 'Sim')}
                                                     style={{ flex: 1, padding: '0.6rem' }}
+                                                    type="button"
                                                 >
                                                     SIM
                                                 </button>
@@ -3301,9 +3302,32 @@ export default function ChecklistHub() {
                                                     className={`btn-sim-nao nao ${ans.answer === 'Não' ? 'selected' : ''}`}
                                                     onClick={() => handleSimNaoAnswer(item.id, 'Não')}
                                                     style={{ flex: 1, padding: '0.6rem' }}
+                                                    type="button"
                                                 >
                                                     NÃO
                                                 </button>
+                                            </div>
+                                        )}
+
+                                        {/* Single checkbox type */}
+                                        {item.type === 'checkbox' && (
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem', background: 'rgba(0,0,0,0.1)', padding: '0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.02)' }}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    id={`chk-${item.id}`}
+                                                    checked={ans.answer === 'Sim'}
+                                                    onChange={(e) => setExecAnswers({ 
+                                                        ...execAnswers, 
+                                                        [item.id]: { ...ans, answer: e.target.checked ? 'Sim' : '' } 
+                                                    })}
+                                                    style={{ accentColor: '#38bdf8', width: '20px', height: '20px', cursor: 'pointer' }}
+                                                />
+                                                <label 
+                                                    htmlFor={`chk-${item.id}`} 
+                                                    style={{ fontSize: '0.88rem', color: '#cbd5e1', cursor: 'pointer', userSelect: 'none', fontWeight: '500' }}
+                                                >
+                                                    Confirmar Realização
+                                                </label>
                                             </div>
                                         )}
 
