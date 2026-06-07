@@ -112,12 +112,9 @@ export const initTenantContext = async (empresaId, filialId = null) => {
 
         // Carrega módulos habilitados
         const { data: modulosData } = await supabase
-            .from('empresa_modulos')
-            .select('*, modulos(*)')
-            .eq('empresa_id', empresaId)
-            .eq('habilitado', true);
+            .rpc('get_company_modules_enabled', { p_empresa_id: empresaId });
 
-        const modulos = modulosData?.map(m => m.modulos?.codigo).filter(Boolean) || [];
+        const modulos = modulosData?.map(m => m.codigo).filter(Boolean) || [];
 
         // Persiste na sessão
         sessionStorage.setItem(STORAGE_KEYS.EMPRESA_ID,   empresaId);

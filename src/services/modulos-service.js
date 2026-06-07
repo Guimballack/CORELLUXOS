@@ -32,96 +32,50 @@ export const getModulosEmpresa = async (empresaId = null) => {
     if (!empId) return [];
 
     const { data, error } = await supabase
-        .from('empresa_modulos')
-        .select('*, modulos(*)')
-        .eq('empresa_id', empId)
-        .eq('habilitado', true);
+        .rpc('get_company_modules_enabled', { p_empresa_id: empId });
 
     if (error) {
         console.error('[ModulosService] Erro ao buscar módulos:', error.message);
         return [];
     }
 
-    return data?.map(m => ({
-        ...m.modulos,
-        habilitado: true,
-        data_inicio: m.data_inicio,
-        data_fim: m.data_fim,
-    })) || [];
+    return data || [];
 };
 
 /**
  * Lista todos os módulos do catálogo com flag de habilitado para uma empresa.
  */
 export const getAllModulosComStatus = async (empresaId) => {
-    const [catalogoResult, habilitadosResult] = await Promise.all([
-        supabase.from('modulos').select('*').eq('status', 'Ativo').order('nome'),
-        supabase.from('empresa_modulos').select('*').eq('empresa_id', empresaId)
-    ]);
+    const { data, error } = await supabase
+        .rpc('get_all_modules_with_status', { p_empresa_id: empresaId });
 
-    const catalogo = catalogoResult.data || [];
-    const habilitados = habilitadosResult.data || [];
-    const habMap = Object.fromEntries(habilitados.map(h => [h.modulo_id, h]));
+    if (error) {
+        console.error('[ModulosService] Erro ao obter módulos com status:', error.message);
+        return [];
+    }
 
-    return catalogo.map(mod => ({
-        ...mod,
-        habilitado: habMap[mod.id]?.habilitado || false,
-        empresa_modulo_id: habMap[mod.id]?.id || null,
-    }));
+    return data || [];
 };
 
 /**
  * Habilita ou desabilita um módulo para uma empresa.
  */
 export const setModuloStatus = async (empresaId, moduloId, habilitado) => {
-    const { data: existing } = await supabase
-        .from('empresa_modulos')
-        .select('id')
-        .eq('empresa_id', empresaId)
-        .eq('modulo_id', moduloId)
-        .maybeSingle();
-
-    if (existing) {
-        return supabase
-            .from('empresa_modulos')
-            .update({ habilitado })
-            .eq('id', existing.id);
-    } else {
-        return supabase
-            .from('empresa_modulos')
-            .insert({ empresa_id: empresaId, modulo_id: moduloId, habilitado });
-    }
+    return supabase.rpc('set_company_module_status', {
+        p_empresa_id: empresaId,
+        p_modulo_id: moduloId,
+        p_habilitado: habilitado
+    });
 };
 
 /**
  * Habilita todos os módulos de um plano para uma empresa.
  */
 export const habilitarModulosPlano = async (empresaId, planoId) => {
-    const { data: plano } = await supabase
-        .from('planos')
-        .select('modulos_inclusos')
-        .eq('id', planoId)
-        .single();
-
-    if (!plano?.modulos_inclusos) return;
-
-    const { data: modulos } = await supabase
-        .from('modulos')
-        .select('id, codigo')
-        .in('codigo', plano.modulos_inclusos);
-
-    if (!modulos?.length) return;
-
-    // Upsert de todos os módulos do plano
-    const upserts = modulos.map(mod => ({
-        empresa_id: empresaId,
-        modulo_id: mod.id,
-        habilitado: true,
-    }));
-
-    return supabase
-        .from('empresa_modulos')
-        .upsert(upserts, { onConflict: 'empresa_id,modulo_id' });
+    return supabase.rpc('set_company_modules_from_plan', {
+        p_empresa_id: empresaId,
+        p_plano_id: planoId
+    });
 };
 
 /**
@@ -133,14 +87,8 @@ export const verificarModulo = async (codigoModulo, empresaId = null) => {
     const empId = empresaId || getEmpresaId();
     if (!empId) return false;
 
-    const { data } = await supabase
-        .from('empresa_modulos')
-        .select('habilitado')
-        .eq('empresa_id', empId)
-        .eq('habilitado', true)
-        .maybeSingle();
-
-    return !!data?.habilitado;
+    const modulos = await getModulosEmpresa(empId);
+    return modulos.some(m => m.codigo === codigoModulo);
 };
 
 const ModulosService = {

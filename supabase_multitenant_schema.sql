@@ -897,6 +897,127 @@ COMMENT ON TRIGGER set_updated_at_empresas ON empresas IS
 
 
 -- =============================================================================
+-- SEÇÃO 6.5: FUNÇÕES RPC PARA MÓDULOS (BYPASS RLS PARA OPERAÇÕES MASTER/ADMIN)
+-- =============================================================================
+
+-- RPC to fetch enabled modules for a company, bypassing RLS
+CREATE OR REPLACE FUNCTION get_company_modules_enabled(p_empresa_id UUID)
+RETURNS TABLE (
+    id UUID,
+    codigo VARCHAR,
+    nome VARCHAR,
+    descricao TEXT,
+    icone VARCHAR,
+    versao VARCHAR,
+    status VARCHAR,
+    created_at TIMESTAMPTZ,
+    habilitado BOOLEAN,
+    data_inicio DATE,
+    data_fim DATE
+) SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        m.id, 
+        m.codigo, 
+        m.nome, 
+        m.descricao, 
+        m.icone, 
+        m.versao, 
+        m.status, 
+        m.created_at,
+        em.habilitado,
+        em.data_inicio,
+        em.data_fim
+    FROM empresa_modulos em
+    JOIN modulos m ON em.modulo_id = m.id
+    WHERE em.empresa_id = p_empresa_id 
+      AND em.habilitado = true
+      AND m.status = 'Ativo';
+END;
+$$ LANGUAGE plpgsql;
+
+-- RPC to get all modules with their status for a company, bypassing RLS
+CREATE OR REPLACE FUNCTION get_all_modules_with_status(p_empresa_id UUID)
+RETURNS TABLE (
+    id UUID,
+    codigo VARCHAR,
+    nome VARCHAR,
+    descricao TEXT,
+    icone VARCHAR,
+    versao VARCHAR,
+    status VARCHAR,
+    created_at TIMESTAMPTZ,
+    habilitado BOOLEAN,
+    empresa_modulo_id UUID
+) SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        m.id, 
+        m.codigo, 
+        m.nome, 
+        m.descricao, 
+        m.icone, 
+        m.versao, 
+        m.status, 
+        m.created_at,
+        COALESCE(em.habilitado, false) AS habilitado,
+        em.id AS empresa_modulo_id
+    FROM modulos m
+    LEFT JOIN empresa_modulos em ON em.modulo_id = m.id AND em.empresa_id = p_empresa_id
+    WHERE m.status = 'Ativo'
+    ORDER BY m.nome;
+END;
+$$ LANGUAGE plpgsql;
+
+-- RPC to set module status for a company, bypassing RLS
+CREATE OR REPLACE FUNCTION set_company_module_status(
+    p_empresa_id UUID,
+    p_modulo_id UUID,
+    p_habilitado BOOLEAN
+) RETURNS VOID SECURITY DEFINER AS $$
+BEGIN
+    INSERT INTO empresa_modulos (empresa_id, modulo_id, habilitado)
+    VALUES (p_empresa_id, p_modulo_id, p_habilitado)
+    ON CONFLICT (empresa_id, modulo_id) 
+    DO UPDATE SET habilitado = p_habilitado;
+END;
+$$ LANGUAGE plpgsql;
+
+-- RPC to set company modules from plan, bypassing RLS
+CREATE OR REPLACE FUNCTION set_company_modules_from_plan(
+    p_empresa_id UUID,
+    p_plano_id UUID
+) RETURNS VOID SECURITY DEFINER AS $$
+DECLARE
+    v_modulos_inclusos TEXT[];
+BEGIN
+    -- Obter módulos do plano
+    SELECT modulos_inclusos INTO v_modulos_inclusos FROM planos WHERE id = p_plano_id;
+    
+    IF v_modulos_inclusos IS NOT NULL AND array_length(v_modulos_inclusos, 1) > 0 THEN
+        -- Desabilitar módulos que não estão no novo plano
+        UPDATE empresa_modulos 
+        SET habilitado = FALSE
+        WHERE empresa_id = p_empresa_id 
+          AND modulo_id NOT IN (
+              SELECT m.id FROM modulos m WHERE m.codigo = ANY(v_modulos_inclusos)
+          );
+          
+        -- Inserir/Habilitar módulos do novo plano
+        INSERT INTO empresa_modulos (empresa_id, modulo_id, habilitado)
+        SELECT p_empresa_id, m.id, TRUE
+        FROM modulos m
+        WHERE m.codigo = ANY(v_modulos_inclusos)
+        ON CONFLICT (empresa_id, modulo_id)
+        DO UPDATE SET habilitado = TRUE;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- =============================================================================
 -- SEÇÃO 7: VERIFICAÇÃO FINAL
 -- Exibe um resumo das tabelas criadas/modificadas para confirmação visual.
 -- =============================================================================
