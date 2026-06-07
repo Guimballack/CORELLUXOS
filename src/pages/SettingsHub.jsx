@@ -1532,6 +1532,23 @@ export default function SettingsHub() {
         return Number(num).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
+    const formatBRL = (val) => {
+        if (val === undefined || val === null || val === '') return '';
+        if (typeof val === 'number') {
+            return val.toLocaleString('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            });
+        }
+        let clean = val.replace(/\D/g, '');
+        if (!clean) return '';
+        let num = parseFloat(clean) / 100;
+        return num.toLocaleString('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        });
+    };
+
     const getDocStatus = (docState) => {
         if (!docState) return { label: 'Pendente', className: 'status-pendente' };
         if (docState.received) {
@@ -1879,7 +1896,7 @@ export default function SettingsHub() {
             name: prod.name || '',
             category: prod.category || '',
             description: prod.description || '',
-            price: prod.price !== undefined ? String(prod.price) : '',
+            price: prod.price !== undefined ? formatBRL(prod.price) : '',
             unit: prod.unit || 'UN',
             status: prod.status || 'Ativo',
             controlaProducao: !!prod.controlaProducao
@@ -6925,12 +6942,11 @@ export default function SettingsHub() {
                                             <input 
                                                 type="text" 
                                                 required 
-                                                placeholder="Ex: 49,90"
+                                                placeholder="Ex: R$ 49,90"
                                                 value={saleProdForm.price} 
                                                 onChange={(e) => {
-                                                    let val = e.target.value;
-                                                    val = val.replace(/[^\d.,R$\s]/g, '');
-                                                    setSaleProdForm(prev => ({ ...prev, price: val }));
+                                                    const formatted = formatBRL(e.target.value);
+                                                    setSaleProdForm(prev => ({ ...prev, price: formatted }));
                                                 }}
                                                 style={{ width: '100%', background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', padding: '0.5rem 1rem', borderRadius: '8px', outline: 'none' }}
                                             />
