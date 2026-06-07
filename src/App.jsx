@@ -16,6 +16,7 @@ import CentralHub from './pages/CentralHub';
 import ChecklistHub from './pages/ChecklistHub';
 import PatrimonioHub from './pages/PatrimonioHub';
 import SubprodutosHub from './pages/SubprodutosHub';
+import FinanceiroHub from './pages/FinanceiroHub';
 import MasterHub from './pages/master/MasterHub';
 import ModuloGuard from './components/ModuloGuard';
 import { ArrowLeft } from 'lucide-react';
@@ -119,7 +120,7 @@ export default function App() {
             case 'subprodutos-hub':
                 return <ModuloGuard modulo="producao"><SubprodutosHub /></ModuloGuard>;
             case 'financeiro-hub':
-                return <ModuloGuard modulo="financeiro"><PlaceholderModule name="FINANCEIRO" description="Controle de fluxo de caixa, contas a pagar/receber, faturamento e DRE em migração para React." /></ModuloGuard>;
+                return <ModuloGuard modulo="financeiro"><FinanceiroHub /></ModuloGuard>;
             case 'ged-hub':
                 return <ModuloGuard modulo="ged"><PlaceholderModule name="GED" description="Gestão Empresarial de Documentos e controle de assinaturas em migração para React." /></ModuloGuard>;
             case 'kpis-hub':
