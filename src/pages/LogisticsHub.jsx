@@ -5653,7 +5653,6 @@ export default function LogisticsHub() {
 
                                         <datalist id="approval-address-suggestions">
                                             {prodAddresses.map(addr => <option key={addr} value={addr} />)}
-                                            {formattedWmsAddresses.map(loc => <option key={loc.id} value={loc.formatted} />)}
                                         </datalist>
                                         <datalist id="approval-lot-suggestions">
                                             {prodLots.map(lot => <option key={lot} value={lot} />)}
