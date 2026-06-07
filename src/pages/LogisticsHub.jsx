@@ -431,6 +431,9 @@ export default function LogisticsHub() {
     const [showLotDropdown, setShowLotDropdown] = useState(false);
     const [addressReadOnly, setAddressReadOnly] = useState(true);
     const [lotReadOnly, setLotReadOnly] = useState(true);
+    const [customAllocations, setCustomAllocations] = useState([]);
+    const [activeAddressDropdownId, setActiveAddressDropdownId] = useState(null);
+    const [activeLotDropdownId, setActiveLotDropdownId] = useState(null);
 
     // WMS Address formatting and mapping
     const formattedWmsAddresses = useMemo(() => {
@@ -913,6 +916,76 @@ export default function LogisticsHub() {
             }
         }
         
+        // Refresh all state from db
+        await recalculateProductStockFromBatches();
+    };
+
+    const deductCustomAllocations = async (sku, allocations) => {
+        for (const alloc of allocations) {
+            const qty = parseFloat(alloc.quantity || 0);
+            if (qty <= 0) continue;
+
+            if (!alloc.isCustom) {
+                // Deduct from the specific batch ID
+                const batch = stockBatches.find(b => b.id === alloc.id);
+                if (batch) {
+                    const newQty = batch.quantity - qty;
+                    if (newQty <= 0) {
+                        await DbService.deleteStockBatch(batch.id);
+                    } else {
+                        await DbService.updateStockBatch(batch.id, {
+                            quantity: newQty,
+                            updatedAt: new Date().toISOString()
+                        });
+                    }
+                } else {
+                    // Fallback: if batch was somehow deleted, deduct from general
+                    const product = products.find(p => p.sku === sku);
+                    if (product) {
+                        const newStock = Math.max(0, product.stock - qty);
+                        await DbService.updateProductStock(sku, newStock);
+                    }
+                }
+            } else {
+                // Custom input: match by address and lot
+                const targetAddress = (alloc.address || '').trim().toUpperCase();
+                const targetLot = (alloc.lot || '').trim().toUpperCase();
+
+                let batch = stockBatches.find(b => 
+                    b.itemSku === sku && 
+                    (b.address || '').trim().toUpperCase() === targetAddress && 
+                    (b.lot || '').trim().toUpperCase() === targetLot
+                );
+
+                if (!batch) {
+                    // Try to find by SKU and address only (lot ignored)
+                    batch = stockBatches.find(b => 
+                        b.itemSku === sku && 
+                        (b.address || '').trim().toUpperCase() === targetAddress
+                    );
+                }
+
+                if (batch) {
+                    const newQty = batch.quantity - qty;
+                    if (newQty <= 0) {
+                        await DbService.deleteStockBatch(batch.id);
+                    } else {
+                        await DbService.updateStockBatch(batch.id, {
+                            quantity: newQty,
+                            updatedAt: new Date().toISOString()
+                        });
+                    }
+                } else {
+                    // Deduct from general product stock
+                    const product = products.find(p => p.sku === sku);
+                    if (product) {
+                        const newStock = Math.max(0, product.stock - qty);
+                        await DbService.updateProductStock(sku, newStock);
+                    }
+                }
+            }
+        }
+
         // Refresh all state from db
         await recalculateProductStockFromBatches();
     };
@@ -1814,11 +1887,50 @@ export default function LogisticsHub() {
             return;
         }
 
+        // Initialize allocations with the available stock batches
+        const initialBatches = stockBatches.filter(b => b.itemSku === req.itemSku && b.quantity > 0);
+        setCustomAllocations(initialBatches.map(b => ({
+            id: b.id,
+            address: b.address || '',
+            lot: b.lot || '',
+            quantity: '',
+            isCustom: false,
+            availableQty: b.quantity
+        })));
+
         // Open the custom modal
         setActiveApprovalRequest(req);
         setFollowFefoSuggestion(true);
         setManualAddress('');
         setManualLot('');
+    };
+
+    const handleUpdateAllocation = (id, field, value) => {
+        setCustomAllocations(prev => prev.map(a => {
+            if (a.id === id) {
+                return { ...a, [field]: value };
+            }
+            return a;
+        }));
+    };
+
+    const handleRemoveAllocation = (id) => {
+        setCustomAllocations(prev => prev.filter(a => a.id !== id));
+    };
+
+    const handleAddCustomAllocation = () => {
+        const newId = 'custom_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        setCustomAllocations(prev => [
+            ...prev,
+            {
+                id: newId,
+                address: '',
+                lot: '',
+                quantity: '',
+                isCustom: true,
+                availableQty: 999999
+            }
+        ]);
     };
 
     const confirmApproveRequest = async () => {
@@ -1833,26 +1945,26 @@ export default function LogisticsHub() {
         const productBatches = stockBatches.filter(b => b.itemSku === req.itemSku && b.quantity > 0);
         const hasBatches = productBatches.length > 0;
         
-        // Manual validation: address is mandatory if they chose NOT to follow FEFO (or if product has no batches but address was entered)
-        if ((!hasBatches || !followFefoSuggestion) && !manualAddress.trim()) {
-            showSystemAlert('Erro: O endereço de retirada é obrigatório quando não se segue a sugestão do sistema.', 'Erro');
-            return;
-        }
-
         // Proceed to approve and deduct stock
+        const activeAllocations = customAllocations.filter(a => parseFloat(a.quantity || 0) > 0);
         if (hasBatches && followFefoSuggestion) {
             // 1. Follow FEFO Suggestion
             await deductStockFromBatchesFefo(req.itemSku, req.quantity);
         } else {
-            // 2. Manual input
-            if (manualAddress.trim()) {
-                await deductStockManually(req.itemSku, req.quantity, manualAddress, manualLot);
-            } else {
-                // Fallback for items with no batches and no manual address typed
-                const newStock = product.stock - req.quantity;
-                await DbService.updateProductStock(req.itemSku, newStock);
-                setProducts(prev => prev.map(p => p.sku === req.itemSku ? { ...p, stock: newStock } : p));
+            // 2. Custom allocations (Manual input)
+            const totalAllocated = activeAllocations.reduce((sum, item) => sum + parseFloat(item.quantity || 0), 0);
+            if (Math.abs(totalAllocated - req.quantity) > 0.0001) {
+                showSystemAlert(`Erro: A quantidade total alocada (${totalAllocated}) deve ser exatamente igual à quantidade solicitada (${req.quantity}).`, 'Erro');
+                return;
             }
+
+            const missingAddress = activeAllocations.some(a => !(a.address || '').trim());
+            if (missingAddress) {
+                showSystemAlert('Erro: Todos os lotes/endereços selecionados para retirada devem possuir um endereço preenchido.', 'Erro');
+                return;
+            }
+
+            await deductCustomAllocations(req.itemSku, customAllocations);
         }
 
         // Update request status
@@ -1863,10 +1975,10 @@ export default function LogisticsHub() {
             approvedAt: new Date().toLocaleString('pt-BR'),
             withdrawalAddress: hasBatches && followFefoSuggestion 
                 ? calculateFefoPlan(req.itemSku, req.quantity).plan.map(item => item.batch.address).join(', ')
-                : manualAddress.trim(),
+                : activeAllocations.map(a => a.address.trim()).join(', '),
             withdrawalLot: hasBatches && followFefoSuggestion
-                ? calculateFefoPlan(req.itemSku, req.quantity).plan.map(item => item.batch.lot).join(', ')
-                : manualLot.trim()
+                ? calculateFefoPlan(req.itemSku, req.quantity).plan.map(item => item.batch.lot || 'Sem Lote').join(', ')
+                : activeAllocations.map(a => (a.lot || '').trim() || 'Sem Lote').join(', ')
         } : r);
 
         saveRequests(updatedRequests);
@@ -1875,7 +1987,7 @@ export default function LogisticsHub() {
         try {
             const detailsText = hasBatches && followFefoSuggestion
                 ? `FEFO. Destino: ${req.destinationSector || 'Não informado'}. Solic: ${req.userName}.`
-                : `Manual (End: ${manualAddress.trim()}${manualLot.trim() ? `, Lote: ${manualLot.trim()}` : ''}). Destino: ${req.destinationSector || 'Não informado'}. Solic: ${req.userName}.`;
+                : `Manual (Alocações: ${activeAllocations.map(a => `${a.address.trim()}:${(a.lot || '').trim() || 'Sem Lote'}(${a.quantity})`).join(', ')}). Destino: ${req.destinationSector || 'Não informado'}. Solic: ${req.userName}.`;
 
             await DbService.saveStockMovement({
                 sku: req.itemSku,
@@ -4512,7 +4624,7 @@ export default function LogisticsHub() {
                             <h3 style={{ margin: 0, fontSize: '1rem', color: '#ffffff', fontWeight: '800', textTransform: 'uppercase' }}>
                                 {flowType === 'entrada' ? 'ADICIONAR QUANTIDADE' : 'REMOVER QUANTIDADE'}
                             </h3>
-                            <button className="btn-close-modal" onClick={() => setShowNumpad(false)} title="Fechar">
+                            <button className="btn-close-modal" onMouseDown={() => setShowNumpad(false)} title="Fechar">
                                 <X size={18} strokeWidth={2.5} />
                             </button>
                         </div>
@@ -5214,7 +5326,7 @@ export default function LogisticsHub() {
             {showBatchModal && batchProduct && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
                     <div className="pin-modal-card" style={{ maxWidth: '520px', width: '90%', padding: '2rem' }}>
-                        <button className="btn-close-modal" onClick={() => setShowBatchModal(false)} title="Fechar">
+                        <button className="btn-close-modal" onMouseDown={() => setShowBatchModal(false)} title="Fechar">
                             <X size={18} />
                         </button>
                         
@@ -5386,7 +5498,7 @@ export default function LogisticsHub() {
             {batchToDelete && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10010 }}>
                     <div className="pin-modal-card" style={{ maxWidth: '450px', width: '90%', textAlign: 'center', padding: '2rem' }}>
-                        <button className="btn-close-modal" onClick={() => setBatchToDelete(null)} title="Fechar">
+                        <button className="btn-close-modal" onMouseDown={() => setBatchToDelete(null)} title="Fechar">
                             <X size={18} />
                         </button>
                         <div style={{
@@ -5504,7 +5616,7 @@ export default function LogisticsHub() {
                                     </button>
                                     <button 
                                         className="btn-confirm-modal" 
-                                        style={{ flex: 1, backgroundColor: 'var(--accent-red)', color: '#ffffff' }} 
+                                        style={{ flex: 1, backgroundColor: 'var(--accent-orange)', color: '#ffffff' }} 
                                         onClick={handleConfirmRejection}
                                     >
                                         RECUSAR
@@ -5519,512 +5631,435 @@ export default function LogisticsHub() {
             {/* =============================================
                 MODAL: CUSTOM APPROVAL CONFIRMATION DIALOG
             ============================================= */}
-            {activeApprovalRequest && createPortal(
-                <div className="pin-modal-overlay active" style={{ zIndex: 11000 }}>
-                    <div className="pin-modal-card" style={{ maxWidth: '520px', padding: '2rem' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <Check size={24} style={{ color: 'var(--accent-green)' }} />
-                                <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff', fontWeight: '800' }}>Confirmar Aprovação de Entrega</h3>
-                            </div>
+            {activeApprovalRequest && (() => {
+                const productBatches = stockBatches.filter(b => b.itemSku === activeApprovalRequest.itemSku && b.quantity > 0);
+                const hasBatches = productBatches.length > 0;
+                const showManualInputs = !hasBatches || !followFefoSuggestion;
+                const totalRequired = activeApprovalRequest.quantity;
+                const totalAllocated = customAllocations.reduce((sum, item) => sum + parseFloat(item.quantity || 0), 0);
+                const isConfirmDisabled = showManualInputs && (Math.abs(totalAllocated - totalRequired) > 0.0001);
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Produto:</span>
-                                    <strong style={{ color: 'var(--text-primary)' }}>{activeApprovalRequest.itemName}</strong>
+                return createPortal(
+                    <div className="pin-modal-overlay active" style={{ zIndex: 11000 }}>
+                        <div className="pin-modal-card" style={{ maxWidth: showManualInputs ? '600px' : '520px', width: '95%', padding: '2rem', transition: 'max-width 0.2s ease-in-out' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                    <Check size={24} style={{ color: 'var(--accent-green)' }} />
+                                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff', fontWeight: '800' }}>Confirmar Aprovação de Entrega</h3>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Quantidade Solicitada:</span>
-                                    <strong style={{ color: 'var(--accent-orange)' }}>
-                                        {activeApprovalRequest.quantity} {products.find(p => p.sku === activeApprovalRequest.itemSku)?.unit || ''}
-                                    </strong>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Solicitado Por:</span>
-                                    <strong style={{ color: 'var(--text-primary)' }}>{activeApprovalRequest.requestedBy}</strong>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Setor Destino:</span>
-                                    <span className="category-tag" style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}>
-                                        {activeApprovalRequest.sector || 'COZINHA'}
-                                    </span>
-                                </div>
-                            </div>
 
-                            {/* Suggestion plan display if product has batches */}
-                            {(() => {
-                                const productBatches = stockBatches.filter(b => b.itemSku === activeApprovalRequest.itemSku && b.quantity > 0);
-                                if (productBatches.length === 0) {
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Produto:</span>
+                                        <strong style={{ color: 'var(--text-primary)' }}>{activeApprovalRequest.itemName}</strong>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Quantidade Solicitada:</span>
+                                        <strong style={{ color: 'var(--accent-orange)' }}>
+                                            {activeApprovalRequest.quantity} {products.find(p => p.sku === activeApprovalRequest.itemSku)?.unit || ''}
+                                        </strong>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Solicitado Por:</span>
+                                        <strong style={{ color: 'var(--text-primary)' }}>{activeApprovalRequest.requestedBy}</strong>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                                        <span style={{ color: 'var(--text-secondary)' }}>Setor Destino:</span>
+                                        <span className="category-tag" style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}>
+                                            {activeApprovalRequest.sector || 'COZINHA'}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Suggestion plan display if product has batches */}
+                                {(() => {
+                                    if (!hasBatches) {
+                                        return (
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '8px' }}>
+                                                <span style={{ fontSize: '0.85rem', color: 'var(--accent-red)', fontWeight: '700' }}>
+                                                    Nenhum lote registrado para este produto.
+                                                </span>
+                                                <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                                    A retirada manual é obrigatória. Por favor, preencha o endereço.
+                                                </span>
+                                            </div>
+                                        );
+                                    }
+
+                                    const fefo = calculateFefoPlan(activeApprovalRequest.itemSku, activeApprovalRequest.quantity);
                                     return (
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '1rem', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '8px' }}>
-                                            <span style={{ fontSize: '0.85rem', color: 'var(--accent-red)', fontWeight: '700' }}>
-                                                Nenhum lote registrado para este produto.
-                                            </span>
-                                            <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                                                A retirada manual é obrigatória. Por favor, preencha o endereço.
-                                            </span>
-                                        </div>
-                                    );
-                                }
-
-                                const fefo = calculateFefoPlan(activeApprovalRequest.itemSku, activeApprovalRequest.quantity);
-                                return (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                                        <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-secondary)' }}>Sugestão FEFO do Sistema:</span>
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '120px', overflowY: 'auto', background: 'rgba(192, 132, 252, 0.04)', border: '1px solid rgba(192, 132, 252, 0.15)', padding: '0.75rem', borderRadius: '8px' }}>
-                                            {fefo.plan.map((item, idx) => (
-                                                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
-                                                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                                                        <span style={{ background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc', padding: '0.1rem 0.4rem', borderRadius: '4px', fontFamily: 'monospace', fontWeight: '700', fontSize: '0.72rem' }}>
-                                                            {item.batch.address || 'Sem end.'}
-                                                        </span>
-                                                        <span style={{ color: 'var(--text-secondary)' }}>
-                                                            Lote: <strong style={{ color: 'var(--text-primary)' }}>{item.batch.lot || 'Sem lote'}</strong>
-                                                        </span>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                                            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-secondary)' }}>Sugestão FEFO do Sistema:</span>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '120px', overflowY: 'auto', background: 'rgba(192, 132, 252, 0.04)', border: '1px solid rgba(192, 132, 252, 0.15)', padding: '0.75rem', borderRadius: '8px' }}>
+                                                {fefo.plan.map((item, idx) => (
+                                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
+                                                        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                                            <span style={{ background: 'rgba(192, 132, 252, 0.15)', color: '#c084fc', padding: '0.1rem 0.4rem', borderRadius: '4px', fontFamily: 'monospace', fontWeight: '700', fontSize: '0.72rem' }}>
+                                                                {item.batch.address || 'Sem end.'}
+                                                            </span>
+                                                            <span style={{ color: 'var(--text-secondary)' }}>
+                                                                Lote: <strong style={{ color: 'var(--text-primary)' }}>{item.batch.lot || 'Sem lote'}</strong>
+                                                            </span>
+                                                        </div>
+                                                        <strong style={{ color: '#c084fc' }}>-{item.quantityToTake}</strong>
                                                     </div>
-                                                    <strong style={{ color: '#c084fc' }}>-{item.quantityToTake}</strong>
-                                                </div>
-                                            ))}
-                                            {fefo.remainingUnallocated > 0 && (
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: 'var(--accent-red)' }}>
-                                                    <span>Dedução do Saldo Geral (Sem lote específico)</span>
-                                                    <strong>-{fefo.remainingUnallocated}</strong>
-                                                </div>
-                                            )}
-                                        </div>
+                                                ))}
+                                                {fefo.remainingUnallocated > 0 && (
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: 'var(--accent-red)' }}>
+                                                        <span>Dedução do Saldo Geral (Sem lote específico)</span>
+                                                        <strong>-{fefo.remainingUnallocated}</strong>
+                                                    </div>
+                                                )}
+                                            </div>
 
-                                        {/* Toggle selection */}
-                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.3rem' }}>
-                                            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-secondary)' }}>Opção de Retirada:</span>
-                                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                                <button
-                                                    onClick={() => setFollowFefoSuggestion(true)}
-                                                    style={{
-                                                        flex: 1,
-                                                        padding: '0.6rem',
-                                                        borderRadius: '6px',
-                                                        background: followFefoSuggestion ? 'var(--accent-orange)' : 'rgba(255,255,255,0.03)',
-                                                        border: '1px solid ' + (followFefoSuggestion ? 'var(--accent-orange)' : 'var(--border-color)'),
-                                                        color: followFefoSuggestion ? '#ffffff' : 'var(--text-secondary)',
-                                                        fontSize: '0.8rem',
-                                                        fontWeight: '700',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s'
-                                                    }}
-                                                >
-                                                    Seguir Sugestão FEFO
-                                                </button>
-                                                <button
-                                                    onClick={() => setFollowFefoSuggestion(false)}
-                                                    style={{
-                                                        flex: 1,
-                                                        padding: '0.6rem',
-                                                        borderRadius: '6px',
-                                                        background: !followFefoSuggestion ? 'var(--accent-orange)' : 'rgba(255,255,255,0.03)',
-                                                        border: '1px solid ' + (!followFefoSuggestion ? 'var(--accent-orange)' : 'var(--border-color)'),
-                                                        color: !followFefoSuggestion ? '#ffffff' : 'var(--text-secondary)',
-                                                        fontSize: '0.8rem',
-                                                        fontWeight: '700',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.2s'
-                                                    }}
-                                                >
-                                                    Retirada Personalizada
-                                                </button>
+                                            {/* Toggle selection */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.3rem' }}>
+                                                <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-secondary)' }}>Opção de Retirada:</span>
+                                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setFollowFefoSuggestion(true)}
+                                                        style={{
+                                                            flex: 1,
+                                                            padding: '0.6rem',
+                                                            borderRadius: '6px',
+                                                            background: followFefoSuggestion ? 'var(--accent-orange)' : 'rgba(255,255,255,0.03)',
+                                                            border: '1px solid ' + (followFefoSuggestion ? 'var(--accent-orange)' : 'var(--border-color)'),
+                                                            color: followFefoSuggestion ? '#ffffff' : 'var(--text-secondary)',
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: '700',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                    >
+                                                        Seguir Sugestão FEFO
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setFollowFefoSuggestion(false)}
+                                                        style={{
+                                                            flex: 1,
+                                                            padding: '0.6rem',
+                                                            borderRadius: '6px',
+                                                            background: !followFefoSuggestion ? 'var(--accent-orange)' : 'rgba(255,255,255,0.03)',
+                                                            border: '1px solid ' + (!followFefoSuggestion ? 'var(--accent-orange)' : 'var(--border-color)'),
+                                                            color: !followFefoSuggestion ? '#ffffff' : 'var(--text-secondary)',
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: '700',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.2s'
+                                                        }}
+                                                    >
+                                                        Retirada Personalizada
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                );
-                            })()}
+                                    );
+                                })()}
 
-                            {/* Custom Address and Lot fields */}
-                            {(() => {
-                                const productBatches = stockBatches.filter(b => b.itemSku === activeApprovalRequest.itemSku && b.quantity > 0);
-                                const hasBatches = productBatches.length > 0;
-                                const showManualInputs = !hasBatches || !followFefoSuggestion;
+                                {/* Custom Allocations Multi-Input and list */}
+                                {showManualInputs && (() => {
+                                    const productBatchesInStock = stockBatches.filter(b => b.itemSku === activeApprovalRequest.itemSku && b.quantity > 0);
+                                    return (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', border: '1px solid rgba(243, 107, 29, 0.2)', background: 'rgba(243, 107, 29, 0.02)', padding: '1rem', borderRadius: '8px', marginTop: '0.2rem' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--accent-orange)' }}>
+                                                    Especificar Lotes e Endereços de Retirada:
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleAddCustomAllocation}
+                                                    style={{
+                                                        background: 'rgba(243, 107, 29, 0.1)',
+                                                        border: '1px solid var(--accent-orange)',
+                                                        color: 'var(--accent-orange)',
+                                                        borderRadius: '4px',
+                                                        padding: '0.25rem 0.6rem',
+                                                        fontSize: '0.72rem',
+                                                        fontWeight: '700',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.15s ease'
+                                                    }}
+                                                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(243, 107, 29, 0.2)'}
+                                                    onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(243, 107, 29, 0.1)'}
+                                                >
+                                                    + Retirada Avulsa
+                                                </button>
+                                            </div>
 
-                                if (!showManualInputs) return null;
+                                            {/* Scrollable list of custom allocations */}
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem', maxHeight: '240px', overflowY: 'auto', paddingRight: '0.2rem', paddingBottom: '0.5rem' }}>
+                                                {customAllocations.length === 0 ? (
+                                                    <div style={{ padding: '1.2rem', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)', fontStyle: 'italic', border: '1px dashed var(--border-color)', borderRadius: '6px' }}>
+                                                        Nenhuma alocação inserida. Adicione uma retirada avulsa.
+                                                    </div>
+                                                ) : (
+                                                    customAllocations.map((alloc) => {
+                                                        if (!alloc.isCustom) {
+                                                            return (
+                                                                <div key={alloc.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: '6px', padding: '0.5rem' }}>
+                                                                    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '0.2rem', minWidth: 0 }}>
+                                                                        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                                                            <span style={{ background: 'rgba(243, 107, 29, 0.12)', color: 'var(--accent-orange)', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: '700', fontSize: '0.72rem' }}>
+                                                                                {alloc.address || 'Sem Endereço'}
+                                                                            </span>
+                                                                            <span style={{ color: 'var(--text-primary)', fontWeight: '600', fontSize: '0.78rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                                                Lote: {alloc.lot || <span style={{ fontStyle: 'italic', color: 'var(--text-secondary)' }}>Sem Lote</span>}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                                                                            Saldo Disponível: <strong style={{ color: '#fff' }}>{alloc.availableQty}</strong>
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', width: '90px', flexShrink: 0 }}>
+                                                                        <input
+                                                                            type="number"
+                                                                            min="0"
+                                                                            max={alloc.availableQty}
+                                                                            step="any"
+                                                                            placeholder="Qtd"
+                                                                            value={alloc.quantity}
+                                                                            onChange={(e) => handleUpdateAllocation(alloc.id, 'quantity', e.target.value)}
+                                                                            style={{
+                                                                                width: '100%',
+                                                                                background: 'var(--bg-input)',
+                                                                                border: '1.5px solid var(--border-color)',
+                                                                                color: 'var(--text-primary)',
+                                                                                borderRadius: '6px',
+                                                                                padding: '0.35rem 0.5rem',
+                                                                                fontSize: '0.8rem',
+                                                                                textAlign: 'right',
+                                                                                outline: 'none',
+                                                                                fontWeight: '600'
+                                                                            }}
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        } else {
+                                                            const filteredAddresses = productBatchesInStock.filter(b => 
+                                                                (b.address || '').toLowerCase().includes((alloc.address || '').toLowerCase()) ||
+                                                                (b.lot || '').toLowerCase().includes((alloc.address || '').toLowerCase())
+                                                            );
+                                                            const filteredLots = productBatchesInStock.filter(b => 
+                                                                (b.address || '').toLowerCase().includes((alloc.lot || '').toLowerCase()) ||
+                                                                (b.lot || '').toLowerCase().includes((alloc.lot || '').toLowerCase())
+                                                            );
 
-                                // Collect unique addresses and lots for suggestions
-                                const productBatchesInStock = stockBatches.filter(b => b.itemSku === activeApprovalRequest.itemSku && b.quantity > 0);
-                                const prodAddresses = [...new Set(productBatchesInStock.filter(b => b.address).map(b => b.address))];
-                                const prodLots = [...new Set(productBatchesInStock.filter(b => b.lot).map(b => b.lot))];
+                                                            return (
+                                                                <div key={alloc.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'rgba(243, 107, 29, 0.04)', border: '1px solid rgba(243, 107, 29, 0.15)', borderRadius: '6px', padding: '0.6rem', position: 'relative' }}>
+                                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                                        <span style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--accent-orange)', textTransform: 'uppercase' }}>
+                                                                            Retirada Avulsa
+                                                                        </span>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleRemoveAllocation(alloc.id)}
+                                                                            style={{
+                                                                                background: 'transparent',
+                                                                                border: 'none',
+                                                                                color: 'var(--accent-red)',
+                                                                                cursor: 'pointer',
+                                                                                display: 'flex',
+                                                                                alignItems: 'center',
+                                                                                padding: '0.1rem'
+                                                                            }}
+                                                                        >
+                                                                            <Trash2 size={14} />
+                                                                        </button>
+                                                                    </div>
 
-                                return (
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid rgba(243, 107, 29, 0.2)', background: 'rgba(243, 107, 29, 0.02)', padding: '1rem', borderRadius: '8px', marginTop: '0.2rem' }}>
-                                        <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--accent-orange)' }}>
-                                            Especificar Lote e Endereçamento de Retirada:
-                                        </span>
+                                                                    <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                                                                        <div style={{ flex: 1.2, minWidth: '110px', position: 'relative' }}>
+                                                                            <input
+                                                                                type="text"
+                                                                                autoComplete="one-time-code"
+                                                                                name={`alloc-address-${alloc.id}`}
+                                                                                placeholder="Endereço *"
+                                                                                value={alloc.address}
+                                                                                onFocus={() => setActiveAddressDropdownId(alloc.id)}
+                                                                                onBlur={() => setTimeout(() => setActiveAddressDropdownId(null), 200)}
+                                                                                onChange={(e) => handleUpdateAllocation(alloc.id, 'address', e.target.value)}
+                                                                                style={{
+                                                                                    width: '100%',
+                                                                                    background: 'var(--bg-input)',
+                                                                                    border: '1.5px solid var(--border-color)',
+                                                                                    color: 'var(--text-primary)',
+                                                                                    borderRadius: '6px',
+                                                                                    padding: '0.35rem 0.5rem',
+                                                                                    fontSize: '0.78rem',
+                                                                                    outline: 'none',
+                                                                                    fontWeight: '600'
+                                                                                }}
+                                                                            />
+                                                                            {activeAddressDropdownId === alloc.id && (
+                                                                                <div className="custom-dropdown-menu" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, background: 'rgba(15, 23, 42, 0.98)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', maxHeight: '120px', overflowY: 'auto', padding: '0.2rem', display: 'flex', flexDirection: 'column', gap: '2px', boxShadow: '0 5px 15px rgba(0,0,0,0.5)' }}>
+                                                                                    {filteredAddresses.length === 0 ? (
+                                                                                        <div style={{ padding: '0.4rem', fontSize: '0.72rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                                                                            Usar valor personalizado
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        filteredAddresses.map((b, idx) => (
+                                                                                            <div key={idx} onMouseDown={() => {
+                                                                                                handleUpdateAllocation(alloc.id, 'address', b.address || '');
+                                                                                                handleUpdateAllocation(alloc.id, 'lot', b.lot || '');
+                                                                                                setActiveAddressDropdownId(null);
+                                                                                            }} style={{ padding: '0.35rem 0.5rem', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', color: '#fff' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                                                                                <span style={{ fontWeight: '700', color: 'var(--accent-orange)' }}>{b.address}</span>
+                                                                                                <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>Lote: {b.lot || 'Sem lote'}</span>
+                                                                                            </div>
+                                                                                        ))
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
 
-                                        <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                                            {/* Custom Address Dropdown Select */}
-                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '180px', position: 'relative' }}>
-                                                <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>
-                                                    ENDEREÇO DE RETIRADA *
-                                                </label>
-                                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                                     <input 
-                                                         type="text" 
-                                                         autoComplete="one-time-code"
-                                                         name="manual-address-no-autofill"
-                                                         value={manualAddress}
-                                                         readOnly={addressReadOnly}
-                                                         onFocus={() => {
-                                                             setAddressReadOnly(false);
-                                                             setShowAddressDropdown(true);
-                                                         }}
-                                                         onBlur={() => {
-                                                             setAddressReadOnly(true);
-                                                             setTimeout(() => setShowAddressDropdown(false), 200);
-                                                         }}
-                                                         onChange={(e) => {
-                                                             setManualAddress(e.target.value);
-                                                             setShowAddressDropdown(true);
-                                                         }}
-                                                         placeholder="Digite ou selecione..."
-                                                         style={{
-                                                             width: '100%',
-                                                             background: 'var(--bg-input)',
-                                                             border: '1.5px solid var(--border-color)',
-                                                             color: 'var(--text-primary)',
-                                                             borderRadius: '8px',
-                                                             padding: '0.5rem 2rem 0.5rem 0.8rem',
-                                                             fontSize: '0.85rem',
-                                                             outline: 'none',
-                                                             fontWeight: '600'
-                                                         }}
-                                                     />
-                                                     <ChevronDown 
-                                                         size={16} 
-                                                         style={{ 
-                                                             position: 'absolute', 
-                                                             right: '10px', 
-                                                             color: 'var(--text-secondary)', 
-                                                             cursor: 'pointer',
-                                                             pointerEvents: 'none'
-                                                         }} 
-                                                     />
+                                                                        <div style={{ flex: 1, minWidth: '90px', position: 'relative' }}>
+                                                                            <input
+                                                                                type="text"
+                                                                                autoComplete="one-time-code"
+                                                                                name={`alloc-lot-${alloc.id}`}
+                                                                                placeholder="Lote"
+                                                                                value={alloc.lot}
+                                                                                onFocus={() => setActiveLotDropdownId(alloc.id)}
+                                                                                onBlur={() => setTimeout(() => setActiveLotDropdownId(null), 200)}
+                                                                                onChange={(e) => handleUpdateAllocation(alloc.id, 'lot', e.target.value)}
+                                                                                style={{
+                                                                                    width: '100%',
+                                                                                    background: 'var(--bg-input)',
+                                                                                    border: '1.5px solid var(--border-color)',
+                                                                                    color: 'var(--text-primary)',
+                                                                                    borderRadius: '6px',
+                                                                                    padding: '0.35rem 0.5rem',
+                                                                                    fontSize: '0.78rem',
+                                                                                    outline: 'none',
+                                                                                    fontWeight: '600'
+                                                                                }}
+                                                                            />
+                                                                            {activeLotDropdownId === alloc.id && (
+                                                                                <div className="custom-dropdown-menu" style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100, background: 'rgba(15, 23, 42, 0.98)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', maxHeight: '120px', overflowY: 'auto', padding: '0.2rem', display: 'flex', flexDirection: 'column', gap: '2px', boxShadow: '0 5px 15px rgba(0,0,0,0.5)' }}>
+                                                                                    {filteredLots.length === 0 ? (
+                                                                                        <div style={{ padding: '0.4rem', fontSize: '0.72rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
+                                                                                            Usar valor personalizado
+                                                                                        </div>
+                                                                                    ) : (
+                                                                                        filteredLots.map((b, idx) => (
+                                                                                            <div key={idx} onMouseDown={() => {
+                                                                                                handleUpdateAllocation(alloc.id, 'address', b.address || '');
+                                                                                                handleUpdateAllocation(alloc.id, 'lot', b.lot || '');
+                                                                                                setActiveLotDropdownId(null);
+                                                                                            }} style={{ padding: '0.35rem 0.5rem', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between', color: '#fff' }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                                                                                                <span style={{ fontWeight: '700' }}>Lote: {b.lot}</span>
+                                                                                                <span style={{ fontSize: '0.7rem', color: 'var(--accent-orange)' }}>{b.address}</span>
+                                                                                            </div>
+                                                                                        ))
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+
+                                                                        <div style={{ width: '80px', flexShrink: 0 }}>
+                                                                            <input
+                                                                                type="number"
+                                                                                min="0"
+                                                                                step="any"
+                                                                                placeholder="Qtd"
+                                                                                value={alloc.quantity}
+                                                                                onChange={(e) => handleUpdateAllocation(alloc.id, 'quantity', e.target.value)}
+                                                                                style={{
+                                                                                    width: '100%',
+                                                                                    background: 'var(--bg-input)',
+                                                                                    border: '1.5px solid var(--border-color)',
+                                                                                    color: 'var(--text-primary)',
+                                                                                    borderRadius: '6px',
+                                                                                    padding: '0.35rem 0.5rem',
+                                                                                    fontSize: '0.78rem',
+                                                                                    outline: 'none',
+                                                                                    fontWeight: '600'
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        }
+                                                    })
+                                                )}
+                                            </div>
+
+                                            {/* Totalizer Consolidation Footer */}
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: isAllocationCorrect ? 'rgba(34, 197, 94, 0.08)' : 'rgba(243, 107, 29, 0.08)', border: '1px solid ' + (isAllocationCorrect ? 'rgba(34, 197, 94, 0.25)' : 'rgba(243, 107, 29, 0.25)'), padding: '0.6rem 0.8rem', borderRadius: '6px', fontSize: '0.8rem', transition: 'all 0.2s' }}>
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                                                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.72rem', fontWeight: '600', textTransform: 'uppercase' }}>
+                                                        Status da Alocação
+                                                    </span>
+                                                    <div style={{ fontWeight: '700', color: isAllocationCorrect ? 'var(--accent-green)' : 'var(--accent-orange)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                        {isAllocationCorrect ? (
+                                                            <>
+                                                                <CheckCircle2 size={14} style={{ color: 'var(--accent-green)' }} />
+                                                                Alocação Concluída
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <AlertCircle size={14} style={{ color: 'var(--accent-orange)' }} />
+                                                                Alocação Divergente
+                                                            </>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                                {showAddressDropdown && (
-                                                     <div 
-                                                         className="custom-dropdown-menu"
-                                                         style={{
-                                                             position: 'absolute',
-                                                             top: '100%',
-                                                             left: 0,
-                                                             right: 0,
-                                                             marginTop: '0.25rem',
-                                                             background: 'rgba(15, 23, 42, 0.98)',
-                                                             backdropFilter: 'blur(12px)',
-                                                             border: '1px solid rgba(255, 255, 255, 0.1)',
-                                                             borderRadius: '8px',
-                                                             boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
-                                                             zIndex: 100,
-                                                             maxHeight: '180px',
-                                                             overflowY: 'auto',
-                                                             padding: '0.25rem',
-                                                             display: 'flex',
-                                                             flexDirection: 'column',
-                                                             gap: '2px'
-                                                         }}
-                                                     >
-                                                         {productBatchesInStock.filter(b => 
-                                                             (b.address || '').toLowerCase().includes((manualAddress || '').toLowerCase()) ||
-                                                             (b.lot || '').toLowerCase().includes((manualAddress || '').toLowerCase())
-                                                         ).length === 0 ? (
-                                                             <div style={{ padding: '0.5rem', fontSize: '0.78rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                                                                 {manualAddress.trim() ? `Usar valor personalizado: "${manualAddress}"` : 'Nenhum endereço com este item'}
-                                                             </div>
-                                                         ) : (
-                                                             productBatchesInStock.filter(b => 
-                                                                 (b.address || '').toLowerCase().includes((manualAddress || '').toLowerCase()) ||
-                                                                 (b.lot || '').toLowerCase().includes((manualAddress || '').toLowerCase())
-                                                             ).map((b, idx) => (
-                                                                 <div
-                                                                     key={idx}
-                                                                     onMouseDown={() => {
-                                                                         setManualAddress(b.address || '');
-                                                                         setManualLot(b.lot || '');
-                                                                         setShowAddressDropdown(false);
-                                                                     }}
-                                                                     style={{
-                                                                         padding: '0.45rem 0.6rem',
-                                                                         cursor: 'pointer',
-                                                                         borderRadius: '4px',
-                                                                         fontSize: '0.82rem',
-                                                                         color: (manualAddress === b.address && manualLot === (b.lot || '')) ? '#fff' : 'var(--text-secondary)',
-                                                                         background: (manualAddress === b.address && manualLot === (b.lot || '')) ? 'var(--accent-orange)' : 'transparent',
-                                                                         transition: 'all 0.15s ease',
-                                                                         display: 'flex',
-                                                                         alignItems: 'center',
-                                                                         justifyContent: 'space-between'
-                                                                     }}
-                                                                     onMouseEnter={(e) => {
-                                                                         if (!(manualAddress === b.address && manualLot === (b.lot || ''))) {
-                                                                             e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                                             e.currentTarget.style.color = '#fff';
-                                                                         }
-                                                                     }}
-                                                                     onMouseLeave={(e) => {
-                                                                         if (!(manualAddress === b.address && manualLot === (b.lot || ''))) {
-                                                                             e.currentTarget.style.background = 'transparent';
-                                                                             e.currentTarget.style.color = 'var(--text-secondary)';
-                                                                         }
-                                                                     }}
-                                                                 >
-                                                                     <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                                                                         <span style={{ fontWeight: '700', color: (manualAddress === b.address && manualLot === (b.lot || '')) ? '#fff' : 'var(--accent-orange)' }}>
-                                                                             {b.address || 'Sem Endereço'}
-                                                                         </span>
-                                                                         <span style={{ opacity: 0.8, fontSize: '0.75rem' }}>
-                                                                             | Lote: {b.lot || 'Sem lote'}
-                                                                         </span>
-                                                                     </div>
-                                                                     <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
-                                                                         Qtd: {b.quantity}
-                                                                     </span>
-                                                                 </div>
-                                                             ))
-                                                         )}
-                                                     </div>
-                                                 )}
-                                             </div>
-
-                                             {/* Custom Lot Dropdown Select */}
-                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flex: 1, minWidth: '180px', position: 'relative' }}>
-                                                 <label style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--text-secondary)' }}>
-                                                     LOTE DE RETIRADA (OPCIONAL)
-                                                 </label>
-                                                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                                     <input 
-                                                         type="text" 
-                                                         autoComplete="one-time-code"
-                                                         name="manual-lot-no-autofill"
-                                                         value={manualLot}
-                                                         readOnly={lotReadOnly}
-                                                         onFocus={() => {
-                                                             setLotReadOnly(false);
-                                                             setShowLotDropdown(true);
-                                                         }}
-                                                         onBlur={() => {
-                                                             setLotReadOnly(true);
-                                                             setTimeout(() => setShowLotDropdown(false), 200);
-                                                         }}
-                                                         onChange={(e) => {
-                                                             setManualLot(e.target.value);
-                                                             setShowLotDropdown(true);
-                                                         }}
-                                                         placeholder="Digite, selecione ou vazio..."
-                                                         style={{
-                                                             width: '100%',
-                                                             background: 'var(--bg-input)',
-                                                             border: '1.5px solid var(--border-color)',
-                                                             color: 'var(--text-primary)',
-                                                             borderRadius: '8px',
-                                                             padding: '0.5rem 2rem 0.5rem 0.8rem',
-                                                             fontSize: '0.85rem',
-                                                             outline: 'none',
-                                                             fontWeight: '600'
-                                                         }}
-                                                     />
-                                                     <ChevronDown 
-                                                         size={16} 
-                                                         style={{ 
-                                                             position: 'absolute', 
-                                                             right: '10px', 
-                                                             color: 'var(--text-secondary)', 
-                                                             cursor: 'pointer',
-                                                             pointerEvents: 'none'
-                                                         }} 
-                                                     />
-                                                 </div>
-                                                 {showLotDropdown && (
-                                                     <div 
-                                                         className="custom-dropdown-menu"
-                                                         style={{
-                                                             position: 'absolute',
-                                                             top: '100%',
-                                                             left: 0,
-                                                             right: 0,
-                                                             marginTop: '0.25rem',
-                                                             background: 'rgba(15, 23, 42, 0.98)',
-                                                             backdropFilter: 'blur(12px)',
-                                                             border: '1px solid rgba(255, 255, 255, 0.1)',
-                                                             borderRadius: '8px',
-                                                             boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
-                                                             zIndex: 100,
-                                                             maxHeight: '180px',
-                                                             overflowY: 'auto',
-                                                             padding: '0.25rem',
-                                                             display: 'flex',
-                                                             flexDirection: 'column',
-                                                             gap: '2px'
-                                                         }}
-                                                     >
-                                                         {productBatchesInStock.filter(b => 
-                                                             (b.address || '').toLowerCase().includes((manualLot || '').toLowerCase()) ||
-                                                             (b.lot || '').toLowerCase().includes((manualLot || '').toLowerCase())
-                                                         ).length === 0 ? (
-                                                             <div style={{ padding: '0.5rem', fontSize: '0.78rem', color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                                                                 {manualLot.trim() ? `Usar lote personalizado: "${manualLot}"` : 'Sem lotes sugeridos'}
-                                                             </div>
-                                                         ) : (
-                                                             productBatchesInStock.filter(b => 
-                                                                 (b.address || '').toLowerCase().includes((manualLot || '').toLowerCase()) ||
-                                                                 (b.lot || '').toLowerCase().includes((manualLot || '').toLowerCase())
-                                                             ).map((b, idx) => (
-                                                                 <div
-                                                                     key={idx}
-                                                                     onMouseDown={() => {
-                                                                         setManualAddress(b.address || '');
-                                                                         setManualLot(b.lot || '');
-                                                                         setShowLotDropdown(false);
-                                                                     }}
-                                                                     style={{
-                                                                         padding: '0.45rem 0.6rem',
-                                                                         cursor: 'pointer',
-                                                                         borderRadius: '4px',
-                                                                         fontSize: '0.82rem',
-                                                                         color: (manualAddress === b.address && manualLot === (b.lot || '')) ? '#fff' : 'var(--text-secondary)',
-                                                                         background: (manualAddress === b.address && manualLot === (b.lot || '')) ? 'var(--accent-orange)' : 'transparent',
-                                                                         transition: 'all 0.15s ease',
-                                                                         display: 'flex',
-                                                                         alignItems: 'center',
-                                                                         justifyContent: 'space-between'
-                                                                     }}
-                                                                     onMouseEnter={(e) => {
-                                                                         if (!(manualAddress === b.address && manualLot === (b.lot || ''))) {
-                                                                             e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                                                                             e.currentTarget.style.color = '#fff';
-                                                                         }
-                                                                     }}
-                                                                     onMouseLeave={(e) => {
-                                                                         if (!(manualAddress === b.address && manualLot === (b.lot || ''))) {
-                                                                             e.currentTarget.style.background = 'transparent';
-                                                                             e.currentTarget.style.color = 'var(--text-secondary)';
-                                                                         }
-                                                                     }}
-                                                                 >
-                                                                     <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                                                                         <span style={{ fontWeight: '700', color: (manualAddress === b.address && manualLot === (b.lot || '')) ? '#fff' : 'var(--accent-orange)' }}>
-                                                                             Lote: {b.lot || 'Sem lote'}
-                                                                         </span>
-                                                                         <span style={{ opacity: 0.8, fontSize: '0.75rem' }}>
-                                                                             | Endereço: {b.address || 'Sem endereço'}
-                                                                         </span>
-                                                                     </div>
-                                                                     <span style={{ fontSize: '0.75rem', fontWeight: 'bold' }}>
-                                                                         Qtd: {b.quantity}
-                                                                     </span>
-                                                                 </div>
-                                                             ))
-                                                         )}
-                                                     </div>
-                                                 )}
-                                             </div>
+                                                <div style={{ textAlign: 'right' }}>
+                                                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.72rem', display: 'block' }}>Total Alocado:</span>
+                                                    <div style={{ fontSize: '1rem', fontWeight: '800', color: isAllocationCorrect ? 'var(--accent-green)' : '#fff' }}>
+                                                        {totalAllocated} / {totalRequired} {products.find(p => p.sku === activeApprovalRequest.itemSku)?.unit || ''}
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
+                                    );
+                                })()}
 
-                                         {/* Clickable Quick-Select list of available lots/addresses directly inside the modal panel */}
-                                         {productBatchesInStock.length > 0 && (
-                                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.2rem' }}>
-                                                 <span style={{ fontSize: '0.72rem', fontWeight: '700', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                                     Saldos e Lotes Disponíveis em Estoque (Clique para selecionar):
-                                                 </span>
-                                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '130px', overflowY: 'auto', background: 'rgba(0,0,0,0.15)', border: '1px solid var(--border-color)', padding: '0.4rem', borderRadius: '6px' }}>
-                                                     {productBatchesInStock.map((b, idx) => {
-                                                         const isSelected = manualAddress === b.address && manualLot === (b.lot || '');
-                                                         return (
-                                                             <div 
-                                                                 key={idx}
-                                                                 onClick={() => {
-                                                                     setManualAddress(b.address || '');
-                                                                     setManualLot(b.lot || '');
-                                                                 }}
-                                                                 style={{
-                                                                     display: 'flex',
-                                                                     justifyContent: 'space-between',
-                                                                     alignItems: 'center',
-                                                                     padding: '0.45rem 0.6rem',
-                                                                     background: isSelected ? 'rgba(243, 107, 29, 0.15)' : 'rgba(255, 255, 255, 0.02)',
-                                                                     border: '1px solid ' + (isSelected ? 'var(--accent-orange)' : 'rgba(255, 255, 255, 0.05)'),
-                                                                     borderRadius: '6px',
-                                                                     cursor: 'pointer',
-                                                                     fontSize: '0.8rem',
-                                                                     transition: 'all 0.15s ease'
-                                                                 }}
-                                                                 onMouseEnter={(e) => {
-                                                                     if (!isSelected) {
-                                                                         e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
-                                                                         e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                                                                     }
-                                                                 }}
-                                                                 onMouseLeave={(e) => {
-                                                                     if (!isSelected) {
-                                                                         e.currentTarget.style.background = 'rgba(255, 255, 255, 0.02)';
-                                                                         e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
-                                                                     }
-                                                                 }}
-                                                             >
-                                                                 <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
-                                                                     <span style={{ background: isSelected ? 'var(--accent-orange)' : 'rgba(243, 107, 29, 0.12)', color: isSelected ? '#fff' : 'var(--accent-orange)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: '700', fontSize: '0.72rem' }}>
-                                                                         {b.address || 'Sem Endereço'}
-                                                                     </span>
-                                                                     <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>
-                                                                         Lote: {b.lot || <span style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>Sem Lote</span>}
-                                                                     </span>
-                                                                 </div>
-                                                                 <span style={{ color: 'var(--text-secondary)', fontWeight: '700', fontSize: '0.78rem' }}>
-                                                                     Saldo: <strong style={{ color: '#fff' }}>{b.quantity}</strong>
-                                                                 </span>
-                                                             </div>
-                                                         );
-                                                     })}
-                                                 </div>
-                                             </div>
-                                         )}
-
-                                        <small style={{ color: 'var(--text-secondary)', fontSize: '0.72rem' }}>
-                                            * O endereço é obrigatório. Caso o lote seja omitido, a baixa será feita por endereço.
-                                        </small>
-                                    </div>
-                                );
-                            })()}
-
-                            {/* Modal Actions */}
-                            <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '0.8rem' }}>
-                                <button 
-                                    className="btn-clear-modal" 
-                                    style={{ 
-                                        flex: 1, 
-                                        background: 'rgba(255, 255, 255, 0.03)', 
-                                        border: '1.5px solid var(--border-color)', 
-                                        color: 'var(--text-primary)',
-                                        fontWeight: '700',
-                                        height: '42px',
-                                        cursor: 'pointer'
-                                    }} 
-                                    onClick={() => setActiveApprovalRequest(null)}
-                                >
-                                    CANCELAR
-                                </button>
-                                <button 
-                                    className="btn-confirm-modal" 
-                                    style={{ 
-                                        flex: 1, 
-                                        backgroundColor: 'var(--accent-orange)', 
-                                        color: '#ffffff',
-                                        fontWeight: '800',
-                                        height: '42px',
-                                        cursor: 'pointer'
-                                    }} 
-                                    onClick={confirmApproveRequest}
-                                >
-                                    APROVAR
-                                </button>
+                                {/* Modal Actions */}
+                                <div style={{ display: 'flex', gap: '1rem', width: '100%', marginTop: '0.8rem' }}>
+                                    <button 
+                                        className="btn-clear-modal" 
+                                        style={{ 
+                                            flex: 1, 
+                                            background: 'rgba(255, 255, 255, 0.03)', 
+                                            border: '1.5px solid var(--border-color)', 
+                                            color: 'var(--text-primary)',
+                                            fontWeight: '700',
+                                            height: '42px',
+                                            cursor: 'pointer'
+                                        }} 
+                                        onClick={() => setActiveApprovalRequest(null)}
+                                    >
+                                        CANCELAR
+                                    </button>
+                                    <button 
+                                        className="btn-confirm-modal" 
+                                        disabled={isConfirmDisabled}
+                                        style={{ 
+                                            flex: 1, 
+                                            backgroundColor: isConfirmDisabled ? 'rgba(255,255,255,0.05)' : 'var(--accent-orange)', 
+                                            color: isConfirmDisabled ? 'var(--text-secondary)' : '#ffffff',
+                                            border: isConfirmDisabled ? '1px solid var(--border-color)' : 'none',
+                                            fontWeight: '800',
+                                            height: '42px',
+                                            cursor: isConfirmDisabled ? 'not-allowed' : 'pointer',
+                                            opacity: isConfirmDisabled ? 0.6 : 1,
+                                            transition: 'all 0.2s ease'
+                                        }} 
+                                        onClick={confirmApproveRequest}
+                                    >
+                                        APROVAR
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>, document.body)}
+                    </div>, document.body)
+            })()}
 
             {/* =============================================
                 MODAL: REJECTION INFO DIALOG

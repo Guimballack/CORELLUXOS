@@ -1496,12 +1496,16 @@ export default function SettingsHub() {
         setLimitToSpecificCells(prod.allowedCells && prod.allowedCells.length > 0);
         
         // Load recipe if it exists
-        const existingRecipe = Array.isArray(prod.recipe) ? prod.recipe.map(r => ({
-            ingredientSku: r.ingredientSku || r.ingredient_sku || '',
-            name: r.name || '',
-            quantity: r.quantity !== undefined ? String(r.quantity) : '',
-            unit: r.unit || 'G'
-        })) : [];
+        const existingRecipe = Array.isArray(prod.recipe) ? prod.recipe.map(r => {
+            const sku = r.ingredientSku || r.ingredient_sku || '';
+            const matched = produtos.find(p => p.sku === sku);
+            return {
+                ingredientSku: sku,
+                name: matched ? matched.name : (r.name || ''),
+                quantity: r.quantity !== undefined ? String(r.quantity) : '',
+                unit: r.unit || 'G'
+            };
+        }) : [];
         setRecipeItems(existingRecipe);
         setRecipeNewItem({ ingredientSku: '', quantity: '', unit: 'G' });
         setRecipeIngredientSearch('');
@@ -1632,12 +1636,16 @@ export default function SettingsHub() {
             controlaProducao: !!prod.controlaProducao
         });
         // Load recipe if it exists
-        const existingRecipe = Array.isArray(prod.recipe) ? prod.recipe.map(r => ({
-            ingredientSku: r.ingredientSku || '',
-            name: r.name || '',
-            quantity: r.quantity !== undefined ? String(r.quantity) : '',
-            unit: r.unit || 'G'
-        })) : [];
+        const existingRecipe = Array.isArray(prod.recipe) ? prod.recipe.map(r => {
+            const sku = r.ingredientSku || '';
+            const matched = produtos.find(p => p.sku === sku);
+            return {
+                ingredientSku: sku,
+                name: matched ? matched.name : (r.name || ''),
+                quantity: r.quantity !== undefined ? String(r.quantity) : '',
+                unit: r.unit || 'G'
+            };
+        }) : [];
         setRecipeItems(existingRecipe);
         setRecipeNewItem({ ingredientSku: '', quantity: '', unit: 'G' });
         setRecipeIngredientSearch('');
@@ -4369,7 +4377,7 @@ export default function SettingsHub() {
                     <div className="pin-modal-card" style={{ maxWidth: '420px', width: '90%', padding: '1.75rem', maxHeight: '90vh', overflowY: 'auto' }}>
                         <button 
                             className="btn-close-modal" 
-                            onClick={() => setEditCellModal(null)}
+                            onMouseDown={() => setEditCellModal(null)}
                             style={{
                                 background: 'transparent',
                                 border: 'none',
@@ -4565,7 +4573,7 @@ export default function SettingsHub() {
             {showColabModal && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div className="pin-modal-card" style={{ maxWidth: '850px', width: '90%', maxHeight: '90vh', margin: 'auto', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 }}>
-                        <button className="btn-close-modal" onClick={() => setShowColabModal(false)} style={{ zIndex: 10001 }}><X size={18} /></button>
+                        <button className="btn-close-modal" onMouseDown={() => setShowColabModal(false)} style={{ zIndex: 10001 }}><X size={18} /></button>
                         
                         <form onSubmit={handleSaveColab} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', flex: 1, boxSizing: 'border-box' }}>
                             <h3 id="employee-modal-title" style={{ fontSize: '1.4rem', color: 'var(--accent-orange)', marginBottom: '1.5rem', textTransform: 'uppercase', fontWeight: '800', flexShrink: 0 }}>
@@ -5280,7 +5288,7 @@ export default function SettingsHub() {
             {showProdModal && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
                     <div className="pin-modal-card" style={{ maxWidth: '650px', width: '90%', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                        <button className="btn-close-modal" onClick={() => setShowProdModal(false)}><X size={18} /></button>
+                        <button className="btn-close-modal" onMouseDown={() => setShowProdModal(false)}><X size={18} /></button>
                         
                         {/* Modal Header */}
                         <div style={{ padding: '1.5rem 1.5rem 0 1.5rem', flexShrink: 0 }}>
@@ -6022,7 +6030,7 @@ export default function SettingsHub() {
                                                         <span style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--accent-orange)' }}>{idx + 1}</span>
                                                     </div>
                                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                                        <div style={{ fontSize: '0.88rem', fontWeight: '600', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name || item.ingredientSku}</div>
+                                                        <div style={{ fontSize: '0.88rem', fontWeight: '600', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name || produtos.find(p => p.sku === item.ingredientSku)?.name || item.ingredientSku}</div>
                                                         <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>SKU: {item.ingredientSku}</div>
                                                     </div>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
@@ -6078,7 +6086,7 @@ export default function SettingsHub() {
             {showCellSelectorModal && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 11000 }}>
                     <div className="pin-modal-card" style={{ maxWidth: '800px', width: '95%' }}>
-                        <button type="button" className="btn-close-modal" onClick={() => setShowCellSelectorModal(false)}><X size={18} /></button>
+                        <button type="button" className="btn-close-modal" onMouseDown={() => setShowCellSelectorModal(false)}><X size={18} /></button>
                         
                         <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                             <h3 style={{ fontSize: '1.3rem', color: 'var(--accent-blue)', textTransform: 'uppercase', fontWeight: '800', margin: 0 }}>
@@ -6367,7 +6375,7 @@ export default function SettingsHub() {
             {showCatModal && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
                     <div className="pin-modal-card" style={{ maxWidth: '500px', width: '90%' }}>
-                        <button className="btn-close-modal" onClick={() => setShowCatModal(false)}><X size={18} /></button>
+                        <button className="btn-close-modal" onMouseDown={() => setShowCatModal(false)}><X size={18} /></button>
                         
                         <form onSubmit={handleSaveCat} style={{ padding: '1.5rem' }}>
                             <h3 id="category-modal-title" style={{ fontSize: '1.4rem', color: 'var(--accent-orange)', marginBottom: '1.5rem', textTransform: 'uppercase', fontWeight: '800' }}>
@@ -6432,7 +6440,7 @@ export default function SettingsHub() {
             {showSaleProdModal && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
                     <div className="pin-modal-card" style={{ maxWidth: '680px', width: '95%', maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                        <button className="btn-close-modal" onClick={() => setShowSaleProdModal(false)}><X size={18} /></button>
+                        <button className="btn-close-modal" onMouseDown={() => setShowSaleProdModal(false)}><X size={18} /></button>
                         
                         {/* Modal Header */}
                         <div style={{ padding: '1.5rem 1.5rem 0 1.5rem', flexShrink: 0 }}>
@@ -6740,7 +6748,7 @@ export default function SettingsHub() {
                                                         <span style={{ fontSize: '0.7rem', fontWeight: '800', color: 'var(--accent-pink)' }}>{idx + 1}</span>
                                                     </div>
                                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                                        <div style={{ fontSize: '0.88rem', fontWeight: '600', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name || item.ingredientSku}</div>
+                                                        <div style={{ fontSize: '0.88rem', fontWeight: '600', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name || produtos.find(p => p.sku === item.ingredientSku)?.name || item.ingredientSku}</div>
                                                         <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>SKU: {item.ingredientSku}</div>
                                                     </div>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
@@ -6867,7 +6875,7 @@ export default function SettingsHub() {
             {showFornModal && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div className="pin-modal-card" style={{ maxWidth: '850px', width: '90%', maxHeight: '90vh', margin: 'auto', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0 }}>
-                        <button className="btn-close-modal" onClick={() => setShowFornModal(false)} style={{ zIndex: 10001 }}><X size={18} /></button>
+                        <button className="btn-close-modal" onMouseDown={() => setShowFornModal(false)} style={{ zIndex: 10001 }}><X size={18} /></button>
                         
                         <form onSubmit={handleSaveForn} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', flex: 1, boxSizing: 'border-box' }}>
                             <h3 style={{ fontSize: '1.4rem', color: 'var(--accent-orange)', marginBottom: '1rem', textTransform: 'uppercase', fontWeight: '800', flexShrink: 0 }}>
@@ -8134,7 +8142,7 @@ export default function SettingsHub() {
             {showSectorModal && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
                     <div className="pin-modal-card" style={{ maxWidth: '500px', width: '90%' }}>
-                        <button className="btn-close-modal" onClick={() => setShowSectorModal(false)}><X size={18} /></button>
+                        <button className="btn-close-modal" onMouseDown={() => setShowSectorModal(false)}><X size={18} /></button>
                         
                         <form onSubmit={handleSaveSector} style={{ padding: '1.5rem' }}>
                             <h3 style={{ fontSize: '1.4rem', color: 'var(--accent-teal)', marginBottom: '1.5rem', textTransform: 'uppercase', fontWeight: '800' }}>
@@ -8198,7 +8206,7 @@ export default function SettingsHub() {
             {showCargoModal && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000 }}>
                     <div className="pin-modal-card" style={{ maxWidth: '500px', width: '90%' }}>
-                        <button className="btn-close-modal" onClick={() => setShowCargoModal(false)}><X size={18} /></button>
+                        <button className="btn-close-modal" onMouseDown={() => setShowCargoModal(false)}><X size={18} /></button>
                         
                         <form onSubmit={handleSaveCargo} style={{ padding: '1.5rem' }}>
                             <h3 style={{ fontSize: '1.4rem', color: 'var(--accent-yellow)', marginBottom: '1.5rem', textTransform: 'uppercase', fontWeight: '800' }}>
@@ -8465,7 +8473,7 @@ export default function SettingsHub() {
             {showWarehouseModal && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div className="pin-modal-card" style={{ maxWidth: '500px', width: '90%', padding: '2rem' }}>
-                        <button className="btn-close-modal" onClick={() => setShowWarehouseModal(false)}><X size={18} /></button>
+                        <button className="btn-close-modal" onMouseDown={() => setShowWarehouseModal(false)}><X size={18} /></button>
                         
                         <form onSubmit={handleSaveWarehouse} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                             <h3 style={{ fontSize: '1.4rem', color: 'var(--accent-blue)', textTransform: 'uppercase', fontWeight: '800', margin: 0 }}>
@@ -8617,7 +8625,7 @@ export default function SettingsHub() {
             {showZoneModal && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div className="pin-modal-card" style={{ maxWidth: '500px', width: '90%', padding: '2rem' }}>
-                        <button className="btn-close-modal" onClick={() => setShowZoneModal(false)}><X size={18} /></button>
+                        <button className="btn-close-modal" onMouseDown={() => setShowZoneModal(false)}><X size={18} /></button>
                         
                         <form onSubmit={handleSaveZone} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                             <h3 style={{ fontSize: '1.4rem', color: 'var(--accent-blue)', textTransform: 'uppercase', fontWeight: '800', margin: 0 }}>
@@ -8972,7 +8980,7 @@ export default function SettingsHub() {
             {showBatchLocationModal && createPortal(
                 <div className="pin-modal-overlay active" style={{ zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div className="pin-modal-card" style={{ maxWidth: '550px', width: '90%', padding: '2rem' }}>
-                        <button className="btn-close-modal" onClick={() => setShowBatchLocationModal(false)}><X size={18} /></button>
+                        <button className="btn-close-modal" onMouseDown={() => setShowBatchLocationModal(false)}><X size={18} /></button>
                         
                         <form onSubmit={handleGenerateLocationsBatch} style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
                             <h3 style={{ fontSize: '1.4rem', color: 'var(--accent-blue)', textTransform: 'uppercase', fontWeight: '800', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>

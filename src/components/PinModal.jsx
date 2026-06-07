@@ -73,7 +73,7 @@ export default function PinModal({ isOpen, onClose }) {
     return (
         <div className="pin-modal-overlay active">
             <div className="pin-modal-card">
-                <button className="btn-close-modal" onClick={onClose} title="Voltar">
+                <button className="btn-close-modal" onMouseDown={onClose} title="Voltar">
                     <X size={18} />
                 </button>
                 <div className="pin-container">
