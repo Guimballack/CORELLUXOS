@@ -13,6 +13,7 @@ import MasterAuthService from '../services/master-auth-service.js';
 import TenantService from '../services/tenant-service.js';
 import DbService from '../services/db-service.js';
 import AuditService from '../services/audit-service.js';
+import supabase from '../services/supabase-client.js';
 
 // UUID fixo da empresa padrão (Bella Italia) — mesma do SQL seed
 const EMPRESA_PADRAO_ID = '00000000-0000-0000-0000-000000000001';
@@ -110,22 +111,46 @@ export default function Login() {
         }
     };
 
-    // Login de empresa (busca empresa pelo email, inicializa contexto)
+    // Login de empresa (busca empresa pelo login/senha, inicializa contexto)
     const initEmpresaLogin = async (email, senha) => {
-        // Validação simples de credenciais da estação (igual ao sistema antigo)
-        // TODO: Integrar com Supabase Auth real
+        try {
+            // Tenta consultar a tabela de empresas no banco
+            const { data: empresa, error } = await supabase
+                .from('empresas')
+                .select('id, status, nome_fantasia, razao_social')
+                .eq('login_usuario', email.trim())
+                .eq('login_senha', senha)
+                .maybeSingle();
+
+            if (!error && empresa) {
+                if (empresa.status === 'Bloqueado') {
+                    return { success: false, error: 'Esta empresa está bloqueada no sistema. Entre em contato com o suporte.' };
+                }
+                if (empresa.status === 'Suspenso') {
+                    return { success: false, error: 'Esta empresa está suspensa por inadimplência. Entre em contato com o financeiro.' };
+                }
+
+                const result = await TenantService.initTenantContext(empresa.id);
+                if (result.success) {
+                    await AuditService.logLogin(`Estação de Trabalho (${empresa.nome_fantasia || empresa.razao_social})`, empresa.id);
+                }
+                return result;
+            }
+        } catch (err) {
+            console.warn('[Login] Erro ao autenticar via banco, testando fallback local:', err);
+        }
+
+        // ── FALLBACK LOCAL (Desenvolvimento) ────────────────────────
         if (email.trim() === 'admin' && senha === 'password') {
             // Inicializa contexto da empresa padrão
             const result = await TenantService.initTenantContext(EMPRESA_PADRAO_ID);
             if (result.success) {
-                await AuditService.logLogin('Estação de Trabalho', EMPRESA_PADRAO_ID);
+                await AuditService.logLogin('Estação de Trabalho (Bella Italia - Fallback)', EMPRESA_PADRAO_ID);
             }
             return result;
         }
 
-        // Tenta buscar empresa pelo email
-        // (funcionalidade expandida quando múltiplas empresas estiverem cadastradas)
-        return { success: false, error: 'Usuário ou senha incorretos.' };
+        return { success: false, error: 'Usuário ou senha de empresa incorretos.' };
     };
 
     return (

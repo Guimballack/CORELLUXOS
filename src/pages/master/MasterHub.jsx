@@ -193,6 +193,7 @@ function EmpresasManager({ onEntrarComoCliente }) {
     const [form, setForm]          = useState({
         razao_social: '', nome_fantasia: '', cnpj: '',
         email: '', telefone: '', plano_id: '', data_vencimento: '',
+        login_usuario: '', login_senha: '',
     });
     const [saving, setSaving]    = useState(false);
     const [actionLoading, setActionLoading] = useState(null);
@@ -220,7 +221,7 @@ function EmpresasManager({ onEntrarComoCliente }) {
         if (!result.error) {
             setShowForm(false);
             setEditingEmpresa(null);
-            setForm({ razao_social: '', nome_fantasia: '', cnpj: '', email: '', telefone: '', plano_id: '', data_vencimento: '' });
+            setForm({ razao_social: '', nome_fantasia: '', cnpj: '', email: '', telefone: '', plano_id: '', data_vencimento: '', login_usuario: '', login_senha: '' });
             load();
         }
     };
@@ -255,7 +256,7 @@ function EmpresasManager({ onEntrarComoCliente }) {
                     <option value="Suspenso">Suspenso</option>
                     <option value="Bloqueado">Bloqueado</option>
                 </select>
-                <button onClick={() => { setShowForm(true); setEditingEmpresa(null); }} style={{
+                <button onClick={() => { setShowForm(true); setEditingEmpresa(null); setForm({ razao_social: '', nome_fantasia: '', cnpj: '', email: '', telefone: '', plano_id: '', data_vencimento: '', login_usuario: 'admin', login_senha: 'password' }); }} style={{
                     background: 'linear-gradient(135deg, #10b981, #059669)', border: 'none', borderRadius: '8px',
                     padding: '0.6rem 1.2rem', color: '#fff', fontWeight: '700', fontSize: '0.82rem',
                     cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.4rem',
@@ -277,6 +278,8 @@ function EmpresasManager({ onEntrarComoCliente }) {
                             { key: 'cnpj', label: 'CNPJ' },
                             { key: 'email', label: 'E-mail', type: 'email' },
                             { key: 'telefone', label: 'Telefone' },
+                            { key: 'login_usuario', label: 'Usuário Login*', required: true },
+                            { key: 'login_senha', label: 'Senha Login*', type: 'text', required: true },
                             { key: 'data_vencimento', label: 'Vencimento', type: 'date' },
                         ].map(({ key, label, type = 'text', required }) => (
                             <div key={key}>
@@ -330,6 +333,7 @@ function EmpresasManager({ onEntrarComoCliente }) {
                                     <td style={{ padding: '0.85rem 1rem' }}>
                                         <div style={{ fontWeight: '700', color: 'var(--text-primary)', fontSize: '0.85rem' }}>{emp.nome_fantasia || emp.razao_social}</div>
                                         <div style={{ color: 'var(--text-secondary)', fontSize: '0.72rem' }}>{emp.razao_social}</div>
+                                        <div style={{ color: '#f97316', fontSize: '0.68rem', marginTop: '0.2rem', fontWeight: '600' }}>Login: {emp.login_usuario || 'admin'}</div>
                                     </td>
                                     <td style={{ padding: '0.85rem 1rem', color: 'var(--text-secondary)', fontSize: '0.82rem', fontFamily: 'monospace' }}>{emp.cnpj || '—'}</td>
                                     <td style={{ padding: '0.85rem 1rem' }}>
@@ -350,7 +354,7 @@ function EmpresasManager({ onEntrarComoCliente }) {
                                                 <ExternalLink size={11} /> Entrar
                                             </button>
                                             {/* Editar */}
-                                            <button onClick={() => { setEditingEmpresa(emp); setForm({ razao_social: emp.razao_social, nome_fantasia: emp.nome_fantasia || '', cnpj: emp.cnpj || '', email: emp.email || '', telefone: emp.telefone || '', plano_id: emp.plano_id || '', data_vencimento: emp.data_vencimento || '' }); setShowForm(true); }} title="Editar" style={{ background: 'rgba(99,102,241,0.12)', border: 'none', borderRadius: '6px', padding: '0.3rem 0.5rem', color: '#818cf8', cursor: 'pointer' }}>
+                                            <button onClick={() => { setEditingEmpresa(emp); setForm({ razao_social: emp.razao_social, nome_fantasia: emp.nome_fantasia || '', cnpj: emp.cnpj || '', email: emp.email || '', telefone: emp.telefone || '', plano_id: emp.plano_id || '', data_vencimento: emp.data_vencimento || '', login_usuario: emp.login_usuario || 'admin', login_senha: emp.login_senha || 'password' }); setShowForm(true); }} title="Editar" style={{ background: 'rgba(99,102,241,0.12)', border: 'none', borderRadius: '6px', padding: '0.3rem 0.5rem', color: '#818cf8', cursor: 'pointer' }}>
                                                 <Edit3 size={12} />
                                             </button>
                                             {/* Ativar/Suspender */}

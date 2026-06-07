@@ -49,6 +49,8 @@ CREATE TABLE IF NOT EXISTS empresas (
   endereco         JSONB,
   plano_id         UUID         REFERENCES planos(id),
   status           VARCHAR(20)  DEFAULT 'Ativo',         -- Ativo, Suspenso, Bloqueado
+  login_usuario    VARCHAR(100) DEFAULT 'admin',
+  login_senha      VARCHAR(100) DEFAULT 'password',
   data_cadastro    DATE         DEFAULT CURRENT_DATE,
   data_vencimento  DATE,
   logo_url         TEXT,
