@@ -1615,7 +1615,7 @@ export default function ChecklistHub() {
 
         setActiveExecution(null);
         refreshDbData();
-        setTab('dashboard');
+        setTab('menu');
     };
 
     // ----------------------------------------------------
