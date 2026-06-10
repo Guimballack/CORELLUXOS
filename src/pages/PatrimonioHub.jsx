@@ -896,7 +896,7 @@ export default function PatrimonioHub() {
     const totalValue = items.reduce((acc, i) => acc + (parseFloat(i.valueTotal) || 0), 0);
 
     // low stock alert list
-    const lowStockAlerts = items.filter(i => i.qtyActual <= i.qtyMin && i.status === 'Ativo');
+    const lowStockAlerts = items.filter(i => i.qtyActual < i.qtyMin && i.status === 'Ativo');
 
     // sector distribution counts
     const distributionBySector = {};
