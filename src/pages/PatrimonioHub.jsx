@@ -951,13 +951,13 @@ export default function PatrimonioHub() {
             <style dangerouslySetInnerHTML={{__html: `
                 .pat-sidebar {
                     width: 260px;
-                    background: rgba(15, 23, 42, 0.6);
-                    border-right: 1px solid rgba(255,255,255,0.05);
+                    background: rgba(15, 23, 42, 0.65);
+                    border-right: 1px solid rgba(255,255,255,0.06);
                     display: flex;
                     flex-direction: column;
                     padding: 1.5rem 1rem;
                     box-sizing: border-box;
-                    backdrop-filter: blur(10px);
+                    backdrop-filter: blur(16px);
                 }
                 .pat-sidebar-btn {
                     width: 100%;
@@ -967,46 +967,58 @@ export default function PatrimonioHub() {
                     display: flex;
                     align-items: center;
                     gap: 0.8rem;
-                    padding: 0.8rem 1rem;
-                    border-radius: 8px;
+                    padding: 0.8rem 1.1rem;
+                    border-radius: 10px;
                     cursor: pointer;
                     font-size: 0.88rem;
                     font-weight: 600;
                     text-align: left;
-                    margin-bottom: 0.4rem;
-                    transition: all 0.2s;
+                    margin-bottom: 0.45rem;
+                    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
                 }
                 .pat-sidebar-btn:hover {
-                    background: rgba(255, 255, 255, 0.03);
+                    background: rgba(255, 255, 255, 0.04);
                     color: #fff;
+                    transform: translateX(3px);
                 }
                 .pat-sidebar-btn.active {
-                    background: rgba(243, 107, 29, 0.1);
+                    background: rgba(243, 107, 29, 0.12);
                     color: var(--accent-orange);
+                    box-shadow: inset 3px 0 0 var(--accent-orange);
                 }
                 .pat-main-container {
                     flex: 1;
-                    padding: 2rem;
+                    padding: 2.5rem;
                     overflow-y: auto;
                     display: flex;
                     flex-direction: column;
                     box-sizing: border-box;
+                    background: radial-gradient(circle at top right, rgba(243, 107, 29, 0.03), transparent 60%);
                 }
                 .pat-kpi-grid {
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: 1.25rem;
+                    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+                    gap: 1.5rem;
                     margin-bottom: 2rem;
                 }
                 .pat-kpi-card {
-                    background: rgba(30, 41, 59, 0.25);
-                    border: 1px solid rgba(255,255,255,0.05);
-                    border-radius: 12px;
-                    padding: 1.25rem;
+                    background: rgba(30, 41, 59, 0.22);
+                    border: 1px solid rgba(255,255,255,0.06);
+                    border-radius: 16px;
+                    padding: 1.5rem;
                     display: flex;
                     flex-direction: column;
                     position: relative;
                     overflow: hidden;
+                    backdrop-filter: blur(8px);
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+                }
+                .pat-kpi-card:hover {
+                    transform: translateY(-4px);
+                    border-color: rgba(243, 107, 29, 0.2);
+                    box-shadow: 0 8px 30px rgba(243, 107, 29, 0.08);
+                    background: rgba(30, 41, 59, 0.35);
                 }
                 .pat-kpi-card::before {
                     content: '';
@@ -1020,13 +1032,13 @@ export default function PatrimonioHub() {
                 .pat-kpi-card.blue::before { background: var(--accent-blue); }
                 .pat-kpi-card.purple::before { background: var(--accent-purple); }
                 
-                .pat-kpi-card h6 { margin: 0; color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; }
-                .pat-kpi-card h3 { margin: 0.4rem 0 0 0; font-size: 1.8rem; font-weight: 800; color: #fff; }
+                .pat-kpi-card h6 { margin: 0; color: #94a3b8; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 700; }
+                .pat-kpi-card h3 { margin: 0.5rem 0 0 0; font-size: 1.9rem; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
 
                 .pat-grid-dashboard {
                     display: grid;
                     grid-template-columns: 1fr 1fr;
-                    gap: 1.5rem;
+                    gap: 1.75rem;
                     margin-bottom: 2rem;
                 }
                 @media(max-width: 900px) {
@@ -1037,13 +1049,204 @@ export default function PatrimonioHub() {
                 .pat-panel-card {
                     background: rgba(30, 41, 59, 0.15);
                     border: 1px solid rgba(255,255,255,0.05);
-                    border-radius: 12px;
-                    padding: 1.5rem;
+                    border-radius: 16px;
+                    padding: 1.75rem;
                     display: flex;
                     flex-direction: column;
-                    gap: 1rem;
+                    gap: 1.25rem;
+                    backdrop-filter: blur(6px);
+                    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.1);
+                    transition: all 0.3s ease;
                 }
-                .pat-panel-card h4 { margin: 0; color: var(--accent-orange); font-size: 1rem; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem; }
+                .pat-panel-card:hover {
+                    border-color: rgba(255,255,255,0.08);
+                    background: rgba(30, 41, 59, 0.2);
+                }
+                .pat-panel-card h4 { 
+                    margin: 0; 
+                    color: var(--accent-orange); 
+                    font-size: 1.05rem; 
+                    font-weight: 800; 
+                    border-bottom: 1px solid rgba(255,255,255,0.06); 
+                    padding-bottom: 0.75rem;
+                    letter-spacing: 0.5px;
+                }
+
+                /* Categories Cards styling (chk-menu-card) */
+                .chk-menu-card {
+                    background: rgba(30, 41, 59, 0.25) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+                    border-radius: 16px !important;
+                    padding: 1.25rem !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 1.25rem !important;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+                    position: relative !important;
+                    overflow: hidden !important;
+                    text-align: left !important;
+                    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
+                    height: 110px !important;
+                }
+                .chk-menu-card:hover {
+                    background: rgba(30, 41, 59, 0.45) !important;
+                    border-color: rgba(243, 107, 29, 0.4) !important;
+                    transform: translateY(-4px) !important;
+                    box-shadow: 0 12px 24px rgba(243, 107, 29, 0.18) !important;
+                }
+                .chk-menu-card::before {
+                    content: '' !important;
+                    position: absolute !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    width: 4px !important;
+                    height: 100% !important;
+                    background: #475569 !important;
+                    transition: background 0.3s ease !important;
+                }
+                .chk-menu-card:hover::before {
+                    background: var(--accent-orange) !important;
+                }
+                .chk-menu-card-icon {
+                    width: 48px !important;
+                    height: 48px !important;
+                    border-radius: 12px !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    color: #fff !important;
+                    transition: all 0.3s ease !important;
+                    flex-shrink: 0 !important;
+                    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2) !important;
+                }
+                .chk-menu-card:hover .chk-menu-card-icon {
+                    transform: scale(1.08) !important;
+                }
+
+                /* Categories Color Overrides with Gradients */
+                .chk-menu-card-icon.color-blue { background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important; }
+                .chk-menu-card-icon.color-green { background: linear-gradient(135deg, #10b981, #059669) !important; }
+                .chk-menu-card-icon.color-yellow { background: linear-gradient(135deg, #f59e0b, #d97706) !important; }
+                .chk-menu-card-icon.color-purple { background: linear-gradient(135deg, #8b5cf6, #6d28d9) !important; }
+                .chk-menu-card-icon.color-orange { background: linear-gradient(135deg, #f97316, #ea580c) !important; }
+                .chk-menu-card-icon.color-red { background: linear-gradient(135deg, #ef4444, #b91c1c) !important; }
+                .chk-menu-card-icon.color-teal { background: linear-gradient(135deg, #14b8a6, #0f766e) !important; }
+                .chk-menu-card-icon.color-lightblue { background: linear-gradient(135deg, #0ea5e9, #0284c7) !important; }
+                .chk-menu-card-icon.color-pink { background: linear-gradient(135deg, #ec4899, #be185d) !important; }
+
+                .chk-menu-card-content {
+                    display: flex !important;
+                    flex-direction: column !important;
+                    gap: 0.25rem !important;
+                    flex: 1 !important;
+                }
+                .chk-menu-card-content h3 {
+                    margin: 0 !important;
+                    font-size: 0.95rem !important;
+                    font-weight: 800 !important;
+                    color: #fff !important;
+                    letter-spacing: 0.5px !important;
+                }
+                .chk-menu-card-content p {
+                    margin: 0 !important;
+                    font-size: 0.78rem !important;
+                    color: #94a3b8 !important;
+                    line-height: 1.4 !important;
+                }
+
+                .chk-menu-card .action-btn-sm {
+                    width: 28px !important;
+                    height: 28px !important;
+                    border-radius: 50% !important;
+                    display: inline-flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    background: rgba(255, 255, 255, 0.03) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+                    color: #94a3b8 !important;
+                    transition: all 0.2s ease !important;
+                    cursor: pointer !important;
+                }
+                .chk-menu-card .action-btn-sm:hover {
+                    background: rgba(255, 255, 255, 0.08) !important;
+                    color: #fff !important;
+                    transform: scale(1.1) !important;
+                }
+                .chk-menu-card .action-btn-sm.edit:hover {
+                    border-color: rgba(243, 107, 29, 0.4) !important;
+                    color: var(--accent-orange) !important;
+                    background: rgba(243, 107, 29, 0.1) !important;
+                }
+                .chk-menu-card .action-btn-sm.delete:hover {
+                    border-color: rgba(239, 68, 68, 0.4) !important;
+                    color: var(--accent-red) !important;
+                    background: rgba(239, 68, 68, 0.1) !important;
+                }
+
+                /* Dropdown Filters (chk-filter-select) */
+                .chk-filter-select {
+                    background: rgba(15, 23, 42, 0.6) !important;
+                    border: 1px solid rgba(255,255,255,0.08) !important;
+                    border-radius: 8px !important;
+                    color: #fff !important;
+                    padding: 0.5rem 1rem !important;
+                    outline: none !important;
+                    cursor: pointer !important;
+                    font-size: 0.82rem !important;
+                    font-weight: 600 !important;
+                    transition: all 0.2s ease !important;
+                    height: 38px !important;
+                }
+                .chk-filter-select:hover {
+                    border-color: rgba(243, 107, 29, 0.4) !important;
+                    background: rgba(30, 41, 59, 0.5) !important;
+                }
+                .chk-filter-select:focus {
+                    border-color: var(--accent-orange) !important;
+                    box-shadow: 0 0 0 2px rgba(243, 107, 29, 0.2) !important;
+                }
+                .chk-filter-select option {
+                    background: #0f172a !important;
+                    color: #fff !important;
+                }
+
+                /* Form Inputs inside Modals (input-title) */
+                .input-title {
+                    background: rgba(15, 23, 42, 0.6) !important;
+                    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+                    border-radius: 8px !important;
+                    color: #fff !important;
+                    padding: 0.65rem 0.85rem !important;
+                    outline: none !important;
+                    font-size: 0.88rem !important;
+                    transition: all 0.2s ease !important;
+                    box-sizing: border-box !important;
+                    width: 100% !important;
+                }
+                .input-title:focus {
+                    border-color: var(--accent-orange) !important;
+                    box-shadow: 0 0 0 2px rgba(243, 107, 29, 0.15) !important;
+                }
+                .input-title::placeholder {
+                    color: #475569 !important;
+                }
+                select.input-title {
+                    cursor: pointer !important;
+                    appearance: none !important;
+                    background-image: url("data:image/svg+xml;utf8,<svg fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'><polyline points='6 9 12 15 18 9'></polyline></svg>") !important;
+                    background-repeat: no-repeat !important;
+                    background-position: right 0.85rem center !important;
+                    background-size: 1rem !important;
+                    padding-right: 2.5rem !important;
+                }
+                select.input-title option {
+                    background: #0f172a !important;
+                    color: #fff !important;
+                    padding: 0.5rem !important;
+                }
+                input[type="date"].input-title {
+                    color-scheme: dark !important;
+                }
 
                 .pat-table {
                     width: 100%;
@@ -1052,34 +1255,41 @@ export default function PatrimonioHub() {
                     font-size: 0.88rem;
                 }
                 .pat-table th {
-                    background: rgba(15, 23, 42, 0.4);
+                    background: rgba(15, 23, 42, 0.5);
                     color: #94a3b8;
-                    font-weight: 600;
-                    padding: 0.75rem 1rem;
-                    border-bottom: 1px solid rgba(255,255,255,0.05);
+                    font-weight: 700;
+                    padding: 0.9rem 1.25rem;
+                    border-bottom: 1px solid rgba(255,255,255,0.06);
+                    text-transform: uppercase;
+                    font-size: 0.72rem;
+                    letter-spacing: 0.8px;
                 }
                 .pat-table td {
-                    padding: 0.75rem 1rem;
+                    padding: 0.9rem 1.25rem;
                     border-bottom: 1px solid rgba(255,255,255,0.03);
-                    color: #f3f4f6;
+                    color: #e2e8f0;
+                    transition: all 0.15s ease;
                 }
                 .pat-table tr:hover td {
                     background: rgba(255,255,255,0.02);
+                    color: #fff;
                 }
 
                 .pat-status-badge {
-                    padding: 0.2rem 0.5rem;
+                    padding: 0.25rem 0.6rem;
                     border-radius: 6px;
-                    font-size: 0.72rem;
+                    font-size: 0.7rem;
                     font-weight: 700;
                     text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    display: inline-block;
                 }
-                .pat-status-badge.ativo { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
-                .pat-status-badge.em-uso { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
-                .pat-status-badge.em-manutenção { background: rgba(234, 179, 8, 0.15); color: #facc15; }
-                .pat-status-badge.quebrado { background: rgba(239, 68, 68, 0.15); color: #f87171; }
-                .pat-status-badge.perdido { background: rgba(249, 115, 22, 0.15); color: #ff9d5c; }
-                .pat-status-badge.baixado { background: rgba(100, 116, 139, 0.15); color: #cbd5e1; }
+                .pat-status-badge.ativo { background: rgba(34, 197, 94, 0.12); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.2); }
+                .pat-status-badge.em-uso { background: rgba(59, 130, 246, 0.12); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); }
+                .pat-status-badge.em-manutenção { background: rgba(234, 179, 8, 0.12); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.2); }
+                .pat-status-badge.quebrado { background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
+                .pat-status-badge.perdido { background: rgba(249, 115, 22, 0.12); color: #ff9d5c; border: 1px solid rgba(249, 115, 22, 0.2); }
+                .pat-status-badge.baixado { background: rgba(100, 116, 139, 0.12); color: #cbd5e1; border: 1px solid rgba(100, 116, 139, 0.2); }
 
                 .pat-report-sheet {
                     background: #ffffff;
