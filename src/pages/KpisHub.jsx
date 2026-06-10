@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useCorelluxState } from '../store/corellux-state';
 import DbService from '../services/db-service';
+import { runSupplyChainEngine } from '../utils/supply-chain-engine';
 import { 
     BarChart3, 
     TrendingUp, 
@@ -106,11 +107,35 @@ export default function KpisHub() {
         return costMap;
     }, [products]);
 
+    // Motor de Supply Chain para obter consumo médio diário (Qtd)
+    const supplyChainData = useMemo(() => {
+        try {
+            const rawLogs = localStorage.getItem('corellux_movement_logs');
+            const movementLogs = rawLogs ? JSON.parse(rawLogs) : [];
+            // suppliers e targetDays não influenciam no predictedDailyAvg, então passamos vazios/padrão
+            return runSupplyChainEngine(products, stockBatches, [], movementLogs, 30);
+        } catch (e) {
+            console.error('[KpisHub] Erro ao processar motor de supply chain:', e);
+            return { inventoryMetrics: [] };
+        }
+    }, [products, stockBatches]);
+
+    const dailyMetrics = useMemo(() => {
+        const metricsMap = {};
+        if (supplyChainData && supplyChainData.inventoryMetrics) {
+            supplyChainData.inventoryMetrics.forEach(m => {
+                metricsMap[m.sku] = m.avgDailyConsumption || 0;
+            });
+        }
+        return metricsMap;
+    }, [supplyChainData]);
+
     // Dados processados para o painel de estoque
     const stockStats = useMemo(() => {
         let totalValuation = 0;
         let totalQty = 0;
         let belowMinCount = 0;
+        let totalDailyConsumptionValue = 0;
         const categoryValuation = {};
         const zoneValuation = {
             CFA: { name: 'Câmara Fria A', value: 0 },
@@ -160,6 +185,10 @@ export default function KpisHub() {
             // Agrupar por categoria
             const cat = p.category || 'OUTROS';
             categoryValuation[cat] = (categoryValuation[cat] || 0) + ((p.stock || 0) * cost);
+
+            // Calcular o consumo diário monetário
+            const avgDailyQty = dailyMetrics[p.sku] || 0;
+            totalDailyConsumptionValue += avgDailyQty * cost;
         });
 
         // Converter categorias para array ordenado
@@ -177,10 +206,11 @@ export default function KpisHub() {
             totalValuation,
             totalQty,
             belowMinCount,
+            totalDailyConsumptionValue,
             categories: sortedCategories,
             zones: sortedZones
         };
-    }, [products, stockBatches, productCosts]);
+    }, [products, stockBatches, productCosts, dailyMetrics]);
 
     // Filtragem de produtos para a tabela interativa
     const filteredProducts = useMemo(() => {
@@ -591,6 +621,14 @@ export default function KpisHub() {
                                         <div className="kpi-card-value">{stockStats.belowMinCount}</div>
                                         <div className="kpi-card-subtitle">Insumos com níveis abaixo do limite mínimo definido</div>
                                     </div>
+                                    <div className="kpi-summary-card blue">
+                                        <div className="kpi-card-header">
+                                            <span className="kpi-card-title">Custo Médio de Saída Diária</span>
+                                            <TrendingUp size={20} style={{ color: '#38bdf8' }} />
+                                        </div>
+                                        <div className="kpi-card-value">{formatBRL(stockStats.totalDailyConsumptionValue)}</div>
+                                        <div className="kpi-card-subtitle">Custo total diário estimado das saídas de estoque</div>
+                                    </div>
                                 </div>
 
                                 {/* Row: Categories and Zones */}
@@ -711,6 +749,8 @@ export default function KpisHub() {
                                                     <th>Categoria</th>
                                                     <th style={{ textAlign: 'right' }}>Estoque Atual</th>
                                                     <th style={{ textAlign: 'right' }}>Custo Unit. (est.)</th>
+                                                    <th style={{ textAlign: 'right' }}>Consumo Médio (Dia)</th>
+                                                    <th style={{ textAlign: 'right' }}>Custo Médio (Dia)</th>
                                                     <th style={{ textAlign: 'right' }}>Valuation Total</th>
                                                     <th style={{ width: '100px', textTransform: 'center' }}>Status</th>
                                                 </tr>
@@ -718,7 +758,7 @@ export default function KpisHub() {
                                             <tbody>
                                                 {filteredProducts.length === 0 ? (
                                                     <tr>
-                                                        <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
+                                                        <td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
                                                             Nenhum insumo encontrado para os filtros selecionados.
                                                         </td>
                                                     </tr>
@@ -727,6 +767,8 @@ export default function KpisHub() {
                                                         const cost = productCosts[p.sku] || 0;
                                                         const totalVal = (p.stock || 0) * cost;
                                                         const isCritical = (p.stock || 0) < (p.minStock || 0);
+                                                        const avgDailyQty = dailyMetrics[p.sku] || 0;
+                                                        const avgDailyVal = avgDailyQty * cost;
 
                                                         return (
                                                             <tr key={p.sku}>
@@ -740,6 +782,10 @@ export default function KpisHub() {
                                                                     {p.stock} <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{p.unit}</span>
                                                                 </td>
                                                                 <td style={{ textAlign: 'right', color: '#94a3b8' }}>{formatBRL(cost)}</td>
+                                                                <td style={{ textAlign: 'right', fontWeight: '600' }}>
+                                                                    {avgDailyQty.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 2 })} <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{p.unit}</span>
+                                                                </td>
+                                                                <td style={{ textAlign: 'right', color: '#94a3b8' }}>{formatBRL(avgDailyVal)}</td>
                                                                 <td style={{ textAlign: 'right', fontWeight: '700', color: '#10b981' }}>{formatBRL(totalVal)}</td>
                                                                 <td>
                                                                     {isCritical ? (
