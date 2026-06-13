@@ -1011,51 +1011,90 @@ export default function PatrimonioHub() {
                 {/* TAB 1: DASHBOARD */}
                 {activeTab === 'dashboard' && (
                     <>
-                        <div className="pat-kpi-grid">
+                        <div className="pat-kpi-grid pat-animate-in">
                             <div className="pat-kpi-card blue">
-                                <h6>Bens Cadastrados</h6>
-                                <h3>{totalCadastrados}</h3>
+                                <div className="pat-kpi-header">
+                                    <div>
+                                        <h6>Bens Cadastrados</h6>
+                                        <h3>{totalCadastrados}</h3>
+                                        <div className="pat-kpi-subtitle">{categories.length} categorias</div>
+                                    </div>
+                                    <div className="pat-kpi-icon blue"><Boxes size={20} /></div>
+                                </div>
                             </div>
                             <div className="pat-kpi-card green">
-                                <h6>Bens Ativos</h6>
-                                <h3>{totalAtivos}</h3>
+                                <div className="pat-kpi-header">
+                                    <div>
+                                        <h6>Bens Ativos</h6>
+                                        <h3>{totalAtivos}</h3>
+                                        <div className="pat-kpi-subtitle">{totalCadastrados > 0 ? ((totalAtivos / totalCadastrados) * 100).toFixed(0) : 0}% do total</div>
+                                    </div>
+                                    <div className="pat-kpi-icon green"><CheckCircle size={20} /></div>
+                                </div>
                             </div>
                             <div className="pat-kpi-card yellow">
-                                <h6>Em Manutenção</h6>
-                                <h3>{totalManutencao}</h3>
+                                <div className="pat-kpi-header">
+                                    <div>
+                                        <h6>Em Manutenção</h6>
+                                        <h3>{totalManutencao}</h3>
+                                        <div className="pat-kpi-subtitle">itens parados</div>
+                                    </div>
+                                    <div className="pat-kpi-icon yellow"><Settings size={20} /></div>
+                                </div>
                             </div>
                             <div className="pat-kpi-card red">
-                                <h6>Bens Quebrados</h6>
-                                <h3>{totalQuebrados}</h3>
-                            </div>
-                            <div className="pat-kpi-card red">
-                                <h6>Bens Perdidos</h6>
-                                <h3>{totalPerdidos}</h3>
+                                <div className="pat-kpi-header">
+                                    <div>
+                                        <h6>Quebrados / Perdidos</h6>
+                                        <h3>{totalQuebrados + totalPerdidos}</h3>
+                                        <div className="pat-kpi-subtitle">{totalQuebrados} quebrados · {totalPerdidos} perdidos</div>
+                                    </div>
+                                    <div className="pat-kpi-icon red"><XCircle size={20} /></div>
+                                </div>
                             </div>
                             <div className="pat-kpi-card purple">
-                                <h6>Valor Total Patrimônio</h6>
-                                <h3>{totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</h3>
+                                <div className="pat-kpi-header">
+                                    <div>
+                                        <h6>Alertas Estoque</h6>
+                                        <h3>{lowStockAlerts.length}</h3>
+                                        <div className="pat-kpi-subtitle">abaixo do mínimo</div>
+                                    </div>
+                                    <div className="pat-kpi-icon orange"><AlertTriangle size={20} /></div>
+                                </div>
+                            </div>
+                            <div className="pat-kpi-card purple">
+                                <div className="pat-kpi-header">
+                                    <div>
+                                        <h6>Valor Total Patrimônio</h6>
+                                        <h3>{totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</h3>
+                                        <div className="pat-kpi-subtitle">{items.reduce((a, i) => a + i.qtyActual, 0)} itens em estoque</div>
+                                    </div>
+                                    <div className="pat-kpi-icon purple"><DollarSign size={20} /></div>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="pat-grid-dashboard">
+                        <div className="pat-grid-dashboard pat-animate-in">
                             {/* Alertas de estoque mínimo */}
                             <div className="pat-panel-card">
-                                <h4>Alertas de Estoque Mínimo</h4>
-                                <div style={{ overflowY: 'auto', maxHeight: '250px', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                                <h4><AlertTriangle size={18} /> Alertas de Estoque Mínimo</h4>
+                                <div style={{ overflowY: 'auto', maxHeight: '280px', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                                     {lowStockAlerts.length === 0 ? (
-                                        <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: 0 }}>Nenhum alerta pendente. Todos os bens acima do mínimo.</p>
+                                        <div className="pat-empty-state" style={{ padding: '2rem' }}>
+                                            <CheckCircle size={32} style={{ color: 'var(--accent-green)', opacity: 0.5 }} />
+                                            <p style={{ color: '#64748b' }}>Nenhum alerta pendente.<br/>Todos os bens acima do mínimo.</p>
+                                        </div>
                                     ) : (
                                         lowStockAlerts.map(i => (
-                                            <div key={i.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '0.6rem 0.8rem', borderRadius: '8px' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                                                    <AlertTriangle size={16} style={{ color: 'var(--accent-red)' }} />
+                                            <div key={i.id} className="pat-alert-item">
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                                                    <AlertTriangle size={16} style={{ color: 'var(--accent-red)', flexShrink: 0 }} />
                                                     <div>
-                                                        <span style={{ fontSize: '0.85rem', fontWeight: 600, display: 'block' }}>{i.name}</span>
-                                                        <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Mínimo: {i.qtyMin} | Atual: {i.qtyActual} ({i.unit})</span>
+                                                        <span style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block', color: '#fff' }}>{i.name}</span>
+                                                        <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Mín: {i.qtyMin} | Atual: {i.qtyActual} ({i.unit})</span>
                                                     </div>
                                                 </div>
-                                                <span style={{ color: 'var(--accent-red)', fontSize: '0.78rem', fontWeight: 700 }}>Faltam {i.qtyMin - i.qtyActual}</span>
+                                                <span style={{ color: 'var(--accent-red)', fontSize: '0.82rem', fontWeight: 800, whiteSpace: 'nowrap' }}>−{i.qtyMin - i.qtyActual}</span>
                                             </div>
                                         ))
                                     )}
@@ -1064,17 +1103,34 @@ export default function PatrimonioHub() {
 
                             {/* Quantidade por setor */}
                             <div className="pat-panel-card">
-                                <h4>Materiais por Setor</h4>
-                                <div style={{ overflowY: 'auto', maxHeight: '250px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                                <h4><MapPin size={18} /> Materiais por Setor</h4>
+                                <div style={{ overflowY: 'auto', maxHeight: '280px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                                     {Object.keys(distributionBySector).length === 0 ? (
-                                        <p style={{ fontSize: '0.82rem', color: '#94a3b8', margin: 0 }}>Nenhum bem distribuído pelos setores.</p>
+                                        <div className="pat-empty-state" style={{ padding: '2rem' }}>
+                                            <MapPin size={32} style={{ opacity: 0.3 }} />
+                                            <p>Nenhum bem distribuído pelos setores.</p>
+                                        </div>
                                     ) : (
-                                        Object.entries(distributionBySector).map(([sec, qty]) => (
-                                            <div key={sec} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)', padding: '0.6rem 0.8rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.03)' }}>
-                                                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{sec}</span>
-                                                <span style={{ color: 'var(--accent-orange)', fontSize: '0.85rem', fontWeight: 700 }}>{qty} unidades</span>
-                                            </div>
-                                        ))
+                                        Object.entries(distributionBySector)
+                                            .sort(([,a], [,b]) => b - a)
+                                            .map(([sec, qty]) => {
+                                                const totalQty = Object.values(distributionBySector).reduce((a, b) => a + b, 0);
+                                                const pct = totalQty > 0 ? ((qty / totalQty) * 100).toFixed(0) : 0;
+                                                return (
+                                                    <div key={sec} className="pat-sector-item">
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                                                            <MapPin size={14} style={{ color: '#64748b', flexShrink: 0 }} />
+                                                            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{sec}</span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                                                            <div style={{ width: '60px', height: '5px', borderRadius: '3px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                                                                <div style={{ width: `${pct}%`, height: '100%', borderRadius: '3px', background: 'var(--accent-orange)', transition: 'width 0.5s ease' }} />
+                                                            </div>
+                                                            <span style={{ color: 'var(--accent-orange)', fontSize: '0.85rem', fontWeight: 700, minWidth: '50px', textAlign: 'right' }}>{qty} un</span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
                                     )}
                                 </div>
                             </div>
@@ -1208,28 +1264,55 @@ export default function PatrimonioHub() {
                 {/* TAB 3: CATEGORIAS */}
                 {activeTab === 'categorias' && (
                     <>
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.5rem' }}>
-                            <button className="btn-secondary" onClick={handleOpenCategoryCreate} style={{ padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.4rem', border: '1px solid var(--accent-orange)', color: 'var(--accent-orange)' }}>
-                                <Plus size={16} /> NOVA CATEGORIA
+                        <div className="pat-category-header pat-animate-in">
+                            <h2><FolderPlus size={22} style={{ color: 'var(--accent-orange)' }} /> Categorias <span>({categories.length} cadastradas)</span></h2>
+                            <button className="btn-secondary" onClick={handleOpenCategoryCreate} style={{ padding: '0.5rem 1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid var(--accent-orange)', color: 'var(--accent-orange)', borderRadius: '10px', fontWeight: 700 }}>
+                                <PlusCircle size={16} /> NOVA CATEGORIA
                             </button>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.25rem' }}>
-                            {categories.map(c => (
-                                <div key={c.id} className="pat-category-card">
-                                    <div className={`pat-category-card-icon ${c.color || 'color-blue'}`}>
-                                        <i className={`fas ${c.icon || 'fa-box'}`} style={{ fontSize: '1.15rem' }}></i>
+                        <div className="pat-categories-grid pat-animate-in">
+                            {categories.map(c => {
+                                const catItems = items.filter(i => i.category === c.name);
+                                const catQty = catItems.reduce((a, i) => a + (i.qtyActual || 0), 0);
+                                const catValue = catItems.reduce((a, i) => a + (parseFloat(i.valueTotal) || 0), 0);
+                                const catActive = catItems.filter(i => i.status === 'Ativo').length;
+                                return (
+                                    <div key={c.id} className="pat-category-card">
+                                        <div className="pat-category-card-top">
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                                <div className={`pat-category-card-icon ${c.color || 'color-blue'}`}>
+                                                    <i className={`fas ${c.icon || 'fa-box'}`}></i>
+                                                </div>
+                                                <div className="pat-category-card-content">
+                                                    <h3>{c.name.toUpperCase()}</h3>
+                                                    <p>
+                                                        <span className={`pat-status-badge ${c.status.toLowerCase().replace(' ', '-')}`} style={{ fontSize: '0.62rem', padding: '0.15rem 0.45rem' }}>{c.status}</span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="pat-category-card-actions">
+                                                <button className="action-btn-sm edit" title="Editar" onClick={() => { setEditingCategory(c); setCategoryForm({ ...c }); setIsCategoryModalOpen(true); }}><Edit size={14} /></button>
+                                                <button className="action-btn-sm delete" title="Excluir" onClick={() => handleDeleteCategory(c)}><Trash2 size={14} /></button>
+                                            </div>
+                                        </div>
+                                        <div className="pat-category-stats">
+                                            <div className="pat-category-stat">
+                                                <label>Itens</label>
+                                                <span>{catItems.length}</span>
+                                            </div>
+                                            <div className="pat-category-stat">
+                                                <label>Quantidade</label>
+                                                <span>{catQty}</span>
+                                            </div>
+                                            <div className="pat-category-stat">
+                                                <label>Valor Total</label>
+                                                <span className="value-highlight">{catValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="pat-category-card-content">
-                                        <h3>{c.name.toUpperCase()}</h3>
-                                        <p style={{ margin: 0 }}>Status: {c.status}</p>
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', justifyContent: 'center' }}>
-                                        <button className="action-btn-sm edit" style={{ margin: 0 }} onClick={() => { setEditingCategory(c); setCategoryForm({ ...c }); setIsCategoryModalOpen(true); }}><Edit size={14} /></button>
-                                        <button className="action-btn-sm delete" style={{ margin: 0 }} onClick={() => handleDeleteCategory(c)}><Trash2 size={14} /></button>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </>
                 )}
